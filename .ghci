@@ -1,0 +1,6 @@
+:set +s +t
+:set -fglasgow-exts -fbreak-on-error -fprint-evld-with-show
+:set -XPatternSignatures
+
+:set stop :list
+:def seq (\arg -> return ("seq (" ++ arg ++ ") ()"))

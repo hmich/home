@@ -1,0 +1,34 @@
+# enable color support of ls and also add handy aliases
+if [ "$TERM" != "dumb" ]; then
+    eval "`dircolors -b`"
+fi
+
+LSFLAGS="-shAF --color=auto"
+
+# some more ls aliases
+alias ll="ls $LSFLAGS -l"
+alias ls="ls $LSFLAGS"
+alias l=ls
+
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+
+alias du='du -ch'
+alias df='df -Th'
+alias free='free -mt'
+
+alias h=history
+
+alias less='less -iMNx4'
+alias rless="LESSOPEN='|tac %s' less"
+
+alias pack='apt-cache search'
+alias inst='sudo apt-get install'
+
+alias rain='ssh ahmetov@rain.ifmo.ru'
+alias mountrain='sudo sshfs -o allow_other ahmetov@rain.ifmo.ru: rain'
+
+alias gv='gv -widgetless'
+
+alias grep='grep --color'

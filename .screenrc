@@ -1,0 +1,97 @@
+ignorecase            on
+startup_message       off
+vbell                 off
+shell                 zsh
+autodetach            on
+
+# Define  the  time  that  all windows monitored for silence should
+# wait before displaying a message.
+silencewait           15
+
+
+# Color table:
+#  Black             .    leave color unchanged
+#  Red               b    blue
+#  Green             c    cyan
+#  Brown / yellow    d    default color
+#  Blue              g    green           b    bold
+#  Purple            k    blacK           B    blinking
+#  Cyan              m    magenta         d    dim
+#  White             r    red             r    reverse
+#  unused/illegal    w    white           s    standout
+#  transparent       y    yellow          u    underline
+#
+# This  command controls the display of the window captions.
+#  caption always "%{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%? %=%t %c"
+#  caption string "%{= dd}"
+#  caption string "%{= wk}""
+#  caption always "%?%F%{.R.}%?%3n %t%? [%h]%?"
+#  caption always "%{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kY}%?%+Lw%?"
+#caption always "%{kr} -=%H=- | %{kr}%c |  %{gk}%-Lw%{yK}%50>%{Ky}%n%f* %t%{-}%+Lw%<%{- Wk}"
+#  caption always "%{ry} %D %d %M %{+b yk}  %C  %{-} %L=%-Lw%{+b br}%50>%n%f* %t%{-}%+Lw%-10< %{rw} $HOST"
+#  caption always "%{= bb}%{+b w}%n %h %=%t %c"
+#  caption string '%?%F%{.R.}%?%3n %t%? [%h]%?'
+#  caption always '%{= wb}%50=%n%f %t%{= wb}'
+#  caption always "%>%{wk}%?%-Lw%?%{bw}%n*%f %t%?(%u)%?%{wk}%?%+Lw%?%<"
+caption always "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
+
+# This  command configures the use and emulation of the ter minal's
+# hardstatus line.
+#  hardstatus alwayslastline "%?%{yk}%-Lw%?%{wk}%n*%f %t%?(%u)%?%?%{yk}%+Lw%? %=%t %c"
+#  hardstatus alwayslastline "%{rk}[Time:%c] %{gb} %w %{= dd}"
+#  hardstatus alwayslastline "%{= kG} %w %{= dd} %=%t %{rk}[Time:%c]"
+#  hardstatus alwayslastline "%{kr}[Time: %c:%s]%{gk} %{+b } %w %{= dd} %=%t"
+#  hardstatus alwayslastline "%?%{yk}%-Lw%?%{wb}%n*%f %t%?(%u)%?%?%{yk}%+Lw%?"
+# hardstatus alwayslastline "%{kr}[%H@$LOGNAME]%{wk} %?%-Lw%?%{gk}%n*%f %t%?(%u)%?%{wk}%?%+Lw%?"
+#hardstatus alwayslastline "%{kr}[%M %d :: %c]%{wk} %?%-Lw%?%{gk}%n*%f %t%?(%u)%?%{wk}%?%+Lw%?"
+##hardstatus alwayslastline "%{= kY}%c%{dd} %{= kc}windows: %?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
+#hardstatus alwayslastline "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
+# hardstatus alwayslastline "%{kr}[Time: %c:%s]%{wk} %?%-Lw%?%{gk}%n*%f %t%?(%u)%?%{wk}%?%+Lw%?"
+#  hardstatus alwayslastline "%{bw}%1`%= %{+b ky}| %c:%s |%{+b rw} ip: %2` | vpn: %3`"
+#  hardstatus alwayslastline "%?%{yk}%-Lw%?%{wb}%n*%f %t%?(%u)%?%?%{yk}%+Lw%?"
+#  hardstatus alwayslastline "%{kr}[Time: %c:%s]%{gk} %{+b } %w %{= dd} %=%t"
+#  hardstatus alwayslastline "%-Lw%{= BW}%50>%n%f* %t%{-}%+Lw%<"
+#  hardstatus alwayslastline "\033[m\033[42;30m %m%d \033[m \033[42;30m%c\033[m\033[42;30m %w \033[m"
+#  hardstatus alwayslastline " %m%d \033[42;30m%c\033[m \033[42;30m %w \033[m"
+#  hardstatus alwayslastline " %m%d %c \033[42;30m %w \033[m"
+#  hardstatus lastline " [%{b}fnord%{d}] | %n [%{r}%t%{d}] %W | %m/%d/%Y | %c"
+#  hardstatus alwayslastline "%?%{yk}%-Lw%?%{wb}%n*%f %t%?(%u)%?%?%{yk}%+Lw%?"
+#  hardstatus alwayslastline "%?%F%{.R.}%?%3n %t%? [%h]%?"
+
+# Some keybindings.
+  bind ^\
+  bind \\
+# I use F8/F9 to change the windows
+  bindkey -k k9 next
+  bindkey -k k8 prev
+#  bind m screen -t 'Mutt' mutt
+# <http://www.slrn.org/> || <http://strcat.pebcak.de/slrn/>
+#  bind N screen -t 'Slrn' 2 slrn -C -n --kill-log  /home/dope/.slang/KILL --spool
+# <http://www.stack.nl/~brama/mp3blaster/>
+#  bind P screen -t "MP3Blaster" 4 mp3blaster -a /home/dope/.xmms/mylist.lst -f /home/dope/.now_playing
+# <http://www.irssi.org/> || <http://strcat.pebcak.de/irssi/>
+#  bind I screen -t 'irssi' 6 irssi
+# Web Search Engines (<http://w3m.sourceforge.net/>)
+#  bind g screen -t 'google' 7 links www.google.com
+# <http://www.vim.org/> || http://strcat.pebcak.de/vim/>
+#  bind v screen -t 'vim' vim
+# Shows a scrolling 'Matrix' like screen (<//www.asty.org/cmatrix>)
+#  bind L screen cmatrix -b
+
+bindkey ^[^[OD prev
+bindkey ^[^[OC next
+
+bindkey ^[1 select 0
+bindkey ^[2 select 1
+bindkey ^[3 select 2
+bindkey ^[4 select 3
+bindkey ^[5 select 4
+bindkey ^[6 select 5
+bindkey ^[7 select 6
+bindkey ^[8 select 7
+bindkey ^[9 select 8
+
+bindkey ^[c screen
+bindkey ^[m screen mutt
+bindkey ^[v screen vim
+bindkey ^[g screen links www.google.com

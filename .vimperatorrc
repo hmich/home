@@ -1,0 +1,9 @@
+" 0.5.3 (created: 2007/12/21 19:26:07)
+map q gT
+map w gt
+set hlsearch
+set laststatus=0
+set showstatuslinks=2
+set visualbell
+set wildmode=list:longest
+" vim: set ft=vimperator:

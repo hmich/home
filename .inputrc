@@ -1,0 +1,6 @@
+set completion-ignore-case on
+set show-all-if-ambiguous on
+set visible-stats on
+
+"\M-s": menu-complete
+#Space: magic-space
