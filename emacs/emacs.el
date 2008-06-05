@@ -428,6 +428,7 @@
 (setq mail-host-address "rain.ifmo.ru")
 
 ;; Pager settings
+(require 'pager)
 (global-set-key "\C-v"     'pager-page-down)
 (global-set-key [next]     'pager-page-down)
 (global-set-key "\ev"      'pager-page-up)
