@@ -424,19 +424,19 @@
 
 ;; Mail settings
 (setq user-full-name "Igor Akhmetov")
-(setq user-mail-address "ahmetov@rain.ifmo.ru")
-(setq mail-host-address "rain.ifmo.ru")
+(setq user-mail-address "Igor.Akhmetov@gmail.com")
+(setq mail-host-address "gmail.com")
 
 ;; Pager settings
 (require 'pager)
-(global-set-key "\C-v"     'pager-page-down)
-(global-set-key [next]     'pager-page-down)
-(global-set-key "\ev"      'pager-page-up)
-(global-set-key [prior]    'pager-page-up)
-(global-set-key '[M-up]    'pager-row-up)
-(global-set-key '[M-kp-8]  'pager-row-up)
-(global-set-key '[M-down]  'pager-row-down)
-(global-set-key '[M-kp-2]  'pager-row-down)
+(global-set-key "\C-v"            'pager-page-down)
+(global-set-key [next]            'pager-page-down)
+(global-set-key [(control next)]  'end-of-buffer)
+(global-set-key [prior]           'pager-page-up)
+(global-set-key [(control prior)] 'beginning-of-buffer)
+(global-set-key [(meta v)]        'pager-page-up)
+(global-set-key [M-up]            'pager-row-up)
+(global-set-key [M-down]          'pager-row-down)
 
 (require 'hideshow)
 
