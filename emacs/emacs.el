@@ -183,13 +183,9 @@
 
 ;; Completions settings
 (partial-completion-mode t)
-(require 'icomplete+)
+(eval-after-load "icomplete" '(progn (require 'icomplete+)))
+(require 'icomplete)
 (icomplete-mode t)
-
-;; Pabbrev
-(require 'pabbrev)
-(setq pabbrev-minimal-expansion-p t)
-(global-pabbrev-mode)
 
 ;; Basic editing settings
 (normal-erase-is-backspace-mode t)
@@ -524,7 +520,6 @@
           (lambda()
             (flymake-mode)
             (LaTeX-math-mode)
-            (define-key LaTeX-mode-map [tab] 'indent-or-expand)
             (define-key LaTeX-mode-map [return] 'reindent-then-newline-and-indent)))
 
 ;; Asymptote
@@ -550,7 +545,6 @@
 
 ;; (global-linum-mode)
 
-
 ;; Compilation settings
 (setq compilation-scroll-output t)
 (setq compilation-window-height 10)
@@ -571,7 +565,6 @@
             (c-set-style "stroustrup")
             (c-toggle-auto-hungry-state t)
             (c-toggle-auto-newline nil)
-            (define-key c-mode-map [tab] 'indent-or-expand)
             (define-key c-mode-map "\C-\M-a" 'c-beginning-of-defun)
             (define-key c-mode-map "\C-vxe" 'c-end-of-defun)))
 
@@ -644,110 +637,6 @@
 ;; (add-to-list 'iswitchb-buffer-ignore "*Buffer")
 ;; (add-to-list 'iswitchb-buffer-ignore "*Completions")
 ;; (add-to-list 'iswitchb-buffer-ignore "^[tT][aA][gG][sS]$")
-
-;; Ido
-(require 'ido)
-(ido-mode t)
-(ido-everywhere t)
-(setq ido-enable-flex-matching t)
-(setq ido-use-filename-at-point t)
-(add-to-list 'ido-ignore-buffers ".*\\.log")
-(add-to-list 'ido-ignore-buffers ".*_flymake.*")
-(add-to-list 'ido-ignore-buffers "_region_.tex")
-
-(defun ido-execute ()
-  (interactive)
-  (call-interactively
-   (intern
-    (ido-completing-read
-     "M-x "
-     (let (cmd-list)
-       (mapatoms (lambda (S) (when (commandp S) (setq cmd-list (cons (format "%S" S) cmd-list)))))
-       cmd-list)))))
-
-(global-set-key "\M-x" 'ido-execute)
-
-(defun ido-w32-browse ()
-  (interactive)
-  (w32-browser (ido-read-file-name "Open: ")))
-
-(global-set-key [(super p)] 'ido-w32-browse)
-
-(defun ido-goto-symbol ()
-  "Will update the imenu index and then use ido to select a symbol to navigate to"
-  (interactive)
-  (imenu--make-index-alist)
-  (let ((name-and-pos '())
-        (symbol-names '()))
-    (flet ((addsymbols (symbol-list)
-                       (when (listp symbol-list)
-                         (dolist (symbol symbol-list)
-                           (when (listp symbol)
-                             (if (and (listp symbol) (imenu--subalist-p symbol))
-                                 (addsymbols symbol)
-                               (let ((name (car symbol)) (position (cdr symbol)))
-                                 (unless (or (null position) (null name))
-                                   (add-to-list 'symbol-names name)
-                                   (add-to-list 'name-and-pos (cons name position))))))))))
-      (addsymbols imenu--index-alist))
-    (let* ((selected-symbol (ido-completing-read "Symbol? " symbol-names))
-           (position (cdr (assoc selected-symbol name-and-pos))))
-      (goto-char position))))
-
-(defun ido-choose-from-recentf ()
-  "Use ido to select a recently opened file from the `recentf-list'"
-  (interactive)
-  (find-file (ido-completing-read "Open file: " recentf-list nil t)))
-
-(require 'filecache)
-;; (load "iswitchb-fc")
-
-(defun file-cache-add-this-file ()
-  (and buffer-file-name
-       (file-exists-p buffer-file-name)
-       (file-cache-add-file buffer-file-name)))
-
-;; (add-hook 'kill-buffer-hook 'file-cache-add-this-file)
-
-(defun file-cache-add-files-from-file-dir ()
-  (and buffer-file-name
-       (file-exists-p buffer-file-name)
-       (file-cache-add-directory (file-name-directory buffer-file-name))))
-
-(add-hook 'find-file-hook 'file-cache-add-files-from-file-dir)
-
-(defun file-cache-ido-find-file (file)
-  "Using ido, interactively open file from file cache'.
-First select a file, matched using ido-switch-buffer against the contents
-in `file-cache-alist'. If the file exist in more than one
-directory, select directory. Lastly the file is opened."
-  (interactive (list (file-cache-ido-read "File: "
-                                          (mapcar
-                                           (lambda (x)
-                                             (car x))
-                                           file-cache-alist))))
-  (let* ((record (assoc file file-cache-alist)))
-    (find-file
-     (expand-file-name
-      file
-      (if (= (length record) 2)
-          (car (cdr record))
-        (file-cache-ido-read
-         (format "Find %s in dir: " file) (cdr record)))))))
-
-(defun file-cache-ido-read (prompt choices)
-  (let ((ido-make-buffer-list-hook
-         (lambda ()
-           (setq ido-temp-list choices))))
-    (ido-read-buffer prompt)))
-
-(global-set-key "\C-c\C-f" 'file-cache-ido-find-file)
-
-(eval-after-load
-    "filecache"
-  '(progn
-     (message "Loading file cache...")
-     (file-cache-add-directory-using-find "~/")))
 
 ;; Handy buffer switching
 ;; (require 'swbuff-y)
@@ -927,8 +816,117 @@ point."
       (hippie-expand nil)
     (indent-according-to-mode)))
 
-(define-key emacs-lisp-mode-map [tab] 'indent-or-expand)
 (define-key read-expression-map [tab] 'lisp-complete-symbol)
+
+;; Pabbrev
+(global-set-key [tab] 'indent-or-expand)
+(require 'pabbrev)
+(setq pabbrev-minimal-expansion-p t)
+(global-pabbrev-mode)
+
+;; Ido
+(require 'ido)
+(ido-mode t)
+(ido-everywhere t)
+(setq ido-enable-flex-matching t)
+(setq ido-use-filename-at-point t)
+(add-to-list 'ido-ignore-buffers ".*\\.log")
+(add-to-list 'ido-ignore-buffers ".*_flymake.*")
+(add-to-list 'ido-ignore-buffers "_region_.tex")
+
+(defun ido-execute ()
+  (interactive)
+  (call-interactively
+   (intern
+    (ido-completing-read
+     "M-x "
+     (let (cmd-list)
+       (mapatoms (lambda (S) (when (commandp S) (setq cmd-list (cons (format "%S" S) cmd-list)))))
+       cmd-list)))))
+
+(global-set-key "\M-x" 'ido-execute)
+
+(defun ido-w32-browse ()
+  (interactive)
+  (w32-browser (ido-read-file-name "Open: ")))
+
+(global-set-key [(super p)] 'ido-w32-browse)
+
+(defun ido-goto-symbol ()
+  "Will update the imenu index and then use ido to select a symbol to navigate to"
+  (interactive)
+  (imenu--make-index-alist)
+  (let ((name-and-pos '())
+        (symbol-names '()))
+    (flet ((addsymbols (symbol-list)
+                       (when (listp symbol-list)
+                         (dolist (symbol symbol-list)
+                           (when (listp symbol)
+                             (if (and (listp symbol) (imenu--subalist-p symbol))
+                                 (addsymbols symbol)
+                               (let ((name (car symbol)) (position (cdr symbol)))
+                                 (unless (or (null position) (null name))
+                                   (add-to-list 'symbol-names name)
+                                   (add-to-list 'name-and-pos (cons name position))))))))))
+      (addsymbols imenu--index-alist))
+    (let* ((selected-symbol (ido-completing-read "Symbol? " symbol-names))
+           (position (cdr (assoc selected-symbol name-and-pos))))
+      (goto-char position))))
+
+(defun ido-choose-from-recentf ()
+  "Use ido to select a recently opened file from the `recentf-list'"
+  (interactive)
+  (find-file (ido-completing-read "Open file: " recentf-list nil t)))
+
+(require 'filecache)
+;; (load "iswitchb-fc")
+
+(defun file-cache-add-this-file ()
+  (and buffer-file-name
+       (file-exists-p buffer-file-name)
+       (file-cache-add-file buffer-file-name)))
+
+;; (add-hook 'kill-buffer-hook 'file-cache-add-this-file)
+
+(defun file-cache-add-files-from-file-dir ()
+  (and buffer-file-name
+       (file-exists-p buffer-file-name)
+       (file-cache-add-directory (file-name-directory buffer-file-name))))
+
+(add-hook 'find-file-hook 'file-cache-add-files-from-file-dir)
+
+(defun file-cache-ido-find-file (file)
+  "Using ido, interactively open file from file cache'.
+First select a file, matched using ido-switch-buffer against the contents
+in `file-cache-alist'. If the file exist in more than one
+directory, select directory. Lastly the file is opened."
+  (interactive (list (file-cache-ido-read "File: "
+                                          (mapcar
+                                           (lambda (x)
+                                             (car x))
+                                           file-cache-alist))))
+  (let* ((record (assoc file file-cache-alist)))
+    (find-file
+     (expand-file-name
+      file
+      (if (= (length record) 2)
+          (car (cdr record))
+        (file-cache-ido-read
+         (format "Find %s in dir: " file) (cdr record)))))))
+
+(defun file-cache-ido-read (prompt choices)
+  (let ((ido-make-buffer-list-hook
+         (lambda ()
+           (setq ido-temp-list choices))))
+    (ido-read-buffer prompt)))
+
+(global-set-key "\C-c\C-f" 'file-cache-ido-find-file)
+
+(eval-after-load
+    "filecache"
+  '(progn
+     (message "Loading file cache...")
+     (file-cache-add-directory-using-find "~/")))
 
 ;; VCS
 (require 'git)
@@ -953,9 +951,6 @@ point."
 
 ;;(require 'icicles)
 ;;(icicle-mode)
-
-;; BS settings
-(setq bs-cycle-configuration-name "files-and-scratch")
 
 (defun command-line-diff (switch)
   (let ((file1 (pop command-line-args-left))
@@ -1636,8 +1631,8 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\C-e" 'end-of-line+)
 (global-set-key [(end)] 'end-of-line+)
 (global-set-key "\C-m" 'newline-and-indent)
-(global-set-key "\C-x\C-b" 'ibuffer-bs-show)
-(global-set-key "\C-xb" 'ibuffer-bs-show)
+(global-set-key "\C-x\C-b" 'ibuffer)
+(global-set-key "\C-xb" 'ibuffer)
 (global-set-key "\C-\M-j" 'my-join-line)
 (when window-system (global-set-key "\C-z" 'undo))
 (global-set-key "\C-z" 'zap-until-char)
