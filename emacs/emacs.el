@@ -292,7 +292,7 @@
 
 ;; Strip trailing empty lines from a file
 (add-hook 'write-file-hooks 'delete-trailing-whitespace)
-(setq-default show-trailing-whitespace t)
+(setq-default show-trailing-whitespace nil)
 
 (require 'w3m-load)
 (setq browse-url-browser-function 'w3m-browse-url)
@@ -587,6 +587,11 @@
 (setq pascal-case-indent 4)
 (add-to-list 'auto-mode-alist '("\\.pas\\'" . delphi-mode))
 (add-to-list 'auto-mode-alist '("\\.dpr\\'" . delphi-mode))
+
+;; Python settings
+(add-hook 'python-mode-hook
+          (lambda ()
+            (define-key python-mode-map [backspace] 'python-backspace)))
 
 ;; Lua settings
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
@@ -1476,7 +1481,7 @@ read-only flag, recode, then turn it back."
 (global-set-key "\M-\S-f" 'forward-word)
 (global-set-key "\M-\S-b" 'backward-word)
 
-(setq backward-delete-char-untabify-method 'all)
+(setq backward-delete-char-untabify-method 'untabify)
 (global-set-key [backspace] 'backward-delete-char-untabify)
 (global-set-key [(control backspace)] 'kill-syntax-backward)
 
