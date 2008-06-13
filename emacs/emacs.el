@@ -292,7 +292,7 @@
 
 ;; Strip trailing empty lines from a file
 (add-hook 'write-file-hooks 'delete-trailing-whitespace)
-(setq-default show-trailing-whitespace t)
+(setq-default show-trailing-whitespace nil)
 
 (require 'w3m-load)
 (setq browse-url-browser-function 'w3m-browse-url)
@@ -316,6 +316,9 @@
 ;; Shell command completion
 (require 'shell-command)
 (shell-command-completion-mode)
+
+;; Shell colors
+(add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
 
 ;; Recursive find-file
 (require 'find-recursive)

@@ -43,6 +43,7 @@ zmodload zsh/complist
 bindkey -M menuselect '\C-\n' accept-and-hold
 
 zstyle ':completion:*' use-cache on
+zstyle ':completion:*' list-colors ''
 zstyle ':completion:*' cache-path ~/.zsh/cache
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 #zstyle ':completion:*' menu yes select search

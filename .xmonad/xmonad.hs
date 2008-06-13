@@ -159,6 +159,12 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     , ((modMask, xK_e), runOrRaise "emacs" (className =? "Emacs"))
     , ((modMask, xK_Return), runOrRaise "urxvt -name term -e screen" (resource =? "term"))
     , ((modMask, xK_c), runOrRaise "urxvt -name ncmpc -e ncmpc" (resource =? "ncmpc"))
+
+    , ((modMask, xK_F8), spawn "mocp -G")
+    , ((modMask, xK_F9), spawn "mocp -v -10")
+    , ((modMask, xK_F10), spawn "mocp -v +10")
+    , ((modMask, xK_F11), spawn "mocp -r")
+    , ((modMask, xK_F12), spawn "mocp -f")
     ]
     ++
 
