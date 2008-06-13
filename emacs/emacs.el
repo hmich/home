@@ -317,6 +317,9 @@
 (require 'shell-command)
 (shell-command-completion-mode)
 
+;; Shell colors
+(add-hook 'shell-mode-hook 'ansi-color-for-comint-mode-on)
+
 ;; Recursive find-file
 (require 'find-recursive)
 
@@ -973,7 +976,7 @@ directory, select directory. Lastly the file is opened."
 
 (put 'dired-find-alternate-file 'disabled nil)
 (setq dired-recursive-deletes 'top)
-(setq dired-listing-switches "-alFsh")
+(setq dired-listing-switches "-alFsh --group-directories-first")
 (add-hook 'dired-load-hook
           (lambda ()
             (require 'dired-x)
@@ -1668,14 +1671,14 @@ Returns nil if no differences found, 't otherwise."
 ;; (global-set-key (kbd "M-k") 'previous-line)
 ;; (global-set-key (kbd "M-j") 'next-line)
 
-(global-set-key [(super k)] 'kill-buffer-with-window)
+(global-set-key [(meta k)] 'kill-buffer-with-window)
 ;;(global-set-key [(super k)] 'de-context-kill)
-(global-set-key [(super ?`)] 'dot-emacs)
-(global-set-key [(super tab)] 'dired-buffer-directory)
-(global-set-key [(super o)] 'delete-other-windows)
-(global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
-(global-set-key [(super v)] 'clipboard-yank)
-(global-set-key [(super y)] 'browse-kill-ring)
+(global-set-key [(meta ?`)] 'dot-emacs)
+(global-set-key "\C-x\C-d" 'dired-buffer-directory)
+;;(global-set-key [(super o)] 'delete-other-windows)
+;;(global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
+;;(global-set-key [(super v)] 'clipboard-yank)
+;;(global-set-key [(super y)] 'browse-kill-ring)
 
 (global-set-key [(shift prior)] 'previous-multiframe-window)
 (global-set-key [(shift next)] 'next-multiframe-window)

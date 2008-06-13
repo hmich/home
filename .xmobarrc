@@ -15,5 +15,5 @@ Config { font = "-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1"
                     ]
        , sepChar = "%"
        , alignSep = "}{"
-       , template = "%cpu% | %memory% * %swap% | %eth0% | %load% }{ %mpd% | %ULLI% | <fc=#ee9a00>%date%</fc>"
+       , template = "%cpu% | %memory% * %swap% | %eth0% | %load% }{ %ULLI% | <fc=#ee9a00>%date%</fc>"
        }

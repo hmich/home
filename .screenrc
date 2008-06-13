@@ -1,13 +1,13 @@
-ignorecase            on
-startup_message       off
-vbell                 off
-shell                 zsh
-autodetach            on
-
-# Define  the  time  that  all windows monitored for silence should
-# wait before displaying a message.
-silencewait           15
-
+ignorecase      on
+startup_message off
+vbell           off
+shell           zsh
+autodetach      on
+silencewait     15
+escape          "``"
+defscrollback   10000
+defflow         off
+defutf8         on
 
 # Color table:
 #  Black             .    leave color unchanged
@@ -33,7 +33,7 @@ silencewait           15
 #  caption string '%?%F%{.R.}%?%3n %t%? [%h]%?'
 #  caption always '%{= wb}%50=%n%f %t%{= wb}'
 #  caption always "%>%{wk}%?%-Lw%?%{bw}%n*%f %t%?(%u)%?%{wk}%?%+Lw%?%<"
-caption always "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
+# caption always "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?%{= kc}%?%+Lw%?"
 
 # This  command configures the use and emulation of the ter minal's
 # hardstatus line.
@@ -57,13 +57,13 @@ caption always "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?
 #  hardstatus lastline " [%{b}fnord%{d}] | %n [%{r}%t%{d}] %W | %m/%d/%Y | %c"
 #  hardstatus alwayslastline "%?%{yk}%-Lw%?%{wb}%n*%f %t%?(%u)%?%?%{yk}%+Lw%?"
 #  hardstatus alwayslastline "%?%F%{.R.}%?%3n %t%? [%h]%?"
+hardstatus alwayslastline
+hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{=kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)%?%{r})%{w}%?%+Lw%?%?%= %{g}][%{B}%Y-%m-%d %{W}%c %{g}]'
 
-# Some keybindings.
-  bind ^\
-  bind \\
 # I use F8/F9 to change the windows
-  bindkey -k k9 next
-  bindkey -k k8 prev
+# bindkey -k k9 next
+# bindkey -k k8 prev
+
 #  bind m screen -t 'Mutt' mutt
 # <http://www.slrn.org/> || <http://strcat.pebcak.de/slrn/>
 #  bind N screen -t 'Slrn' 2 slrn -C -n --kill-log  /home/dope/.slang/KILL --spool
@@ -77,6 +77,13 @@ caption always "%{= kR}[%M %d :: %c]%{dd} %{= kc}%?%-Lw%?%{= kY}%n*%f %t%?(%u)%?
 #  bind v screen -t 'vim' vim
 # Shows a scrolling 'Matrix' like screen (<//www.asty.org/cmatrix>)
 #  bind L screen cmatrix -b
+
+#bind H screen -t top htop
+
+bind ' ' windowlist
+
+bindkey -k k1 screen mocp
+bindkey -k k2 screen htop
 
 bindkey ^[^[OD prev
 bindkey ^[^[OC next
@@ -92,6 +99,3 @@ bindkey ^[8 select 7
 bindkey ^[9 select 8
 
 bindkey ^[c screen
-bindkey ^[m screen mutt
-bindkey ^[v screen vim
-bindkey ^[g screen links www.google.com
