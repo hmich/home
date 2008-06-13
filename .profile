@@ -17,5 +17,11 @@ fi
 
 # set PATH so it includes user's private bin if it exists
 if [ -d ~/bin ] ; then
-    PATH=~/bin:"${PATH}"
+    export PATH=~/bin:$PATH
 fi
+
+# set MANPATH to search for user's manual pages
+if [ -d ~/share/man ] ; then
+    export MANPATH=~/share/man:$MANPATH
+fi
+

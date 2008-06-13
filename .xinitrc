@@ -2,7 +2,7 @@ xsetroot -solid "#000000"
 xrdb -merge ~/.Xresources
 xmodmap ~/.xmodmaprc
 
-FONT="-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1"
+export FONT="-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1"
 
 # if we have private ssh key(s), start ssh-agent and add the key(s)
 id1=$HOME/.ssh/identity
@@ -13,15 +13,15 @@ if [ -x /usr/bin/ssh-agent ] && [ -f $id1 -o -f $id2 -o -f $id3 ]; then
     ssh-add < /dev/null
 fi
 
-xmobar &
+#xmobar &
 xmonad & 
 PID=$!
-urxvt &
+urxvt -name "term" -e screen &
 emacs &
 opera &
-urxvt -name ncmpc -e ncmpc &
-urxvt -name htop -e htop &
-urxvt -name irssi -e irssi &
+#urxvt -name ncmpc -e ncmpc &
+#urxvt -name htop -e htop &
+#urxvt -name irssi -e irssi &
 
 wait $PID
 
