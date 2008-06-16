@@ -830,7 +830,7 @@ point."
 (global-set-key [tab] 'indent-or-expand)
 (require 'pabbrev)
 (setq pabbrev-minimal-expansion-p t)
-(global-pabbrev-mode)
+(add-hook 'text-mode-hook 'pabbrev-mode)
 
 ;; Ido
 (require 'ido)
