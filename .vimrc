@@ -68,7 +68,7 @@ map <silent> <F9> :clist<cr>
 map <silent> <F10> :cprev<cr>
 map <silent> <F11> :cnext<cr>
 
-map <silent> ,, :SBufExplorer<cr>
+" map <silent> ,, :SBufExplorer<cr>
 map <silent> ,e :Se .<cr>
 map <silent> ,h :nohl<cr>
 map <silent> ,m :tabe Makefile<cr>

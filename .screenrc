@@ -8,6 +8,7 @@ escape          "``"
 defscrollback   10000
 defflow         off
 defutf8         on
+defencoding     cp1251
 
 # Color table:
 #  Black             .    leave color unchanged

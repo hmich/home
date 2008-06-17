@@ -11,6 +11,7 @@ HISTFILE=~/.histfile
 HISTSIZE=10000
 SAVEHIST=10000
 
+export LESSCHARSET=iso8859
 export EDITOR=gvim
 #export CDPATH=".:/etc"
 
@@ -23,7 +24,7 @@ setopt always_to_end auto_name_dirs
 setopt list_packed complete_in_word no_list_ambiguous
 
 # Expansion and globbing
-setopt glob_dots mark_dirs no_case_glob extended_glob
+setopt glob_dots mark_dirs extended_glob
 
 # History
 setopt extended_history hist_ignore_dups hist_reduce_blanks share_history

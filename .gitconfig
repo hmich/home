@@ -1,5 +1,6 @@
 [color]
 	ui = auto
+	interactive = auto
 [user]
 	email = Igor.Akhmetov@gmail.com
 	name = Igor Akhmetov
@@ -7,5 +8,12 @@
 	co = checkout
 	ci = commit
 	st = status
+	staged = diff --cached
+	unstaged = diff
+	both = diff HEAD
+	oneline = log --pretty=oneline
+	amend = commit --amend
 [branch]
 	autosetupmerge = true
+[core]
+	excludesfile = ~/.gitignoreglobal
