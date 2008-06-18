@@ -15,5 +15,3 @@
 	amend = commit --amend
 [branch]
 	autosetupmerge = true
-[core]
-	excludesfile = ~/.gitignoreglobal

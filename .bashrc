@@ -9,6 +9,8 @@ export HISTCONTROL=ignoreboth
 export PROMPT_COMMAND='history -a'
 export CDPATH='.:~/.:/media:/etc:/usr:/usr/local'
 
+export LESSCHARSET=iso8859
+
 shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
 
 # make less more friendly for non-text input files, see lesspipe(1)
