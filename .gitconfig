@@ -13,5 +13,7 @@
 	both = diff HEAD
 	oneline = log --pretty=oneline
 	amend = commit --amend
+	svnco = svn rebase
+	svnci = svn dcommit
 [branch]
 	autosetupmerge = true
