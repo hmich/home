@@ -729,8 +729,7 @@
                            (semantic-tag-name  tag)))
       (jump))))
 
-(define-key global-map "\M-gf" 'my-semantic-complete-jump)
-(define-key global-map "\M-g\M-f" 'my-semantic-complete-jump)
+(global-set-key [(control return)] 'my-semantic-complete-jump)
 
 (defun my-semanticdb-minor-mode-p ()
   "Query if the current buffer has Semanticdb mode enabled."

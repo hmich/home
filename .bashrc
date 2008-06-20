@@ -9,6 +9,8 @@ export HISTCONTROL=ignoreboth
 export PROMPT_COMMAND='history -a'
 export CDPATH='.:~/.:/media:/etc:/usr:/usr/local'
 
+export LESSCHARSET=iso8859
+
 shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
 
 # make less more friendly for non-text input files, see lesspipe(1)
@@ -56,3 +58,6 @@ fi
 if [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
+
+bind '"\ep":history-search-backward'
+bind '"\en":history-search-forward'
