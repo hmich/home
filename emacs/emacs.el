@@ -16,7 +16,7 @@
 (if win32p
     (progn
       (setq inferior-lisp-program "c:/Development/lisp/clisp-2.43/clisp.exe -K full")
-      (setq haskell-program-name "C:/Development/haskell/ghc-6.8.2/bin/ghci.exe")
+      (setq haskell-program-name "C:/Development/haskell/ghc-6.8.3/bin/ghci.exe")
       (setq common-lisp-hyperspec-root "file:c:/Development/Lisp/HyperSpec/")
 
       ;; (setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
