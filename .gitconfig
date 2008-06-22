@@ -15,5 +15,6 @@
 	amend = commit --amend
 	svnco = svn rebase
 	svnci = svn dcommit
+	graph = log --graph
 [branch]
 	autosetupmerge = true
