@@ -1474,18 +1474,19 @@ read-only flag, recode, then turn it back."
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
 
 (global-set-key "\C-w" 'kill-syntax-backward)
-(global-set-key "\C-d" 'kill-syntax-forward)
-(global-set-key "\M-d" 'delete-char)
+;(global-set-key "\C-d" 'kill-syntax-forward)
+;(global-set-key "\M-d" 'delete-char)
 ;(global-set-key "\C-f" 'next-syntax-boundary)
 ;(global-set-key "\C-b" 'prev-syntax-boundary)
+(global-set-key "\M-d" 'kill-syntax-backward)
 (global-set-key "\M-f" 'next-syntax-boundary)
 (global-set-key "\M-b" 'prev-syntax-boundary)
-(global-set-key "\M-\S-f" 'forward-word)
-(global-set-key "\M-\S-b" 'backward-word)
+(global-set-key [(control backspace)] 'kill-syntax-backward)
+;(global-set-key "\M-\S-f" 'forward-word)
+;(global-set-key "\M-\S-b" 'backward-word)
 
 (setq backward-delete-char-untabify-method 'untabify)
 (global-set-key [backspace] 'backward-delete-char-untabify)
-(global-set-key [(control backspace)] 'kill-syntax-backward)
 
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
