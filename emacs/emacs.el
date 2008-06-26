@@ -1474,8 +1474,8 @@ read-only flag, recode, then turn it back."
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
 
 (global-set-key "\C-w" 'kill-syntax-backward)
-(global-set-key "\C-d" 'kill-syntax-forward)
-(global-set-key "\M-d" 'delete-char)
+;(global-set-key "\C-d" 'kill-syntax-forward)
+;(global-set-key "\M-d" 'delete-char)
 ;(global-set-key "\C-f" 'next-syntax-boundary)
 ;(global-set-key "\C-b" 'prev-syntax-boundary)
 (global-set-key "\M-f" 'next-syntax-boundary)
@@ -1688,10 +1688,6 @@ Returns nil if no differences found, 't otherwise."
 ;; Skeleton pairs
 (require 'skeleton)
 (setq skeleton-pair t)
-(global-set-key (kbd "[") 'skeleton-pair-insert-maybe)
-(global-set-key (kbd "(") 'skeleton-pair-insert-maybe)
-(global-set-key (kbd "<") 'skeleton-pair-insert-maybe)
-(global-set-key (kbd "{") 'skeleton-pair-insert-maybe)
 
 (defvar my-skeleton-pair-alist
   '((?\) . ?\()
@@ -1708,13 +1704,18 @@ Returns nil if no differences found, 't otherwise."
         (forward-char)
       (self-insert-command (prefix-numeric-value arg)))))
 
-(dolist (pair my-skeleton-pair-alist)
-  (global-set-key (char-to-string (first pair))
-                  'my-skeleton-pair-end)
-  ;; If the char for begin and end is the same,
-  ;; use the original skeleton
-  (global-set-key (char-to-string (rest pair))
-                  'skeleton-pair-insert-maybe))
+(defun setup-skeleton-pairs (&optional map)
+  (setq map (or map (current-global-map)))
+  (dolist (pair my-skeleton-pair-alist)
+    (define-key map (char-to-string (first pair))
+                     'my-skeleton-pair-end)
+    ;; If the char for begin and end is the same,
+    ;; use the original skeleton
+    (define-key map (char-to-string (rest pair))
+                     'skeleton-pair-insert-maybe)))
+
+(setup-skeleton-pairs)
+(add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
 
 (defadvice backward-delete-char-untabify
   (before my-skeleton-backspace activate)
