@@ -566,6 +566,7 @@
           (lambda ()
             (hs-minor-mode)
             (c-set-style "stroustrup")
+            (c-set-offset 'inline-open 0)
             (c-toggle-auto-hungry-state t)
             (c-toggle-auto-newline nil)
             (define-key c-mode-map "\C-\M-a" 'c-beginning-of-defun)
