@@ -663,6 +663,7 @@
 
 ;; Load CEDET
 (load-file "~/emacs/cedet-1.0pre4/common/cedet.el")
+(setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
 
 ;; Enabling various SEMANTIC minor modes.  See semantic/INSTALL for more ideas.
@@ -1479,14 +1480,15 @@ read-only flag, recode, then turn it back."
 ;(global-set-key "\M-d" 'delete-char)
 ;(global-set-key "\C-f" 'next-syntax-boundary)
 ;(global-set-key "\C-b" 'prev-syntax-boundary)
+(global-set-key "\M-d" 'kill-syntax-forward)
 (global-set-key "\M-f" 'next-syntax-boundary)
 (global-set-key "\M-b" 'prev-syntax-boundary)
-(global-set-key "\M-\S-f" 'forward-word)
-(global-set-key "\M-\S-b" 'backward-word)
+(global-set-key [(control backspace)] 'kill-syntax-backward)
+;(global-set-key "\M-\S-f" 'forward-word)
+;(global-set-key "\M-\S-b" 'backward-word)
 
 (setq backward-delete-char-untabify-method 'untabify)
 (global-set-key [backspace] 'backward-delete-char-untabify)
-(global-set-key [(control backspace)] 'kill-syntax-backward)
 
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
