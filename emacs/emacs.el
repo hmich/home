@@ -831,7 +831,7 @@ point."
 (global-set-key [tab] 'indent-or-expand)
 (require 'pabbrev)
 (setq pabbrev-minimal-expansion-p t)
-(add-hook 'text-mode-hook 'pabbrev-mode)
+(add-hook 'text-mode-hook '(lambda () (when (not buffer-read-only) (pabbrev-mode))))
 
 ;; Ido
 (require 'ido)
@@ -1594,7 +1594,7 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [f3] 'isearch-forward-current-word-keep-offset)
 (global-set-key [(control f3)] 'isearch-backward-current-word-keep-offset)
 (global-set-key [(meta f3)] 'occur-word-under-cursor)
-(global-set-key [f4] 'find-file)
+(global-set-key [f4] 'kill-buffer-with-window)
 (global-set-key [(meta f4)] 'ido-choose-from-recentf)
 (global-set-key [(control f4)] 'recentf-open-files)
 (global-set-key [f5] (lambda ()
@@ -1673,7 +1673,7 @@ Returns nil if no differences found, 't otherwise."
 ;; (global-set-key (kbd "M-k") 'previous-line)
 ;; (global-set-key (kbd "M-j") 'next-line)
 
-(global-set-key [(meta k)] 'kill-buffer-with-window)
+;;(global-set-key [(meta k)] 'kill-buffer-with-window)
 ;;(global-set-key [(super k)] 'de-context-kill)
 (global-set-key [(meta ?`)] 'dot-emacs)
 (global-set-key "\C-x\C-d" 'dired-buffer-directory)
