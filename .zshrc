@@ -35,6 +35,12 @@ setopt correct notify print_exit_value
 # Zle
 setopt nobeep emacs
 
+bindkey -s '^|l' " | less\n"
+bindkey -s '^|g' ' | grep ""^[OD'
+bindkey -s '^|a' " | awk '{print $}'^[OD^[OD"
+bindkey -s '^|s' ' | sed -e "s///g"^[OD^[OD^[OD^[OD'
+bindkey -s '^|w' " | wc -l\n"
+
 source ~/.zshprompt
 
 autoload -Uz compinit
