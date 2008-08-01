@@ -156,9 +156,9 @@
 
 ;; Interface settings
 (setq frame-title-format '(buffer-file-name "%f" ("%b")))
-(tool-bar-mode -1)
 (menu-bar-mode -1)
-(scroll-bar-mode -1)
+(when window-system (tool-bar-mode -1))
+(when window-system (scroll-bar-mode -1))
 (mouse-wheel-mode t)
 (setq visible-bell t)
 (setq mouse-yank-at-point t)
@@ -234,7 +234,6 @@
 
 ;; Other settings
 (pc-selection-mode)
-(transient-mark-mode 1)
 (global-font-lock-mode t)
 (show-paren-mode t)
 (setq bookmark-save-flag 1)
@@ -332,6 +331,12 @@
 (require 'flymake)
 (add-hook 'find-file-hook 'flymake-find-file-hook)
 (setq flymake-gui-warnings-enabled nil)
+
+;; GDB
+(setq gdb-many-windows t)
+(setq gdb-show-changed-values t)
+(setq gud-tooltip-echo-area t)
+(setq gdb-use-separate-io-buffer t)
 
 (defun flymake-latex-master-file-p ()
   (interactive)
@@ -442,7 +447,8 @@
 (defun maybe-turn-on-hs-mode ()
   (if (and (boundp 'comment-start)
            (boundp 'comment-end)
-           comment-start comment-end)
+           comment-start comment-end
+           (not (eq major-mode 'text-mode)))
       (hs-minor-mode)))
 
 (add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
@@ -569,6 +575,7 @@
             (c-set-offset 'inline-open 0)
             (c-toggle-auto-hungry-state t)
             (c-toggle-auto-newline nil)
+            (gud-tooltip-mode)
             (define-key c-mode-map "\C-\M-a" 'c-beginning-of-defun)
             (define-key c-mode-map "\C-vxe" 'c-end-of-defun)))
 
@@ -828,7 +835,7 @@ point."
 (define-key read-expression-map [tab] 'lisp-complete-symbol)
 
 ;; Pabbrev
-(global-set-key [tab] 'indent-or-expand)
+;(global-set-key [tab] 'indent-or-expand)
 (require 'pabbrev)
 (setq pabbrev-minimal-expansion-p t)
 (add-hook 'text-mode-hook '(lambda () (when (not buffer-read-only) (pabbrev-mode))))
@@ -1385,8 +1392,8 @@ read-only flag, recode, then turn it back."
   (interactive "p")
   (scroll-down (or arg 1)))
 
-(global-set-key [S-down] 'scroll-one-line-up)
-(global-set-key [S-up]  'scroll-one-line-down)
+(global-set-key [C-S-down] 'scroll-one-line-up)
+(global-set-key [C-S-up]  'scroll-one-line-down)
 
 ;; (defun open-new-shell ()
 ;;   (interactive)
@@ -1475,15 +1482,16 @@ read-only flag, recode, then turn it back."
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
 
-(global-set-key "\C-w" 'kill-syntax-backward)
+(global-set-key "\C-w" 'backward-kill-word)
+;(global-set-key "\C-w" 'kill-syntax-backward)
 ;(global-set-key "\C-d" 'kill-syntax-forward)
 ;(global-set-key "\M-d" 'delete-char)
 ;(global-set-key "\C-f" 'next-syntax-boundary)
 ;(global-set-key "\C-b" 'prev-syntax-boundary)
-(global-set-key "\M-d" 'kill-syntax-forward)
-(global-set-key "\M-f" 'next-syntax-boundary)
-(global-set-key "\M-b" 'prev-syntax-boundary)
-(global-set-key [(control backspace)] 'kill-syntax-backward)
+;(global-set-key "\M-d" 'kill-syntax-forward)
+;(global-set-key "\M-f" 'next-syntax-boundary)
+;(global-set-key "\M-b" 'prev-syntax-boundary)
+;(global-set-key [(control backspace)] 'kill-syntax-backward)
 ;(global-set-key "\M-\S-f" 'forward-word)
 ;(global-set-key "\M-\S-b" 'backward-word)
 
@@ -1689,36 +1697,36 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control next)] 'next-multiframe-window)
 
 ;; Skeleton pairs
-(require 'skeleton)
-(setq skeleton-pair t)
+;; (require 'skeleton)
+;; (setq skeleton-pair t)
 
-(defvar my-skeleton-pair-alist
-  '((?\) . ?\()
-    (?\] . ?\[)
-    (?} . ?{)
-    (?> . ?<)))
+;; (defvar my-skeleton-pair-alist
+;;   '((?\) . ?\()
+;;     (?\] . ?\[)
+;;     (?} . ?{)
+;;     (?> . ?<)))
 
-(defun my-skeleton-pair-end (arg)
-  "Skip the char if it is an ending, otherwise insert it."
-  (interactive "*p")
-  (let ((char last-command-char))
-    (if (and (assq char my-skeleton-pair-alist)
-             (eq char (following-char)))
-        (forward-char)
-      (self-insert-command (prefix-numeric-value arg)))))
+;; (defun my-skeleton-pair-end (arg)
+;;   "Skip the char if it is an ending, otherwise insert it."
+;;   (interactive "*p")
+;;   (let ((char last-command-char))
+;;     (if (and (assq char my-skeleton-pair-alist)
+;;              (eq char (following-char)))
+;;         (forward-char)
+;;       (self-insert-command (prefix-numeric-value arg)))))
 
-(defun setup-skeleton-pairs (&optional map)
-  (setq map (or map (current-global-map)))
-  (dolist (pair my-skeleton-pair-alist)
-    (define-key map (char-to-string (first pair))
-                     'my-skeleton-pair-end)
-    ;; If the char for begin and end is the same,
-    ;; use the original skeleton
-    (define-key map (char-to-string (rest pair))
-                     'skeleton-pair-insert-maybe)))
+;; (defun setup-skeleton-pairs (&optional map)
+;;   (setq map (or map (current-global-map)))
+;;   (dolist (pair my-skeleton-pair-alist)
+;;     (define-key map (char-to-string (first pair))
+;;                      'my-skeleton-pair-end)
+;;     ;; If the char for begin and end is the same,
+;;     ;; use the original skeleton
+;;     (define-key map (char-to-string (rest pair))
+;;                      'skeleton-pair-insert-maybe)))
 
-(setup-skeleton-pairs)
-(add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
+;; (setup-skeleton-pairs)
+;; (add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
 
 (defadvice backward-delete-char-untabify
   (before my-skeleton-backspace activate)
