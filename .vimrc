@@ -14,10 +14,10 @@ set scrolloff=5
 set clipboard+=unnamed
 set listchars=tab:>-,trail:-
 set laststatus=2
-set statusline=%F%m%r%h%w\ [FORMAT=%{&ff}]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
+"set statusline=%F%m%r%h%w\ [FORMAT=%{&ff}]\ [TYPE=%Y]\ [ASCII=\%03.3b]\ [HEX=\%02.2B]\ [POS=%04l,%04v][%p%%]\ [LEN=%L]
 set vb t_vb=
 set spelllang=ru,en
-set foldmethod=syntax
+"set foldmethod=syntax
 set display+=lastline
 
 " GUI settings
@@ -40,23 +40,15 @@ set makeprg=nmake
 set tags=.\tags,.\..\tags,.\**\tags
 set cinoptions+=,:0,l1,g0
 set formatoptions+=roc
-set path+=c:/Program\\\ Files/Microsoft\\\ Visual\\\ Studio\\\ 8/Vc/include
-set path+=c:/Program\\\ Files/Microsoft\\\ Visual\\\ Studio\\\ 8/Vc/PlatformSDK/include
-set path+=c:/Development/WINDDK/3790.1830/inc/ddk/wxp/
 
 syntax enable
 filetype plugin indent on
-
-let g:haddock_browser="C:\\Program Files\\Opera\\Opera.exe"
 
 " Keybindings
 map <A-Down> gj
 map <A-Up> gk
 imap <A-Down> <Esc>gji
 imap <A-Up> <Esc>gki
-
-nmap :W :w
-nmap :Q :q
 
 imap <silent> <F2> <C-O>:w<cr>
 map <silent> <F2> :w<cr>
@@ -81,19 +73,6 @@ map <silent> <ESC><ESC> :q<cr>
 " map <silent> <Tab> :bnext<cr>
 " map <silent> <S-Tab> :bprevious<cr>
 " map <silent> <C-Tab> <C-^>
-
-" Tabs
-nmap <C-S-tab> :tabprevious<cr> 
-nmap <C-tab> :tabnext<cr> 
-map <C-S-tab> :tabprevious<cr> 
-map <C-tab> :tabnext<cr> 
-imap <C-S-tab> <ESC>:tabprevious<cr>i 
-imap <C-tab> <ESC>:tabnext<cr>i 
-nmap <C-\> :tabnew<cr> 
-imap <C-\> <ESC>:tabnew<cr>
-nmap <C-c> :tabclose<cr> 
-imap <C-c> <ESC>:tabclose<cr>
-
 
 func! CppSettings()
     map <F7> :setlocal makeprg=cl\ /EHsc\ %<cr>:w<cr>:make<cr>

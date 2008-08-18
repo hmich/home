@@ -36,3 +36,12 @@ alias gv='gv -widgetless'
 alias grep='grep --color'
 
 alias ci='git svnco && git svnci'
+
+alias p='git log --graph -p'
+alias d='git diff -p HEAD'
+alias o='git oneline --graph'
+alias st='git st'
+alias ci='git commit'
+alias co='git checkout'
+alias svnci='git svn dcommit'
+alias svnco='git svn rebase'
