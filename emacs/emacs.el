@@ -1728,13 +1728,13 @@ Returns nil if no differences found, 't otherwise."
 ;; (setup-skeleton-pairs)
 ;; (add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
 
-(defadvice backward-delete-char-untabify
-  (before my-skeleton-backspace activate)
-  "When deleting the beginning of a pair, and the ending is next char, delete it too."
-  (let ((pair (assq (following-char) my-skeleton-pair-alist)))
-    (and pair
-         (eq (preceding-char) (rest pair))
-         (delete-char 1))))
+;; (defadvice backward-delete-char-untabify
+;;   (before my-skeleton-backspace activate)
+;;   "When deleting the beginning of a pair, and the ending is next char, delete it too."
+;;   (let ((pair (assq (following-char) my-skeleton-pair-alist)))
+;;     (and pair
+;;          (eq (preceding-char) (rest pair))
+;;          (delete-char 1))))
 
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ss 'svn-status)
@@ -1742,7 +1742,7 @@ Returns nil if no differences found, 't otherwise."
 (defalias 'ff 'find-function)
 (defalias 'jf 'my-semantic-jump-to-function)
 
-(server-start)
+;; (server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)
 
 ;; Restore desktop state
