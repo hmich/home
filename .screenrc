@@ -1,7 +1,7 @@
 ignorecase      on
 startup_message off
 vbell           off
-shell           zsh
+shell           bash
 autodetach      on
 silencewait     15
 escape          "``"
@@ -82,9 +82,6 @@ hardstatus string '%{= kG}[ %{G}%H %{g}][%= %{=kw}%?%-Lw%?%{r}(%{W}%n*%f%t%?(%u)
 #bind H screen -t top htop
 
 bind ' ' windowlist
-
-bindkey -k k1 screen mocp
-bindkey -k k2 screen htop
 
 bindkey ^[^[OD prev
 bindkey ^[^[OC next

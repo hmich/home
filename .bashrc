@@ -9,7 +9,7 @@ export HISTCONTROL=ignoreboth
 export PROMPT_COMMAND='history -a'
 export CDPATH='.:~/.:/media:/etc:/usr:/usr/local'
 
-export LESSCHARSET=iso8859
+export LESSCHARDEF=8bcccbc.18b95.33b.
 
 shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
 
@@ -32,7 +32,8 @@ fi
 # esac
 
 # Comment in the above and uncomment this below for a color prompt
-PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+#PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+PS1='\[\033[01;34m\]\w\[\033[00m\]\$ '
 
 # If this is an xterm set the title to user@host:dir
 case "$TERM" in
@@ -61,3 +62,7 @@ fi
 
 bind '"\ep":history-search-backward'
 bind '"\en":history-search-forward'
+
+export R=/cygdrive/c/work/src
+export C=/cygdrive/c
+export DATA=$R/Areator/Source/DataProcessing
