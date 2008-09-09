@@ -673,27 +673,8 @@
 (setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
 
-;; Enabling various SEMANTIC minor modes.  See semantic/INSTALL for more ideas.
-;; Select one of the following:
-
-;; * This enables the database and idle reparse engines
-;;(semantic-load-enable-minimum-features)
-
-;; * This enables some tools useful for coding, such as summary mode
-;;   imenu support, and the semantic navigator
-;; (semantic-load-enable-code-helpers)
-
-;; * This enables even more coding tools such as the nascent intellisense mode
-;;   decoration mode, and stickyfunc mode (plus regular code helpers)
-;; (semantic-load-enable-guady-code-helpers)
-
-;; * This turns on which-func support (Plus all other code helpers)
+;; Semantic
 (semantic-load-enable-excessive-code-helpers)
-
-;; This turns on modes that aid in grammar writing and semantic tool
-;; development.  It does not enable any other features such as code
-;; helpers above.
-;; (semantic-load-enable-semantic-debugging-helpers)
 
 (require 'thingatpt)
 
@@ -1106,28 +1087,6 @@ directory, select directory. Lastly the file is opened."
       (setq end (+ end 3))
       (next-line 1)
       (end-of-line))))
-
-(setq scroll-state nil)
-(defun toggle-scroll-state ()
-  "Toggle scrolling type between scrolling by full screens and scrolling by half screens"
-  (interactive)
-  (if scroll-state
-      (progn
-        (global-set-key "\C-v" 'scroll-up)
-        (global-set-key "\M-v" 'scroll-down)
-        (setq scroll-state nil)
-        (message "C-v scrolls full screen"))
-    (progn
-      (global-set-key "\C-v" '(lambda ()
-                                (interactive)
-                                (scroll-up (- (/ (screen-height) 2)
-                                              next-screen-context-lines))))
-      (global-set-key "\M-v" '(lambda ()
-                                (interactive)
-                                (scroll-down (- (/ (screen-height) 2)
-                                                next-screen-context-lines))))
-      (setq scroll-state t)
-      (message "C-v scrolls half screen"))))
 
 (defun autocompile ()
   "Compile itself if ~/.emacs"
@@ -1646,15 +1605,12 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\C-c\C-c" 'clipboard-kill-ring-save-region-or-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
 (global-set-key [(home)] 'beginning-or-indentation)
-(global-set-key "\C-e" 'end-of-line+)
-(global-set-key [(end)] 'end-of-line+)
 (global-set-key "\C-m" 'newline-and-indent)
 (global-set-key "\C-x\C-b" 'ibuffer)
 (global-set-key "\C-xb" 'ibuffer)
 (global-set-key "\C-\M-j" 'my-join-line)
 (when window-system (global-set-key "\C-z" 'undo))
 (global-set-key "\C-z" 'zap-until-char)
-;; (global-set-key [?\C-;] 'toggle-scroll-state)
 
 (require 'buffer-stack)
 (global-set-key [(ctrl tab)] 'buffer-stack-bury)
@@ -1669,17 +1625,6 @@ Returns nil if no differences found, 't otherwise."
 
 (global-set-key "\C-x\C-m" 'execute-extended-command)
 (global-set-key "\C-c\C-m" 'execute-extended-command)
-
-;; make cursor movement keys under right hand's home-row.
-;; (global-set-key (kbd "M-j") 'backward-char) ; was indent-new-comment-line
-;; (global-set-key (kbd "M-l") 'forward-char)  ; was downcase-word
-;; (global-set-key (kbd "M-i") 'previous-line) ; was tab-to-tab-stop
-;; (global-set-key (kbd "M-k") 'next-line)     ; was kill-sentence
-
-;; (global-set-key (kbd "M-h") 'backward-char)
-;; (global-set-key (kbd "M-l") 'forward-char)
-;; (global-set-key (kbd "M-k") 'previous-line)
-;; (global-set-key (kbd "M-j") 'next-line)
 
 (global-set-key [(meta k)] 'kill-buffer-with-window)
 ;;(global-set-key [(super k)] 'de-context-kill)
@@ -1696,100 +1641,18 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control prior)] 'previous-multiframe-window)
 (global-set-key [(control next)] 'next-multiframe-window)
 
-;; Skeleton pairs
-;; (require 'skeleton)
-;; (setq skeleton-pair t)
-
-;; (defvar my-skeleton-pair-alist
-;;   '((?\) . ?\()
-;;     (?\] . ?\[)
-;;     (?} . ?{)
-;;     (?> . ?<)))
-
-;; (defun my-skeleton-pair-end (arg)
-;;   "Skip the char if it is an ending, otherwise insert it."
-;;   (interactive "*p")
-;;   (let ((char last-command-char))
-;;     (if (and (assq char my-skeleton-pair-alist)
-;;              (eq char (following-char)))
-;;         (forward-char)
-;;       (self-insert-command (prefix-numeric-value arg)))))
-
-;; (defun setup-skeleton-pairs (&optional map)
-;;   (setq map (or map (current-global-map)))
-;;   (dolist (pair my-skeleton-pair-alist)
-;;     (define-key map (char-to-string (first pair))
-;;                      'my-skeleton-pair-end)
-;;     ;; If the char for begin and end is the same,
-;;     ;; use the original skeleton
-;;     (define-key map (char-to-string (rest pair))
-;;                      'skeleton-pair-insert-maybe)))
-
-;; (setup-skeleton-pairs)
-;; (add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
-
-;; (defadvice backward-delete-char-untabify
-;;   (before my-skeleton-backspace activate)
-;;   "When deleting the beginning of a pair, and the ending is next char, delete it too."
-;;   (let ((pair (assq (following-char) my-skeleton-pair-alist)))
-;;     (and pair
-;;          (eq (preceding-char) (rest pair))
-;;          (delete-char 1))))
-
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ss 'svn-status)
 (defalias 'gs 'git-status)
 (defalias 'ff 'find-function)
 (defalias 'jf 'my-semantic-jump-to-function)
 
-;; (server-start)
+(server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)
 
 ;; Restore desktop state
 (require 'desktop)
 (desktop-save-mode 1)
 (desktop-read)
-
-;; (defvar *unshifted-special-chars-layout*
-;;   '(("1" "!") ; from -> to
-;;     ("2" "@")
-;;     ("3" "#")
-;;     ("4" "$")
-;;     ("5" "%")
-;;     ("6" "^")
-;;     ("7" "&")
-;;     ("8" "*")
-;;     ("9" "(")
-;;     ("0" ")")
-;;     ("!" "1")
-;;     ("@" "2")
-;;     ("#" "3")
-;;     ("$" "4")
-;;     ("%" "5")
-;;     ("^" "6")
-;;     ("&" "7")
-;;     ("*" "8")
-;;     ("(" "9")
-;;     (")" "0")))
-
-;; (defvar *unshifted-special-chars-layout*
-;;   '(("[" "{")
-;;     ("]" "}")
-;;     ("{" "[")
-;;     ("}" "]")))
-
-;; (defun mb-str-to-unibyte-char (s)
-;;   "Translate first multibyte char in s to internal unibyte representation."
-;;   (multibyte-char-to-unibyte (string-to-char s)))
-
-;; (defun remap-keyboard (mapping)
-;;   "Setup keyboard translate table using a list of pairwise key-mappings."
-;;   (mapcar
-;;    (lambda (mb-string-pair)
-;;      (apply #'keyboard-translate
-;;      (mapcar #'mb-str-to-unibyte-char mb-string-pair)))
-;;    mapping))
-
-;; (remap-keyboard *unshifted-special-chars-layout*)
 
 (setq debug-on-error nil)
