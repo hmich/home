@@ -264,7 +264,7 @@
 (setq-default save-place t)
 
 ;; Timestamp
-(add-hook 'before-save-hook 'time-stamp)
+;(add-hook 'before-save-hook 'time-stamp)
 (setq time-stamp-active t)
 
 ;; File open and save settings
@@ -328,9 +328,9 @@
 (setq ispell-dictionary "russian")
 
 ;; Flymake
-(require 'flymake)
-(add-hook 'find-file-hook 'flymake-find-file-hook)
-(setq flymake-gui-warnings-enabled nil)
+;;(require 'flymake)
+;;(add-hook 'find-file-hook 'flymake-find-file-hook)
+;;(setq flymake-gui-warnings-enabled nil)
 
 ;; GDB
 (setq gdb-many-windows t)
@@ -338,25 +338,25 @@
 (setq gud-tooltip-echo-area t)
 (setq gdb-use-separate-io-buffer t)
 
-(defun flymake-latex-master-file-p ()
-  (interactive)
-  (let* ((grep-cmd (concat grep-command  "\\\\documentclass " (buffer-file-name)))
-         (res (call-process-shell-command grep-cmd)))
-    (= 0 res)))
+;; (defun flymake-latex-master-file-p ()
+;;   (interactive)
+;;   (let* ((grep-cmd (concat grep-command  "\\\\documentclass " (buffer-file-name)))
+;;          (res (call-process-shell-command grep-cmd)))
+;;     (= 0 res)))
 
-(defun flymake-latex-init ()
-  (if (flymake-latex-master-file-p)
-      (flymake-simple-tex-init)
-    (flymake-master-tex-init)))
+;; (defun flymake-latex-init ()
+;;   (if (flymake-latex-master-file-p)
+;;       (flymake-simple-tex-init)
+;;     (flymake-master-tex-init)))
 
-(defun flymake-latex-cleanup ()
-  (flymake-master-cleanup)
-  (let ((file-name (file-name-sans-extension flymake-temp-master-file-name)))
-    (dolist (ext '(".aux" ".log" ".out" ".pdf" ".dvi" ".toc"))
-      (flymake-safe-delete-file (concat file-name ext)))))
+;; (defun flymake-latex-cleanup ()
+;;   (flymake-master-cleanup)
+;;   (let ((file-name (file-name-sans-extension flymake-temp-master-file-name)))
+;;     (dolist (ext '(".aux" ".log" ".out" ".pdf" ".dvi" ".toc"))
+;;       (flymake-safe-delete-file (concat file-name ext)))))
 
-(add-to-list 'flymake-allowed-file-name-masks
-             '("\\.tex\\'" flymake-latex-init flymake-latex-cleanup))
+;; (add-to-list 'flymake-allowed-file-name-masks
+;;              '("\\.tex\\'" flymake-latex-init flymake-latex-cleanup))
 
 ;; Flyspell
 (add-hook 'tex-mode-hook 'flyspell-mode)
@@ -370,12 +370,6 @@
 (global-hl-line-mode)
 (set-face-background 'hl-line "gray9")
 
-(load "light-symbol.el")
-;;(light-symbol-mode)
-(setq light-symbol-face 'hi-blue-b)
-(setq light-symbol-idle-delay 3)
-(add-hook 'find-file-hook 'light-symbol-mode)
-
 (defadvice save-buffers-kill-emacs (around no-query-kill-emacs activate)
   "Prevent annoying \"Active processes exist\" query when you quit Emacs."
   (flet ((process-list ())) ad-do-it))
@@ -385,7 +379,7 @@
   (setq show-trailing-whitespace nil))
 
 ;; When saving files, set execute permission if #! is in first line.
-(add-hook 'after-save-hook 'executable-make-buffer-file-executable-if-script-p)
+;(add-hook 'after-save-hook 'executable-make-buffer-file-executable-if-script-p)
 
 ;; Development
 (which-function-mode)
@@ -1095,7 +1089,7 @@ directory, select directory. Lastly the file is opened."
   (if (string= (downcase (buffer-file-name)) (downcase (expand-file-name "~/emacs/emacs.el")))
       (byte-compile-file (buffer-file-name))))
 
-(add-hook 'after-save-hook 'autocompile)
+;(add-hook 'after-save-hook 'autocompile)
 
 (defun clipboard-kill-ring-save-region-or-word ()
   (interactive)
