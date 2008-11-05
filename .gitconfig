@@ -18,3 +18,5 @@
 	graph = log --graph
 [branch]
 	autosetupmerge = true
+[core]
+	ignorecase = true

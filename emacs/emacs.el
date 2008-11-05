@@ -156,9 +156,9 @@
 
 ;; Interface settings
 (setq frame-title-format '(buffer-file-name "%f" ("%b")))
+(tool-bar-mode -1)
 (menu-bar-mode -1)
-(when window-system (tool-bar-mode -1))
-(when window-system (scroll-bar-mode -1))
+(scroll-bar-mode -1)
 (mouse-wheel-mode t)
 (setq visible-bell t)
 (setq mouse-yank-at-point t)
@@ -234,6 +234,7 @@
 
 ;; Other settings
 (pc-selection-mode)
+(transient-mark-mode 1)
 (global-font-lock-mode t)
 (show-paren-mode t)
 (setq bookmark-save-flag 1)
@@ -264,7 +265,7 @@
 (setq-default save-place t)
 
 ;; Timestamp
-;(add-hook 'before-save-hook 'time-stamp)
+(add-hook 'before-save-hook 'time-stamp)
 (setq time-stamp-active t)
 
 ;; File open and save settings
@@ -327,16 +328,15 @@
 (setq ispell-extra-args '("--sug-mode=ultra"))
 (setq ispell-dictionary "russian")
 
-;; Flymake
-;;(require 'flymake)
-;;(add-hook 'find-file-hook 'flymake-find-file-hook)
-;;(setq flymake-gui-warnings-enabled nil)
-
-;; GDB
 (setq gdb-many-windows t)
 (setq gdb-show-changed-values t)
 (setq gud-tooltip-echo-area t)
 (setq gdb-use-separate-io-buffer t)
+
+;; Flymake
+;; (require 'flymake)
+;; (add-hook 'find-file-hook 'flymake-find-file-hook)
+;; (setq flymake-gui-warnings-enabled nil)
 
 ;; (defun flymake-latex-master-file-p ()
 ;;   (interactive)
@@ -359,9 +359,9 @@
 ;;              '("\\.tex\\'" flymake-latex-init flymake-latex-cleanup))
 
 ;; Flyspell
-(add-hook 'tex-mode-hook 'flyspell-mode)
-(add-hook 'text-mode-hook 'flyspell-mode)
-(add-hook 'c-mode-common-hook 'flyspell-prog-mode)
+;(add-hook 'tex-mode-hook 'flyspell-mode)
+;(add-hook 'text-mode-hook 'flyspell-mode)
+;(add-hook 'c-mode-common-hook 'flyspell-prog-mode)
 
 ;; Makefiles
 (add-hook 'makefile-mode-hook (lambda () (setq indent-tabs-mode t)))
@@ -379,7 +379,7 @@
   (setq show-trailing-whitespace nil))
 
 ;; When saving files, set execute permission if #! is in first line.
-;(add-hook 'after-save-hook 'executable-make-buffer-file-executable-if-script-p)
+(add-hook 'after-save-hook 'executable-make-buffer-file-executable-if-script-p)
 
 ;; Development
 (which-function-mode)
@@ -433,19 +433,18 @@
 (global-set-key [prior]           'pager-page-up)
 (global-set-key [(control prior)] 'beginning-of-buffer)
 (global-set-key [(meta v)]        'pager-page-up)
-(global-set-key [M-up]            'pager-row-up)
-(global-set-key [M-down]          'pager-row-down)
+;; (global-set-key [M-up]            'pager-row-up)
+;; (global-set-key [M-down]          'pager-row-down)
 
-(require 'hideshow)
+;; (require 'hideshow)
 
-(defun maybe-turn-on-hs-mode ()
-  (if (and (boundp 'comment-start)
-           (boundp 'comment-end)
-           comment-start comment-end
-           (not (eq major-mode 'text-mode)))
-      (hs-minor-mode)))
+;; (defun maybe-turn-on-hs-mode ()
+;;   (if (and (boundp 'comment-start)
+;;            (boundp 'comment-end)
+;;            comment-start comment-end)
+;;       (hs-minor-mode)))
 
-(add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
+;; (add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
 
 (defun move-line (&optional n)
   "Move current line N (1) lines up/down leaving point in place."
@@ -564,12 +563,11 @@
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 (add-hook 'c-mode-common-hook
           (lambda ()
-            (hs-minor-mode)
+            ; (hs-minor-mode)
             (c-set-style "stroustrup")
             (c-set-offset 'inline-open 0)
             (c-toggle-auto-hungry-state t)
             (c-toggle-auto-newline nil)
-            (gud-tooltip-mode)
             (define-key c-mode-map "\C-\M-a" 'c-beginning-of-defun)
             (define-key c-mode-map "\C-vxe" 'c-end-of-defun)))
 
@@ -667,8 +665,27 @@
 (setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
 
-;; Semantic
+;; Enabling various SEMANTIC minor modes.  See semantic/INSTALL for more ideas.
+;; Select one of the following:
+
+;; * This enables the database and idle reparse engines
+;;(semantic-load-enable-minimum-features)
+
+;; * This enables some tools useful for coding, such as summary mode
+;;   imenu support, and the semantic navigator
+;; (semantic-load-enable-code-helpers)
+
+;; * This enables even more coding tools such as the nascent intellisense mode
+;;   decoration mode, and stickyfunc mode (plus regular code helpers)
+;; (semantic-load-enable-guady-code-helpers)
+
+;; * This turns on which-func support (Plus all other code helpers)
 (semantic-load-enable-excessive-code-helpers)
+
+;; This turns on modes that aid in grammar writing and semantic tool
+;; development.  It does not enable any other features such as code
+;; helpers above.
+;; (semantic-load-enable-semantic-debugging-helpers)
 
 (require 'thingatpt)
 
@@ -810,10 +827,10 @@ point."
 (define-key read-expression-map [tab] 'lisp-complete-symbol)
 
 ;; Pabbrev
-;(global-set-key [tab] 'indent-or-expand)
-(require 'pabbrev)
-(setq pabbrev-minimal-expansion-p t)
-(add-hook 'text-mode-hook 'pabbrev-mode)
+;; (global-set-key [tab] 'indent-or-expand)
+;; (require 'pabbrev)
+;; (setq pabbrev-minimal-expansion-p t)
+;; (add-hook 'text-mode-hook 'pabbrev-mode)
 
 ;; Ido
 (require 'ido)
@@ -931,10 +948,10 @@ directory, select directory. Lastly the file is opened."
 (setq svn-status-hide-unmodified t)
 
 ;; ECB
-(setq ecb-layout-name "left7"
-      ecb-tip-of-the-day nil
-      ecb-windows-width 30
-      ecb-primary-secondary-mouse-buttons (quote mouse-1--mouse-2))
+;; (setq ecb-layout-name "left7"
+;;       ecb-tip-of-the-day nil
+;;       ecb-windows-width 30
+;;       ecb-primary-secondary-mouse-buttons (quote mouse-1--mouse-2))
 
 ;; (require 'ecb)
 ;; (ecb-activate)
@@ -981,18 +998,18 @@ directory, select directory. Lastly the file is opened."
       (dired (file-name-directory name)))))
 
 ;; The following lines are always needed.  Choose your own keys.
-(require 'org-install)
-(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-(define-key global-map "\C-cl" 'org-store-link)
-(define-key global-map "\C-ca" 'org-agenda)
-(setq org-agenda-files '("~/todo.org"))
-(setq org-log-done t)
-(setq org-return-follows-link t)
+;; (require 'org-install)
+;; (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+;; (define-key global-map "\C-cl" 'org-store-link)
+;; (define-key global-map "\C-ca" 'org-agenda)
+;; (setq org-agenda-files '("~/todo.org"))
+;; (setq org-log-done t)
+;; (setq org-return-follows-link t)
 
-(require 'remember-autoloads)
-(org-remember-insinuate)
-(setq org-default-notes-file "~/todo.org")
-(define-key global-map "\C-cr" 'org-remember)
+;; (require 'remember-autoloads)
+;; (org-remember-insinuate)
+;; (setq org-default-notes-file "~/todo.org")
+;; (define-key global-map "\C-cr" 'org-remember)
 
 ;; Keywiz quiz
 (autoload 'keywiz "keywiz")
@@ -1089,7 +1106,7 @@ directory, select directory. Lastly the file is opened."
   (if (string= (downcase (buffer-file-name)) (downcase (expand-file-name "~/emacs/emacs.el")))
       (byte-compile-file (buffer-file-name))))
 
-;(add-hook 'after-save-hook 'autocompile)
+(add-hook 'after-save-hook 'autocompile)
 
 (defun clipboard-kill-ring-save-region-or-word ()
   (interactive)
@@ -1115,8 +1132,7 @@ directory, select directory. Lastly the file is opened."
   (interactive)
   (if (one-window-p)
       (kill-this-buffer)
-    (
-     kill-buffer-and-window)))
+    (kill-buffer-and-window)))
 
 (defun open-todo-list ()
   (interactive)
@@ -1345,8 +1361,8 @@ read-only flag, recode, then turn it back."
   (interactive "p")
   (scroll-down (or arg 1)))
 
-(global-set-key [C-S-down] 'scroll-one-line-up)
-(global-set-key [C-S-up]  'scroll-one-line-down)
+(global-set-key [S-down] 'scroll-one-line-up)
+(global-set-key [S-up]  'scroll-one-line-down)
 
 ;; (defun open-new-shell ()
 ;;   (interactive)
@@ -1435,16 +1451,16 @@ read-only flag, recode, then turn it back."
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
 
+;; (global-set-key "\C-w" 'kill-syntax-backward)
 (global-set-key "\C-w" 'backward-kill-word)
-;(global-set-key "\C-w" 'kill-syntax-backward)
 ;(global-set-key "\C-d" 'kill-syntax-forward)
 ;(global-set-key "\M-d" 'delete-char)
 ;(global-set-key "\C-f" 'next-syntax-boundary)
 ;(global-set-key "\C-b" 'prev-syntax-boundary)
-;(global-set-key "\M-d" 'kill-syntax-forward)
-;(global-set-key "\M-f" 'next-syntax-boundary)
-;(global-set-key "\M-b" 'prev-syntax-boundary)
-;(global-set-key [(control backspace)] 'kill-syntax-backward)
+;; (global-set-key "\M-d" 'kill-syntax-forward)
+;; (global-set-key "\M-f" 'next-syntax-boundary)
+;; (global-set-key "\M-b" 'prev-syntax-boundary)
+;; (global-set-key [(control backspace)] 'kill-syntax-backward)
 ;(global-set-key "\M-\S-f" 'forward-word)
 ;(global-set-key "\M-\S-b" 'backward-word)
 
@@ -1599,6 +1615,8 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\C-c\C-c" 'clipboard-kill-ring-save-region-or-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
 (global-set-key [(home)] 'beginning-or-indentation)
+(global-set-key "\C-e" 'end-of-line+)
+(global-set-key [(end)] 'end-of-line+)
 (global-set-key "\C-m" 'newline-and-indent)
 (global-set-key "\C-x\C-b" 'ibuffer)
 (global-set-key "\C-xb" 'ibuffer)
@@ -1610,12 +1628,8 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(ctrl tab)] 'buffer-stack-bury)
 (global-set-key [(shift tab)] 'ido-switch-buffer)
 
-;; (global-set-key "\M-k" 'kill-buffer-with-window)%
-                                        ;(global-set-key "\M-o" 'other-window)
 (global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
 (global-set-key "\M-+" '(lambda() (interactive) (shrink-window -1)))
-;;(global-set-key [(meta up)] '(lambda() (interactive) (scroll-other-window -1)))
-;;(global-set-key [(meta down)] '(lambda() (interactive) (scroll-other-window 1)))
 
 (global-set-key "\C-x\C-m" 'execute-extended-command)
 (global-set-key "\C-c\C-m" 'execute-extended-command)
@@ -1635,6 +1649,46 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control prior)] 'previous-multiframe-window)
 (global-set-key [(control next)] 'next-multiframe-window)
 
+;; Skeleton pairs
+;; (require 'skeleton)
+;; (setq skeleton-pair t)
+
+;; (defvar my-skeleton-pair-alist
+;;   '((?\) . ?\()
+;;     (?\] . ?\[)
+;;     (?} . ?{)
+;;     (?> . ?<)))
+
+;; (defun my-skeleton-pair-end (arg)
+;;   "Skip the char if it is an ending, otherwise insert it."
+;;   (interactive "*p")
+;;   (let ((char last-command-char))
+;;     (if (and (assq char my-skeleton-pair-alist)
+;;              (eq char (following-char)))
+;;         (forward-char)
+;;       (self-insert-command (prefix-numeric-value arg)))))
+
+;; (defun setup-skeleton-pairs (&optional map)
+;;   (setq map (or map (current-global-map)))
+;;   (dolist (pair my-skeleton-pair-alist)
+;;     (define-key map (char-to-string (first pair))
+;;                      'my-skeleton-pair-end)
+;;     ;; If the char for begin and end is the same,
+;;     ;; use the original skeleton
+;;     (define-key map (char-to-string (rest pair))
+;;                      'skeleton-pair-insert-maybe)))
+
+;; (setup-skeleton-pairs)
+;; (add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
+
+;; (defadvice backward-delete-char-untabify
+;;   (before my-skeleton-backspace activate)
+;;   "When deleting the beginning of a pair, and the ending is next char, delete it too."
+;;   (let ((pair (assq (following-char) my-skeleton-pair-alist)))
+;;     (and pair
+;;          (eq (preceding-char) (rest pair))
+;;          (delete-char 1))))
+
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ss 'svn-status)
 (defalias 'gs 'git-status)
@@ -1648,5 +1702,47 @@ Returns nil if no differences found, 't otherwise."
 (require 'desktop)
 (desktop-save-mode 1)
 (desktop-read)
+
+;; (defvar *unshifted-special-chars-layout*
+;;   '(("1" "!") ; from -> to
+;;     ("2" "@")
+;;     ("3" "#")
+;;     ("4" "$")
+;;     ("5" "%")
+;;     ("6" "^")
+;;     ("7" "&")
+;;     ("8" "*")
+;;     ("9" "(")
+;;     ("0" ")")
+;;     ("!" "1")
+;;     ("@" "2")
+;;     ("#" "3")
+;;     ("$" "4")
+;;     ("%" "5")
+;;     ("^" "6")
+;;     ("&" "7")
+;;     ("*" "8")
+;;     ("(" "9")
+;;     (")" "0")))
+
+;; (defvar *unshifted-special-chars-layout*
+;;   '(("[" "{")
+;;     ("]" "}")
+;;     ("{" "[")
+;;     ("}" "]")))
+
+;; (defun mb-str-to-unibyte-char (s)
+;;   "Translate first multibyte char in s to internal unibyte representation."
+;;   (multibyte-char-to-unibyte (string-to-char s)))
+
+;; (defun remap-keyboard (mapping)
+;;   "Setup keyboard translate table using a list of pairwise key-mappings."
+;;   (mapcar
+;;    (lambda (mb-string-pair)
+;;      (apply #'keyboard-translate
+;;      (mapcar #'mb-str-to-unibyte-char mb-string-pair)))
+;;    mapping))
+
+;; (remap-keyboard *unshifted-special-chars-layout*)
 
 (setq debug-on-error nil)
