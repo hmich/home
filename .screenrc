@@ -4,7 +4,7 @@ vbell           off
 shell           bash
 autodetach      on
 silencewait     15
-escape          "``"
+#escape          "``"
 defscrollback   10000
 defflow         off
 defutf8         on

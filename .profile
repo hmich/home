@@ -24,4 +24,3 @@ fi
 if [ -d ~/share/man ] ; then
     export MANPATH=~/share/man:$MANPATH
 fi
-

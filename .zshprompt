@@ -110,7 +110,8 @@ preexec () {
     fi
 }
 
-PROMPT='$PR_GREEN%n@%M:$PR_BLUE%4~$PR_NO_COLOUR%# '
+#PROMPT='$PR_GREEN%n@%M:$PR_BLUE%4~$PR_NO_COLOUR%# '
+PROMPT='$PR_BLUE%4~$PR_NO_COLOUR%# '
 
 # If this is an xterm set the title to user@host:dir
 case "$TERM" in
