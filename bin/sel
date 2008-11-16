@@ -1,0 +1,236 @@
+#!/usr/bin/env python
+
+from __future__ import with_statement
+
+import os
+import sys
+import re
+import string
+import optparse
+import curses
+from curses.wrapper import wrapper
+
+ESCAPE = 27
+PATTERN_TIMEOUT = 2000
+
+class Item:
+    def __init__(self, str):
+        self._str = str
+        self.checked = False
+
+    def __str__(self):
+        return self._str
+
+    def toggle(self):
+        self.checked = not self.checked
+
+    def render(self, scr, y, x):
+        scr.move(y, x)
+        scr.clrtoeol()
+
+        s = '[' + ('x' if self.checked else ' ') + '] ' + self.__str__()
+        scr.addstr(y, x, s + ' ' * (curses.COLS - len(s) - 1))
+
+class Screen:
+    def __init__(self, items, scr):
+        scr.scrollok(1)
+
+        self.scr = scr
+        self.idx = 0
+        self.offset = 0
+        self.items = items
+
+    def getch(self):
+        self.scr.timeout(PATTERN_TIMEOUT)
+        return self.scr.getch()
+
+    def refresh(self):
+        self.scr.refresh()
+
+    def items_num(self):
+        return len(self.items)
+
+    def bound_idx(self, idx):
+        return max(0, min(idx, self.items_num() - 1))
+
+    def bound_offset(self, offset):
+        return max(0, min(offset, self.items_num() - curses.LINES))
+
+    def contains_line(self, line):
+        return self.offset <= line < self.offset + curses.LINES
+
+    def draw_item(self, idx):
+        if not self.contains_line(idx):
+            return
+
+        item = items[idx]
+
+        attr = curses.color_pair(0)
+        if item.checked:
+            attr |= curses.A_BOLD
+        if self.idx == idx:
+            attr |= curses.color_pair(1)
+        self.scr.attrset(attr)
+
+        item.render(self.scr, idx - self.offset, 0)
+        self.refresh()
+
+    def redraw(self):
+        for curidx in xrange(self.items_num()):
+            self.draw_item(curidx)
+
+    def _change_item(self, arg):
+        previdx = self.idx
+
+        if isinstance(arg, int):
+            self.idx = arg
+        else:
+            arg()
+
+        self.draw_item(previdx)
+        if self.idx != previdx:
+            self.draw_item(self.idx)
+
+    def _next_item(self):
+        self.idx = self.bound_idx(self.idx + 1)
+
+        if not self.contains_line(self.idx):
+            self.scr.scroll(1)
+            self.offset += 1
+
+    def _prev_item(self):
+        self.idx = self.bound_idx(self.idx - 1)
+
+        if not self.contains_line(self.idx):
+            self.scr.scroll(-1)
+            self.offset -= 1
+
+    next_item = lambda self: self._change_item(self._next_item)
+    prev_item = lambda self: self._change_item(self._prev_item)
+
+    def next_page(self):
+        if self.idx - self.offset == curses.LINES - 1:
+            self.offset = self.bound_offset(self.offset + curses.LINES)
+            self.idx = self.bound_idx(self.idx + curses.LINES)
+            self.redraw()
+        else:
+            newidx = self.bound_idx(self.offset + curses.LINES - 1)
+            self._change_item(newidx)
+
+    def prev_page(self):
+        if self.idx == self.offset:
+            self.offset = self.bound_offset(self.offset - curses.LINES)
+            self.idx = self.bound_idx(self.idx - curses.LINES)
+            self.redraw()
+        else:
+            self._change_item(self.offset)
+
+    def toggle_item(self):
+        item = self.items[self.idx]
+        item.toggle()
+        self.draw_item(self.idx)
+
+    def invert_selection(self):
+        for item in self.items:
+            item.toggle()
+        self.redraw()
+
+    def focus_pattern(self, pat):
+        pass
+
+class TTYLocker:
+    def __enter__(self):
+        self._saved_stdin = os.dup(0)
+        self._saved_stdout = os.dup(1)
+
+        os.close(0)
+        os.close(1)
+
+        os.open('/dev/tty', os.O_RDONLY)
+        os.open('/dev/tty', os.O_RDWR)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.close(0)
+        os.close(1)
+
+        os.dup(self._saved_stdin)
+        os.dup(self._saved_stdout)
+
+class Options:
+    SELECT_ALL = 'select_all'
+
+    def __init__(self, opts):
+        self.select_all = True #opts[self.SELECT_ALL]
+
+def process_args():
+    parser = optparse.OptionParser()
+    parser.add_option('-a', '--all', action='store_true', dest=Options.SELECT_ALL, default=False)
+    (opts, args) = parser.parse_args()
+
+    global options
+    options = Options(opts)
+
+    args = args or ['[\S]+']
+    return [re.compile(str) for str in args]
+
+def find_matches(regexps):
+    res = []
+    for line in sys.stdin.xreadlines():
+        for re in regexps:
+            res.extend(re.findall(line))
+    return res
+
+def mainloop(stdscr):
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+
+    scr = Screen(items, stdscr)
+    scr.redraw()
+
+    pattern = ''
+
+    while 1:
+        c = scr.getch()
+
+        bindings = {
+            curses.KEY_DOWN:  Screen.next_item,
+            curses.KEY_UP:    Screen.prev_item,
+            curses.KEY_NPAGE: Screen.next_page,
+            curses.KEY_PPAGE: Screen.prev_page,
+            ord('!'):         Screen.invert_selection,
+            ord(' '):         Screen.toggle_item }
+
+        if c == ord('\n'):
+            for item in items:
+                if item.checked:
+                    print item,
+            break
+        elif c == ESCAPE:
+            break
+        elif bindings.get(c):
+            bindings[c](scr)
+            pattern = ''
+        elif chr(c) in string.printable:
+            pattern += c
+            scr.focus_pattern(pattern)
+        else:
+            pattern = ''
+
+def main():
+    regexps = process_args()
+
+    global items
+    items = [Item(str) for str in find_matches(regexps)]
+
+    if not items:
+        return
+
+    if options.select_all:
+        for item in items:
+            item.toggle()
+
+    os.putenv('ESCDELAY', '0')
+    with TTYLocker():
+        wrapper(mainloop)
+
+if __name__ == '__main__':
+    main()

@@ -1649,46 +1649,6 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control prior)] 'previous-multiframe-window)
 (global-set-key [(control next)] 'next-multiframe-window)
 
-;; Skeleton pairs
-;; (require 'skeleton)
-;; (setq skeleton-pair t)
-
-;; (defvar my-skeleton-pair-alist
-;;   '((?\) . ?\()
-;;     (?\] . ?\[)
-;;     (?} . ?{)
-;;     (?> . ?<)))
-
-;; (defun my-skeleton-pair-end (arg)
-;;   "Skip the char if it is an ending, otherwise insert it."
-;;   (interactive "*p")
-;;   (let ((char last-command-char))
-;;     (if (and (assq char my-skeleton-pair-alist)
-;;              (eq char (following-char)))
-;;         (forward-char)
-;;       (self-insert-command (prefix-numeric-value arg)))))
-
-;; (defun setup-skeleton-pairs (&optional map)
-;;   (setq map (or map (current-global-map)))
-;;   (dolist (pair my-skeleton-pair-alist)
-;;     (define-key map (char-to-string (first pair))
-;;                      'my-skeleton-pair-end)
-;;     ;; If the char for begin and end is the same,
-;;     ;; use the original skeleton
-;;     (define-key map (char-to-string (rest pair))
-;;                      'skeleton-pair-insert-maybe)))
-
-;; (setup-skeleton-pairs)
-;; (add-hook 'lua-mode-hook (lambda () (setup-skeleton-pairs lua-mode-map)))
-
-;; (defadvice backward-delete-char-untabify
-;;   (before my-skeleton-backspace activate)
-;;   "When deleting the beginning of a pair, and the ending is next char, delete it too."
-;;   (let ((pair (assq (following-char) my-skeleton-pair-alist)))
-;;     (and pair
-;;          (eq (preceding-char) (rest pair))
-;;          (delete-char 1))))
-
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ss 'svn-status)
 (defalias 'gs 'git-status)
@@ -1702,47 +1662,5 @@ Returns nil if no differences found, 't otherwise."
 (require 'desktop)
 (desktop-save-mode 1)
 (desktop-read)
-
-;; (defvar *unshifted-special-chars-layout*
-;;   '(("1" "!") ; from -> to
-;;     ("2" "@")
-;;     ("3" "#")
-;;     ("4" "$")
-;;     ("5" "%")
-;;     ("6" "^")
-;;     ("7" "&")
-;;     ("8" "*")
-;;     ("9" "(")
-;;     ("0" ")")
-;;     ("!" "1")
-;;     ("@" "2")
-;;     ("#" "3")
-;;     ("$" "4")
-;;     ("%" "5")
-;;     ("^" "6")
-;;     ("&" "7")
-;;     ("*" "8")
-;;     ("(" "9")
-;;     (")" "0")))
-
-;; (defvar *unshifted-special-chars-layout*
-;;   '(("[" "{")
-;;     ("]" "}")
-;;     ("{" "[")
-;;     ("}" "]")))
-
-;; (defun mb-str-to-unibyte-char (s)
-;;   "Translate first multibyte char in s to internal unibyte representation."
-;;   (multibyte-char-to-unibyte (string-to-char s)))
-
-;; (defun remap-keyboard (mapping)
-;;   "Setup keyboard translate table using a list of pairwise key-mappings."
-;;   (mapcar
-;;    (lambda (mb-string-pair)
-;;      (apply #'keyboard-translate
-;;      (mapcar #'mb-str-to-unibyte-char mb-string-pair)))
-;;    mapping))
-
-;; (remap-keyboard *unshifted-special-chars-layout*)
 
 (setq debug-on-error nil)

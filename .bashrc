@@ -60,8 +60,7 @@ if [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
 
-bind '"\ep":history-search-backward'
-bind '"\en":history-search-forward'
+tty > /dev/null && stty -ixon -ixoff
 
 export R=/cygdrive/c/work/src
 export C=/cygdrive/c

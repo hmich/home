@@ -3,4 +3,8 @@ set show-all-if-ambiguous on
 set visible-stats on
 
 "\M-s": menu-complete
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+"\M-p": history-search-backward
+"\M-n": history-search-forward
 #Space: magic-space
