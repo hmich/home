@@ -13,7 +13,6 @@ if [ -x /usr/bin/ssh-agent ] && [ -f $id1 -o -f $id2 -o -f $id3 ]; then
     ssh-add < /dev/null
 fi
 
-#xmobar &
 xmonad & 
 PID=$!
 urxvt -name "term" -e screen &
@@ -25,7 +24,6 @@ opera &
 
 wait $PID
 
-pkill -HUP xmobar
 pkill -HUP urxvt
 pkill -HUP emacs
 pkill -HUP opera
