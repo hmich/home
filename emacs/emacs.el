@@ -359,9 +359,9 @@
 ;;              '("\\.tex\\'" flymake-latex-init flymake-latex-cleanup))
 
 ;; Flyspell
-(add-hook 'tex-mode-hook 'flyspell-mode)
-(add-hook 'text-mode-hook 'flyspell-mode)
-(add-hook 'c-mode-common-hook 'flyspell-prog-mode)
+;; (add-hook 'tex-mode-hook 'flyspell-mode)
+;; (add-hook 'text-mode-hook 'flyspell-mode)
+;; (add-hook 'c-mode-common-hook 'flyspell-prog-mode)
 
 ;; Makefiles
 (add-hook 'makefile-mode-hook (lambda () (setq indent-tabs-mode t)))
@@ -436,16 +436,16 @@
 (global-set-key [M-up]            'pager-row-up)
 (global-set-key [M-down]          'pager-row-down)
 
-(require 'hideshow)
+;; (require 'hideshow)
 
-(defun maybe-turn-on-hs-mode ()
-  (if (and (boundp 'comment-start)
-           (boundp 'comment-end)
-           comment-start comment-end
-           (not (eq major-mode 'text-mode)))
-      (hs-minor-mode)))
+;; (defun maybe-turn-on-hs-mode ()
+;;   (if (and (boundp 'comment-start)
+;;            (boundp 'comment-end)
+;;            comment-start comment-end
+;;            (not (eq major-mode 'text-mode)))
+;;       (hs-minor-mode)))
 
-(add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
+;; (add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
 
 (defun move-line (&optional n)
   "Move current line N (1) lines up/down leaving point in place."
@@ -505,7 +505,7 @@
 ;;(global-set-key [(control r)] 'isearch-backward-regexp)
 
 ;; Wrap region
-(require 'wrap-region)
+;; (require 'wrap-region)
 
 ;; AucTex
 (load "auctex.el")
@@ -521,7 +521,7 @@
 (add-to-list 'auto-mode-alist '("\\.tex\\'" . latex-mode))
 (add-hook 'LaTeX-mode-hook
           (lambda()
-            (flymake-mode)
+            ;(flymake-mode)
             (LaTeX-math-mode)
             (define-key LaTeX-mode-map [return] 'reindent-then-newline-and-indent)))
 
@@ -658,9 +658,9 @@
 (require 'misc-cmds)
 
 ;; Find file at point
-(require 'ffap)
+;; (require 'ffap)
 ;; (ffap-bindings)
-(setq ffap-require-prefix t)
+;; (setq ffap-require-prefix t)
 
 ;; Load CEDET
 (load-file "~/emacs/cedet-1.0pre4/common/cedet.el")
@@ -811,9 +811,9 @@ point."
 
 ;; Pabbrev
 ;(global-set-key [tab] 'indent-or-expand)
-(require 'pabbrev)
-(setq pabbrev-minimal-expansion-p t)
-(add-hook 'text-mode-hook 'pabbrev-mode)
+;; (require 'pabbrev)
+;; (setq pabbrev-minimal-expansion-p t)
+;; (add-hook 'text-mode-hook 'pabbrev-mode)
 
 ;; Ido
 (require 'ido)
@@ -981,18 +981,18 @@ directory, select directory. Lastly the file is opened."
       (dired (file-name-directory name)))))
 
 ;; The following lines are always needed.  Choose your own keys.
-(require 'org-install)
-(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-(define-key global-map "\C-cl" 'org-store-link)
-(define-key global-map "\C-ca" 'org-agenda)
-(setq org-agenda-files '("~/todo.org"))
-(setq org-log-done t)
-(setq org-return-follows-link t)
+;; (require 'org-install)
+;; (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+;; (define-key global-map "\C-cl" 'org-store-link)
+;; (define-key global-map "\C-ca" 'org-agenda)
+;; (setq org-agenda-files '("~/todo.org"))
+;; (setq org-log-done t)
+;; (setq org-return-follows-link t)
 
-(require 'remember-autoloads)
-(org-remember-insinuate)
-(setq org-default-notes-file "~/todo.org")
-(define-key global-map "\C-cr" 'org-remember)
+;; (require 'remember-autoloads)
+;; (org-remember-insinuate)
+;; (setq org-default-notes-file "~/todo.org")
+;; (define-key global-map "\C-cr" 'org-remember)
 
 ;; Keywiz quiz
 (autoload 'keywiz "keywiz")
@@ -1011,9 +1011,9 @@ directory, select directory. Lastly the file is opened."
 (setq uniquify-ignore-buffers-re "^\\*") ; don't muck with special buffers
 
 ;; Yasnippet
-(require 'yasnippet) ;; not yasnippet-bundle
-(yas/initialize)
-(yas/load-directory "~/emacs/snippets")
+;; (require 'yasnippet) ;; not yasnippet-bundle
+;; (yas/initialize)
+;; (yas/load-directory "~/emacs/snippets")
 
 (autoload 'blank-mode           "blank-mode" "Toggle blank visualization."        t)
 (autoload 'blank-toggle-options "blank-mode" "Toggle local `blank-mode' options." t)
@@ -1546,6 +1546,10 @@ Returns nil if no differences found, 't otherwise."
     (switch-to-buffer (caar point-stack))
     (goto-char (cadar point-stack))
     (setq point-stack (cdr point-stack))))
+
+(defun wc ()
+  (interactive)
+  (message "Word count: %s" (how-many "\\w+" (point-min) (point-max))))
 
 ;;(global-set-key [(alt k)] 'my-mark-line)
 
