@@ -14,6 +14,8 @@ import XMonad.Actions.PerWorkspaceKeys
 import XMonad.Actions.WindowGo
 import XMonad.Layout.PerWorkspace
 import XMonad.Layout.Tabbed
+import XMonad.Hooks.ManageDocks
+import XMonad.Util.Run(spawnPipe)
 import System.Exit
 
 import qualified XMonad.StackSet as W
@@ -65,20 +67,6 @@ myWorkspaces    = ["work", "web", "emacs", "irssi", "system", "other"]
 --
 myNormalBorderColor  = "#dddddd"
 myFocusedBorderColor = "#ff0000"
-
--- Default offset of drawable screen boundaries from each physical
--- screen. Anything non-zero here will leave a gap of that many pixels
--- on the given edge, on the that screen. A useful gap at top of screen
--- for a menu bar (e.g. 15)
---
--- An example, to set a top gap on monitor 1, and a gap on the bottom of
--- monitor 2, you'd use a list of geometries like so:
---
--- > defaultGaps = [(18,0,0,0),(0,18,0,0)] -- 2 gaps on 2 monitors
---
--- Fields are: top, bottom, left, right.
---
-myDefaultGaps   = repeat (0,0,0,0)
 
 ------------------------------------------------------------------------
 -- Key bindings. Add, modify or remove key bindings here.
@@ -142,11 +130,6 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     -- Deincrement the number of windows in the master area
     , ((modMask              , xK_period), sendMessage (IncMasterN (-1)))
 
-    -- toggle the status bar gap
-    --, ((modMask              , xK_b     ),
-    --      modifyGap (\i n -> let x = (XMonad.defaultGaps conf ++ repeat (0,0,0,0)) !! i
-    --                         in if n == x then (0,0,0,0) else x))
-
     -- Quit xmonad
     , ((modMask .|. shiftMask, xK_q     ), io (exitWith ExitSuccess))
 
@@ -172,11 +155,6 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     -- mod-[1..9], Switch to workspace N
     -- mod-shift-[1..9], Move client to workspace N
     --
-    [((m .|. modMask, k), windows $ f i)
-        | (i, k) <- zip (XMonad.workspaces conf) [xK_1 .. xK_9]
-        , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]]
-    ++
-
     [((m .|. modMask, k), windows $ f i)
         | (i, k) <- zip (XMonad.workspaces conf) [xK_F1 .. xK_F9]
         , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]]
@@ -225,7 +203,7 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) = M.fromList $
 -- The available layouts.  Note that each layout is separated by |||,
 -- which denotes layout choice.
 --
-myLayout = onWorkspace "system" (Mirror tiled) $
+myLayout = avoidStruts $ onWorkspace "system" (Mirror tiled) $
            Full ||| tiled ||| Mirror tiled ||| simpleTabbed
   where
      -- default tiling algorithm partitions the screen into two panes
@@ -256,7 +234,8 @@ myLayout = onWorkspace "system" (Mirror tiled) $
 -- 'className' and 'resource' are used below.
 --
 myManageHook = composeAll
-    [ className =? "MPlayer"        --> doFloat
+    [ manageDocks
+    , className =? "MPlayer"        --> doFloat
     , className =? "Gimp"           --> doFloat
     , resource  =? "desktop_window" --> doIgnore
     , resource  =? "kdesktop"       --> doIgnore
@@ -300,7 +279,9 @@ myStartupHook = return ()
 
 -- Run xmonad with the settings you specify. No need to modify this.
 --
-main = xmonad defaults
+main = do
+    xmproc <- spawnPipe "~/bin/xmobar"
+    xmonad defaults
 
 -- A structure containing your configuration settings, overriding
 -- fields in the default config. Any you don't override, will
@@ -318,7 +299,6 @@ defaults = defaultConfig {
         workspaces         = myWorkspaces,
         normalBorderColor  = myNormalBorderColor,
         focusedBorderColor = myFocusedBorderColor,
-        defaultGaps        = myDefaultGaps,
 
       -- key bindings
         keys               = myKeys,

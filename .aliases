@@ -31,11 +31,10 @@ alias inst='sudo apt-get install'
 alias rain='ssh ahmetov@rain.ifmo.ru'
 alias mountrain='sudo sshfs -o allow_other ahmetov@rain.ifmo.ru: rain'
 
+alias x=startx
 alias gv='gv -widgetless'
 
 alias grep='grep --color'
-
-alias ci='git svnco && git svnci'
 
 alias p='git log --graph -p'
 alias d='git diff -p HEAD'
