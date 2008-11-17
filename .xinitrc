@@ -13,19 +13,17 @@ if [ -x /usr/bin/ssh-agent ] && [ -f $id1 -o -f $id2 -o -f $id3 ]; then
     ssh-add < /dev/null
 fi
 
-#xmobar &
 xmonad & 
 PID=$!
 urxvt -name "term" -e screen &
-emacs &
-opera &
+#emacs &
+#opera &
 #urxvt -name ncmpc -e ncmpc &
 #urxvt -name htop -e htop &
 #urxvt -name irssi -e irssi &
 
 wait $PID
 
-pkill -HUP xmobar
 pkill -HUP urxvt
 pkill -HUP emacs
 pkill -HUP opera

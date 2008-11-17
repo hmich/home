@@ -1,7 +1,7 @@
 Config { font = "-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1"
        , bgColor = "black"
        , fgColor = "grey"
-       , position = Static { xpos = 0 , ypos = 0, width = 1280, height = 18 }
+       , position = TopW L 100
        , commands = [ Run Weather "ULLI" ["-t","<station>: <tempC>C","-L","18","-H","25","--normal","green","--high","red","--low","lightblue"] 36000
                     , Run Network "eth0" ["-L","0","-H","32","--normal","green","--high","red"] 10
                     , Run Network "eth1" ["-L","0","-H","32","--normal","green","--high","red"] 10

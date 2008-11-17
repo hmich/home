@@ -359,9 +359,9 @@
 ;;              '("\\.tex\\'" flymake-latex-init flymake-latex-cleanup))
 
 ;; Flyspell
-;(add-hook 'tex-mode-hook 'flyspell-mode)
-;(add-hook 'text-mode-hook 'flyspell-mode)
-;(add-hook 'c-mode-common-hook 'flyspell-prog-mode)
+;; (add-hook 'tex-mode-hook 'flyspell-mode)
+;; (add-hook 'text-mode-hook 'flyspell-mode)
+;; (add-hook 'c-mode-common-hook 'flyspell-prog-mode)
 
 ;; Makefiles
 (add-hook 'makefile-mode-hook (lambda () (setq indent-tabs-mode t)))
@@ -441,7 +441,8 @@
 ;; (defun maybe-turn-on-hs-mode ()
 ;;   (if (and (boundp 'comment-start)
 ;;            (boundp 'comment-end)
-;;            comment-start comment-end)
+;;            comment-start comment-end
+;;            (not (eq major-mode 'text-mode)))
 ;;       (hs-minor-mode)))
 
 ;; (add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
@@ -504,7 +505,7 @@
 ;;(global-set-key [(control r)] 'isearch-backward-regexp)
 
 ;; Wrap region
-(require 'wrap-region)
+;; (require 'wrap-region)
 
 ;; AucTex
 (load "auctex.el")
@@ -520,7 +521,7 @@
 (add-to-list 'auto-mode-alist '("\\.tex\\'" . latex-mode))
 (add-hook 'LaTeX-mode-hook
           (lambda()
-            (flymake-mode)
+            ;(flymake-mode)
             (LaTeX-math-mode)
             (define-key LaTeX-mode-map [return] 'reindent-then-newline-and-indent)))
 
@@ -656,9 +657,9 @@
 (require 'misc-cmds)
 
 ;; Find file at point
-(require 'ffap)
+;; (require 'ffap)
 ;; (ffap-bindings)
-(setq ffap-require-prefix t)
+;; (setq ffap-require-prefix t)
 
 ;; Load CEDET
 (load-file "~/emacs/cedet-1.0pre4/common/cedet.el")
@@ -1028,9 +1029,9 @@ directory, select directory. Lastly the file is opened."
 (setq uniquify-ignore-buffers-re "^\\*") ; don't muck with special buffers
 
 ;; Yasnippet
-(require 'yasnippet) ;; not yasnippet-bundle
-(yas/initialize)
-(yas/load-directory "~/emacs/snippets")
+;; (require 'yasnippet) ;; not yasnippet-bundle
+;; (yas/initialize)
+;; (yas/load-directory "~/emacs/snippets")
 
 (autoload 'blank-mode           "blank-mode" "Toggle blank visualization."        t)
 (autoload 'blank-toggle-options "blank-mode" "Toggle local `blank-mode' options." t)
@@ -1562,6 +1563,10 @@ Returns nil if no differences found, 't otherwise."
     (switch-to-buffer (caar point-stack))
     (goto-char (cadar point-stack))
     (setq point-stack (cdr point-stack))))
+
+(defun wc ()
+  (interactive)
+  (message "Word count: %s" (how-many "\\w+" (point-min) (point-max))))
 
 ;;(global-set-key [(alt k)] 'my-mark-line)
 
