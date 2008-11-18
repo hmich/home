@@ -13,10 +13,25 @@ from curses.wrapper import wrapper
 ESCAPE = 27
 PATTERN_TIMEOUT = 2000
 
-class Item:
+def cyclic_xrange(start, cnt):
+    for idx in xrange(start, cnt):
+        yield idx
+    for idx in xrange(start):
+        yield idx
+
+class Item(object):
     def __init__(self, str):
         self._str = str
-        self.checked = False
+        self._checked = False
+
+    def _getchecked(self):
+        return self._checked
+
+    def _setchecked(self, val):
+        if not options.select_one:
+            self._checked = val
+
+    checked = property(_getchecked, _setchecked)
 
     def __str__(self):
         return self._str
@@ -24,16 +39,19 @@ class Item:
     def toggle(self):
         self.checked = not self.checked
 
-    def render(self, scr, y, x):
+    def render(self, scr, y):
         scr.move(y, x)
         scr.clrtoeol()
 
-        s = '[' + ('x' if self.checked else ' ') + '] ' + self.__str__()
-        scr.addstr(y, x, s + ' ' * (curses.COLS - len(s) - 1))
+        s = ''
+        if not options.select_one:
+            s += '[' + ('x' if self.checked else ' ') + '] '
+        s = s + self.__str__()
+        scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
 
 class Screen:
     def __init__(self, items, scr):
-        scr.scrollok(1)
+        #scr.scrollok(1)
 
         self.scr = scr
         self.idx = 0
@@ -72,7 +90,7 @@ class Screen:
             attr |= curses.color_pair(1)
         self.scr.attrset(attr)
 
-        item.render(self.scr, idx - self.offset, 0)
+        item.render(self.scr, idx - self.offset)
         self.refresh()
 
     def redraw(self):
@@ -82,53 +100,43 @@ class Screen:
     def _change_item(self, arg):
         previdx = self.idx
 
-        if isinstance(arg, int):
-            self.idx = arg
-        else:
-            arg()
-
-        self.draw_item(previdx)
-        if self.idx != previdx:
-            self.draw_item(self.idx)
-
-    def _next_item(self):
-        self.idx = self.bound_idx(self.idx + 1)
-
+        self.idx = self.bound_idx(arg)
         if not self.contains_line(self.idx):
-            self.scr.scroll(1)
-            self.offset += 1
+            if self.idx < self.offset:
+                self.offset = self.idx
+            else:
+                self.offset = self.idx - curses.LINES + 1
 
-    def _prev_item(self):
-        self.idx = self.bound_idx(self.idx - 1)
+        self.redraw()
 
-        if not self.contains_line(self.idx):
-            self.scr.scroll(-1)
-            self.offset -= 1
-
-    next_item = lambda self: self._change_item(self._next_item)
-    prev_item = lambda self: self._change_item(self._prev_item)
+    next_item  = lambda self: self._change_item(self.idx + 1)
+    prev_item  = lambda self: self._change_item(self.idx - 1)
+    first_item = lambda self: self._change_item(0)
+    last_item  = lambda self: self._change_item(self.items_num() - 1)
 
     def next_page(self):
         if self.idx - self.offset == curses.LINES - 1:
-            self.offset = self.bound_offset(self.offset + curses.LINES)
-            self.idx = self.bound_idx(self.idx + curses.LINES)
-            self.redraw()
+            self._change_item(self.idx + curses.LINES)
         else:
-            newidx = self.bound_idx(self.offset + curses.LINES - 1)
-            self._change_item(newidx)
+            self._change_item(self.offset + curses.LINES - 1)
 
     def prev_page(self):
         if self.idx == self.offset:
-            self.offset = self.bound_offset(self.offset - curses.LINES)
-            self.idx = self.bound_idx(self.idx - curses.LINES)
-            self.redraw()
+            self._change_item(self.idx - curses.LINES)
         else:
             self._change_item(self.offset)
 
+    def current_item(self):
+        return self.items[self.idx]
+
     def toggle_item(self):
-        item = self.items[self.idx]
+        item = self.current_item()
         item.toggle()
         self.draw_item(self.idx)
+
+    def deselect_all(self):
+        for item in self.items:
+            item.checked = False
 
     def invert_selection(self):
         for item in self.items:
@@ -136,7 +144,10 @@ class Screen:
         self.redraw()
 
     def focus_pattern(self, pat):
-        pass
+        for idx in cyclic_xrange(self.idx, self.items_num()):
+            if pat in str(self.items[idx]).lower():
+                self._change_item(idx)
+                break
 
 class TTYLocker:
     def __enter__(self):
@@ -156,19 +167,13 @@ class TTYLocker:
         os.dup(self._saved_stdin)
         os.dup(self._saved_stdout)
 
-class Options:
-    SELECT_ALL = 'select_all'
-
-    def __init__(self, opts):
-        self.select_all = True #opts[self.SELECT_ALL]
-
 def process_args():
     parser = optparse.OptionParser()
-    parser.add_option('-a', '--all', action='store_true', dest=Options.SELECT_ALL, default=False)
-    (opts, args) = parser.parse_args()
+    parser.add_option('-a', '--all', action='store_true', dest='select_all', default=False)
+    parser.add_option('-1', '', action='store_true', dest='select_one', default=False)
 
     global options
-    options = Options(opts)
+    (options, args) = parser.parse_args()
 
     args = args or ['[\S]+']
     return [re.compile(str) for str in args]
@@ -196,24 +201,28 @@ def mainloop(stdscr):
             curses.KEY_UP:    Screen.prev_item,
             curses.KEY_NPAGE: Screen.next_page,
             curses.KEY_PPAGE: Screen.prev_page,
+            curses.KEY_HOME:  Screen.first_item,
+            curses.KEY_END:   Screen.last_item,
             ord('!'):         Screen.invert_selection,
             ord(' '):         Screen.toggle_item }
 
         if c == ord('\n'):
-            for item in items:
-                if item.checked:
-                    print item,
-            break
-        elif c == ESCAPE:
-            break
+            if options.select_one:
+                return [scr.current_item()]
+            else:
+                return [item for item in scr.items if item.checked]
+        #elif c == ESCAPE:
+        #     break
         elif bindings.get(c):
             bindings[c](scr)
             pattern = ''
-        elif chr(c) in string.printable:
-            pattern += c
+        elif 0 <= c < 256 and (chr(c) in string.printable):
+            pattern += chr(c)
             scr.focus_pattern(pattern)
         else:
             pattern = ''
+
+    return []
 
 def main():
     regexps = process_args()
@@ -224,13 +233,20 @@ def main():
     if not items:
         return
 
+    if len(items) == 1 and options.select_one:
+        print items[0]
+        return
+
     if options.select_all:
         for item in items:
             item.toggle()
 
     os.putenv('ESCDELAY', '0')
     with TTYLocker():
-        wrapper(mainloop)
+        items = wrapper(mainloop)
+
+    for item in items:
+        print item,
 
 if __name__ == '__main__':
     main()
