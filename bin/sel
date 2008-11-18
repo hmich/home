@@ -40,7 +40,7 @@ class Item(object):
         self.checked = not self.checked
 
     def render(self, scr, y):
-        scr.move(y, x)
+        scr.move(y, 0)
         scr.clrtoeol()
 
         s = ''
@@ -57,6 +57,7 @@ class Screen:
         self.idx = 0
         self.offset = 0
         self.items = items
+        self.lines = curses.LINES - 1
 
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
@@ -72,10 +73,10 @@ class Screen:
         return max(0, min(idx, self.items_num() - 1))
 
     def bound_offset(self, offset):
-        return max(0, min(offset, self.items_num() - curses.LINES))
+        return max(0, min(offset, self.items_num() - self.lines))
 
     def contains_line(self, line):
-        return self.offset <= line < self.offset + curses.LINES
+        return self.offset <= line < self.offset + self.lines
 
     def draw_item(self, idx):
         if not self.contains_line(idx):
@@ -105,7 +106,7 @@ class Screen:
             if self.idx < self.offset:
                 self.offset = self.idx
             else:
-                self.offset = self.idx - curses.LINES + 1
+                self.offset = self.idx - self.lines + 1
 
         self.redraw()
 
@@ -115,14 +116,14 @@ class Screen:
     last_item  = lambda self: self._change_item(self.items_num() - 1)
 
     def next_page(self):
-        if self.idx - self.offset == curses.LINES - 1:
-            self._change_item(self.idx + curses.LINES)
+        if self.idx - self.offset == self.lines - 1:
+            self._change_item(self.idx + self.lines)
         else:
-            self._change_item(self.offset + curses.LINES - 1)
+            self._change_item(self.offset + self.lines - 1)
 
     def prev_page(self):
         if self.idx == self.offset:
-            self._change_item(self.idx - curses.LINES)
+            self._change_item(self.idx - self.lines)
         else:
             self._change_item(self.offset)
 
@@ -171,10 +172,13 @@ def process_args():
     parser = optparse.OptionParser()
     parser.add_option('-a', '--all', action='store_true', dest='select_all', default=False)
     parser.add_option('-1', '', action='store_true', dest='select_one', default=False)
+    parser.add_option('-l', '--lines', action='store_true', dest='lines_regex', default=False)
 
     global options
     (options, args) = parser.parse_args()
 
+    if options.lines_regex:
+        args.append('^.*$')
     args = args or ['[\S]+']
     return [re.compile(str) for str in args]
 
@@ -246,7 +250,7 @@ def main():
         items = wrapper(mainloop)
 
     for item in items:
-        print item,
+        print '"' + item.__str__() + '"',
 
 if __name__ == '__main__':
     main()
