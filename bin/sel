@@ -7,7 +7,9 @@ import sys
 import re
 import string
 import optparse
+
 import curses
+import curses.textpad
 from curses.wrapper import wrapper
 
 ESCAPE = 27
@@ -39,7 +41,7 @@ class Item(object):
     def toggle(self):
         self.checked = not self.checked
 
-    def render(self, scr, y):
+    def render(self, scr, y, fmt):
         scr.move(y, 0)
         scr.clrtoeol()
 
@@ -47,17 +49,14 @@ class Item(object):
         if not options.select_one:
             s += '[' + ('x' if self.checked else ' ') + '] '
         s = s + self.__str__()
+        s = fmt % s
         scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
 
 class Screen:
-    def __init__(self, items, scr):
-        #scr.scrollok(1)
-
-        self.scr = scr
+    def __init__(self, items):
         self.idx = 0
         self.offset = 0
         self.items = items
-        self.lines = curses.LINES - 1
 
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
@@ -82,7 +81,7 @@ class Screen:
         if not self.contains_line(idx):
             return
 
-        item = items[idx]
+        item = self.items[idx]
 
         attr = curses.color_pair(0)
         if item.checked:
@@ -91,7 +90,8 @@ class Screen:
             attr |= curses.color_pair(1)
         self.scr.attrset(attr)
 
-        item.render(self.scr, idx - self.offset)
+        fmt = str(idx + 1).rjust(len(str(self.items_num())) + 1) + " %s"
+        item.render(self.scr, idx - self.offset, fmt)
         self.refresh()
 
     def redraw(self):
@@ -150,6 +150,66 @@ class Screen:
                 self._change_item(idx)
                 break
 
+    def print_status(self, str):
+        self.scr.move(curses.LINES - 1, 0)
+        self.scr.clrtoeol()
+        self.scr.addstr(str)
+        self.refresh()
+
+    def query(self, str):
+        self.print_status(str)
+
+        win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
+        q = curses.textpad.Textbox(win)
+        res = q.edit()
+
+        self.print_status('')
+
+        return res
+
+    def goto_line(self):
+        line = self.query("Goto line: ")
+        self._change_item(int(line) - 1)
+
+    def mainloop(self, stdscr):
+        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+
+        self.scr = stdscr
+        self.lines = curses.LINES - 1
+        self.redraw()
+
+        pattern = ''
+
+        while 1:
+            c = self.getch()
+
+            bindings = {
+                curses.KEY_DOWN:  self.next_item,
+                curses.KEY_UP:    self.prev_item,
+                curses.KEY_NPAGE: self.next_page,
+                curses.KEY_PPAGE: self.prev_page,
+                curses.KEY_HOME:  self.first_item,
+                curses.KEY_END:   self.last_item,
+                ord('G'):         self.goto_line,
+                ord('!'):         self.invert_selection,
+                ord(' '):         self.toggle_item }
+
+            if c == ord('\n'):
+                if options.select_one:
+                    return [self.current_item()]
+                else:
+                    return [item for item in self.items if item.checked]
+            elif bindings.get(c):
+                bindings[c]()
+                pattern = ''
+            elif 0 <= c < 256 and (chr(c) in string.printable):
+                pattern += chr(c)
+                self.focus_pattern(pattern)
+            else:
+                pattern = ''
+
+        return []
+
 class TTYLocker:
     def __enter__(self):
         self._saved_stdin = os.dup(0)
@@ -180,6 +240,7 @@ def process_args():
     if options.lines_regex:
         args.append('^.*$')
     args = args or ['[\S]+']
+
     return [re.compile(str) for str in args]
 
 def find_matches(regexps):
@@ -189,49 +250,9 @@ def find_matches(regexps):
             res.extend(re.findall(line))
     return res
 
-def mainloop(stdscr):
-    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-
-    scr = Screen(items, stdscr)
-    scr.redraw()
-
-    pattern = ''
-
-    while 1:
-        c = scr.getch()
-
-        bindings = {
-            curses.KEY_DOWN:  Screen.next_item,
-            curses.KEY_UP:    Screen.prev_item,
-            curses.KEY_NPAGE: Screen.next_page,
-            curses.KEY_PPAGE: Screen.prev_page,
-            curses.KEY_HOME:  Screen.first_item,
-            curses.KEY_END:   Screen.last_item,
-            ord('!'):         Screen.invert_selection,
-            ord(' '):         Screen.toggle_item }
-
-        if c == ord('\n'):
-            if options.select_one:
-                return [scr.current_item()]
-            else:
-                return [item for item in scr.items if item.checked]
-        #elif c == ESCAPE:
-        #     break
-        elif bindings.get(c):
-            bindings[c](scr)
-            pattern = ''
-        elif 0 <= c < 256 and (chr(c) in string.printable):
-            pattern += chr(c)
-            scr.focus_pattern(pattern)
-        else:
-            pattern = ''
-
-    return []
-
 def main():
     regexps = process_args()
 
-    global items
     items = [Item(str) for str in find_matches(regexps)]
 
     if not items:
@@ -245,12 +266,15 @@ def main():
         for item in items:
             item.toggle()
 
+    scr = Screen(items)
+
     os.putenv('ESCDELAY', '0')
     with TTYLocker():
-        items = wrapper(mainloop)
+        items = wrapper(scr.mainloop)
 
     for item in items:
-        print '"' + item.__str__() + '"',
+        # print '"' + item.__str__() + '"',
+        print item.__str__(),
 
 if __name__ == '__main__':
     main()
