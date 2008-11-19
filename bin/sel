@@ -5,6 +5,7 @@ from __future__ import with_statement
 import os
 import sys
 import re
+import operator
 import string
 import optparse
 
@@ -24,32 +25,19 @@ def cyclic_xrange(start, cnt):
 class Item(object):
     def __init__(self, str):
         self._str = str
-        self._checked = False
-
-    def _getchecked(self):
-        return self._checked
-
-    def _setchecked(self, val):
-        if not options.select_one:
-            self._checked = val
-
-    checked = property(_getchecked, _setchecked)
+        self.marked = False
 
     def __str__(self):
         return self._str
 
     def toggle(self):
-        self.checked = not self.checked
+        self.marked = not self.marked
 
     def render(self, scr, y, fmt):
         scr.move(y, 0)
         scr.clrtoeol()
 
-        s = ''
-        if not options.select_one:
-            s += '[' + ('x' if self.checked else ' ') + '] '
-        s = s + self.__str__()
-        s = fmt % s
+        s = fmt % {'marked': 'x' if self.marked else ' ', 'text': self.__str__()}
         scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
 
 class Screen:
@@ -57,6 +45,7 @@ class Screen:
         self.idx = 0
         self.offset = 0
         self.items = items
+        self.has_marked = False
 
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
@@ -84,13 +73,14 @@ class Screen:
         item = self.items[idx]
 
         attr = curses.color_pair(0)
-        if item.checked:
+        if item.marked:
             attr |= curses.A_BOLD
         if self.idx == idx:
             attr |= curses.color_pair(1)
         self.scr.attrset(attr)
 
-        fmt = str(idx + 1).rjust(len(str(self.items_num())) + 1) + " %s"
+        fmt = (str(idx + 1).rjust(len(str(self.items_num())) + 1) + ' ' +
+               ("[%(marked)s] " if self.has_marked else '') + "%(text)s")
         item.render(self.scr, idx - self.offset, fmt)
         self.refresh()
 
@@ -98,8 +88,13 @@ class Screen:
         for curidx in xrange(self.items_num()):
             self.draw_item(curidx)
 
+    def update_has_marked(self):
+        if self.has_marked != reduce(operator.or_, [item.marked for item in self.items]):
+            self.has_marked = not self.has_marked
+            self.redraw()
+
     def _change_item(self, arg):
-        previdx = self.idx
+        previdx, prevoffset = self.idx, self.offset
 
         self.idx = self.bound_idx(arg)
         if not self.contains_line(self.idx):
@@ -108,7 +103,11 @@ class Screen:
             else:
                 self.offset = self.idx - self.lines + 1
 
-        self.redraw()
+        if self.offset == prevoffset:
+            self.draw_item(previdx)
+            self.draw_item(self.idx)
+        else:
+            self.redraw()
 
     next_item  = lambda self: self._change_item(self.idx + 1)
     prev_item  = lambda self: self._change_item(self.idx - 1)
@@ -133,15 +132,13 @@ class Screen:
     def toggle_item(self):
         item = self.current_item()
         item.toggle()
+        self.update_has_marked()
         self.draw_item(self.idx)
-
-    def deselect_all(self):
-        for item in self.items:
-            item.checked = False
 
     def invert_selection(self):
         for item in self.items:
             item.toggle()
+        self.update_has_marked()
         self.redraw()
 
     def focus_pattern(self, pat):
@@ -151,12 +148,15 @@ class Screen:
                 break
 
     def print_status(self, str):
-        self.scr.move(curses.LINES - 1, 0)
-        self.scr.clrtoeol()
-        self.scr.addstr(str)
+        scr = self.scr
+        scr.attrset(curses.color_pair(0))
+        scr.move(curses.LINES - 1, 0)
+        scr.clrtoeol()
+        scr.addstr(str)
         self.refresh()
 
     def query(self, str):
+        str += ' '
         self.print_status(str)
 
         win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
@@ -168,14 +168,23 @@ class Screen:
         return res
 
     def goto_line(self):
-        line = self.query("Goto line: ")
+        line = self.query("Goto line:")
         self._change_item(int(line) - 1)
+
+    def mark_by_regex(self):
+        regex = re.compile(self.query("Mark by regex:"))
+        for item in self.items:
+            if regex.search(item.__str__()):
+                item.marked = True
+        self.update_has_marked()
+        self.redraw()
 
     def mainloop(self, stdscr):
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
 
         self.scr = stdscr
         self.lines = curses.LINES - 1
+        self.update_has_marked()
         self.redraw()
 
         pattern = ''
@@ -191,14 +200,15 @@ class Screen:
                 curses.KEY_HOME:  self.first_item,
                 curses.KEY_END:   self.last_item,
                 ord('G'):         self.goto_line,
+                ord('%'):         self.mark_by_regex,
                 ord('!'):         self.invert_selection,
                 ord(' '):         self.toggle_item }
 
             if c == ord('\n'):
-                if options.select_one:
-                    return [self.current_item()]
+                if self.has_marked:
+                    return [item for item in self.items if item.marked]
                 else:
-                    return [item for item in self.items if item.checked]
+                    return [self.current_item()]
             elif bindings.get(c):
                 bindings[c]()
                 pattern = ''
@@ -231,7 +241,6 @@ class TTYLocker:
 def process_args():
     parser = optparse.OptionParser()
     parser.add_option('-a', '--all', action='store_true', dest='select_all', default=False)
-    parser.add_option('-1', '', action='store_true', dest='select_one', default=False)
     parser.add_option('-l', '--lines', action='store_true', dest='lines_regex', default=False)
 
     global options
@@ -273,7 +282,6 @@ def main():
         items = wrapper(scr.mainloop)
 
     for item in items:
-        # print '"' + item.__str__() + '"',
         print item.__str__(),
 
 if __name__ == '__main__':
