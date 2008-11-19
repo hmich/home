@@ -1,6 +1,5 @@
-# aliased
-if [ -f ~/.aliases ]; then
-    . ~/.aliases
+if [ -f ~/.rc ]; then
+    . ~/.rc
 fi
 
 if [ -f ~/.zshaliases ]; then
@@ -11,8 +10,6 @@ HISTFILE=~/.histfile
 HISTSIZE=10000
 SAVEHIST=10000
 
-export LESSCHARSET=iso8859
-export EDITOR=vim
 #export CDPATH=".:/etc"
 
 # Directories
@@ -20,7 +17,7 @@ setopt auto_cd cdable_vars pushd_ignore_dups
 
 # Completion
 #setopt auto_list auto_menu
-setopt always_to_end auto_name_dirs 
+setopt always_to_end auto_name_dirs
 setopt list_packed complete_in_word no_list_ambiguous
 
 # Expansion and globbing
@@ -30,16 +27,15 @@ setopt glob_dots mark_dirs extended_glob
 setopt extended_history hist_ignore_dups hist_reduce_blanks share_history
 
 # Input/output
-setopt correct notify print_exit_value 
+setopt correct notify print_exit_value
 
 # Zle
 setopt nobeep emacs
 
-bindkey -s '^|l' " | less\n"
-bindkey -s '^|g' ' | grep ""^[OD'
-bindkey -s '^|a' " | awk '{print $}'^[OD^[OD"
-bindkey -s '^|s' ' | sed -e "s///g"^[OD^[OD^[OD^[OD'
-bindkey -s '^|w' " | wc -l\n"
+bindkey ' '   magic-space    # do history expansion on space
+bindkey '\ei' menu-complete  # menu completion via esc-i
+
+bindkey -s '^l' " | less\n"
 
 source ~/.zshprompt
 
@@ -65,14 +61,16 @@ chpwd() {
 
 	# if the terminal has enough lines, do a long listing
 	#if [ `expr "${ROWS}" - 6` -lt "${FILES}" ]; then
-		ls --color -ACF
+	ls --color -ACF
 	#else
 	#	ls --color -hlAF --full-time
 	#fi
 }
 
-if [ "$TERM" = cygwin ]; then
+if [ "$TERM" = screen ]; then
     bindkey "\e[1~" beginning-of-line
     bindkey "\e[4~" end-of-line
     bindkey "\e[3~" delete-char
+    bindkey "^[[A"  up-line-or-search
+    bindkey "^[[B"  down-line-or-search
 fi

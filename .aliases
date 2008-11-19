@@ -10,7 +10,9 @@ alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
 alias l=ls
 
-alias c=cd
+alias ..='cd ..'
+alias ...='cd ...'
+alias cd_='cd "$_"'
 
 alias cp='cp -i'
 alias mv='mv -i'
