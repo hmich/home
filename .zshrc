@@ -13,7 +13,7 @@ SAVEHIST=10000
 #export CDPATH=".:/etc"
 
 # Directories
-setopt auto_cd cdable_vars pushd_ignore_dups
+setopt auto_cd auto_pushd cdable_vars pushd_ignore_dups
 
 # Completion
 #setopt auto_list auto_menu
