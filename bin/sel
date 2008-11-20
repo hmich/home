@@ -33,13 +33,6 @@ class Item(object):
     def toggle(self):
         self.marked = not self.marked
 
-    def render(self, scr, y, fmt):
-        scr.move(y, 0)
-        scr.clrtoeol()
-
-        s = fmt % {'marked': 'x' if self.marked else ' ', 'text': self.__str__()}
-        scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
-
 class Screen:
     def __init__(self, items):
         self.idx = 0
@@ -71,22 +64,32 @@ class Screen:
             return
 
         item = self.items[idx]
+        y = idx - self.offset
+        fmt = (str(idx + 1).rjust(len(str(self.items_num())) + 1) + ' ' +
+              ("[%(marked)s] " if self.has_marked else '') + "%(text)s")
+        s = fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
 
         attr = curses.color_pair(0)
         if item.marked:
             attr |= curses.A_BOLD
         if self.idx == idx:
             attr |= curses.color_pair(1)
-        self.scr.attrset(attr)
 
-        fmt = (str(idx + 1).rjust(len(str(self.items_num())) + 1) + ' ' +
-               ("[%(marked)s] " if self.has_marked else '') + "%(text)s")
-        item.render(self.scr, idx - self.offset, fmt)
+        self.scr.attrset(attr)
+        self.clear_line(y)
+        self.scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
         self.refresh()
 
+    def clear_line(self, line):
+        self.scr.move(line, 0)
+        self.scr.clrtoeol()
+
     def redraw(self):
-        for curidx in xrange(self.items_num()):
-            self.draw_item(curidx)
+        for curidx in xrange(self.offset, self.offset + self.lines):
+            if curidx < self.items_num():
+                self.draw_item(curidx)
+            else:
+                self.clear_line(curidx - self.offset)
 
     def update_has_marked(self):
         if self.has_marked != reduce(operator.or_, [item.marked for item in self.items]):
@@ -102,6 +105,8 @@ class Screen:
                 self.offset = self.idx
             else:
                 self.offset = self.idx - self.lines + 1
+
+        self.offset = self.bound_offset(self.offset)
 
         if self.offset == prevoffset:
             self.draw_item(previdx)
@@ -172,10 +177,50 @@ class Screen:
         self._change_item(int(line) - 1)
 
     def mark_by_regex(self):
-        regex = re.compile(self.query("Mark by regex:"))
+        try:
+            regex = re.compile(self.query("Mark by regex:"))
+        except:
+            return
         for item in self.items:
-            if regex.search(item.__str__()):
+            if regex.search(str(item)):
                 item.marked = True
+        self.update_has_marked()
+        self.redraw()
+
+    def enumerate_marked(self):
+        if self.has_marked:
+            for (idx, item) in enumerate(self.items):
+                if item.marked:
+                    yield (idx, item)
+        else:
+            yield (self.idx, self.current_item())
+
+    def enumerate_unmarked(self):
+        if self.has_marked:
+            for (idx, item) in enumerate(self.items):
+                if not item.marked:
+                    yield (idx, item)
+        else:
+            for (idx, item) in enumerate(self.items):
+                if idx != self.idx:
+                    yield (idx, item)
+
+    def remove_marked(self):
+        newidx = -1
+        newitems = []
+        for (idx, item) in self.enumerate_unmarked():
+            if idx >= self.idx and newidx == -1:
+                newidx = len(newitems)
+            newitems.append(item)
+
+        if newidx == -1:
+            newidx = len(newitems) - 1
+
+        self.items = newitems
+        if not self.items:
+            return
+        self.idx = newidx
+        self._change_item(newidx)
         self.update_has_marked()
         self.redraw()
 
@@ -189,29 +234,41 @@ class Screen:
 
         pattern = ''
 
-        while 1:
-            c = self.getch()
+        bindings = {
+            curses.KEY_DOWN:   self.next_item,
+            ord('J'):          self.next_item,
+            curses.KEY_UP:     self.prev_item,
+            ord('K'):          self.prev_item,
+            curses.KEY_NPAGE:  self.next_page,
+            ord('H'):          self.next_page,
+            curses.KEY_PPAGE:  self.prev_page,
+            ord('L'):          self.prev_page,
+            curses.KEY_HOME:   self.first_item,
+            ord('<'):          self.first_item,
+            curses.KEY_END:    self.last_item,
+            ord('>'):          self.last_item,
+            curses.KEY_DC:     self.remove_marked,
+            ord('D'):          self.remove_marked,
+            curses.KEY_IC:     self.toggle_item,
+            ord(' '):          self.toggle_item,
+            ord('!'):          self.invert_selection,
+            ord('G'):          self.goto_line,
+            ord('%'):          self.mark_by_regex,
+        }
 
-            bindings = {
-                curses.KEY_DOWN:  self.next_item,
-                curses.KEY_UP:    self.prev_item,
-                curses.KEY_NPAGE: self.next_page,
-                curses.KEY_PPAGE: self.prev_page,
-                curses.KEY_HOME:  self.first_item,
-                curses.KEY_END:   self.last_item,
-                ord('G'):         self.goto_line,
-                ord('%'):         self.mark_by_regex,
-                ord('!'):         self.invert_selection,
-                ord(' '):         self.toggle_item }
+        while 1:
+            try:
+                c = self.getch()
+            except KeyboardInterrupt:
+                return []
 
             if c == ord('\n'):
-                if self.has_marked:
-                    return [item for item in self.items if item.marked]
-                else:
-                    return [self.current_item()]
+                return [item for (_, item) in self.enumerate_marked()]
             elif bindings.get(c):
                 bindings[c]()
                 pattern = ''
+                if not self.items:
+                    return []
             elif 0 <= c < 256 and (chr(c) in string.printable):
                 pattern += chr(c)
                 self.focus_pattern(pattern)
@@ -259,30 +316,23 @@ def find_matches(regexps):
             res.extend(re.findall(line))
     return res
 
+def print_items(items):
+    for item in items:
+        print str(item),
+
 def main():
-    regexps = process_args()
-
-    items = [Item(str) for str in find_matches(regexps)]
-
+    items = [Item(s) for s in find_matches(process_args())]
     if not items:
-        return
-
-    if len(items) == 1 and options.select_one:
-        print items[0]
         return
 
     if options.select_all:
         for item in items:
             item.toggle()
 
-    scr = Screen(items)
-
-    os.putenv('ESCDELAY', '0')
     with TTYLocker():
-        items = wrapper(scr.mainloop)
+        items = wrapper(Screen(items).mainloop)
 
-    for item in items:
-        print item.__str__(),
+    print_items(items)
 
 if __name__ == '__main__':
     main()
