@@ -201,12 +201,6 @@ class Screen:
         for item in self.items:
             item.marked = True
 
-    def focus_pattern(self, pat):
-        for idx in cyclic_xrange(self.idx, len(self.items)):
-            if pat in str(self.items[idx]).lower():
-                self._change_item(idx)
-                break
-
     def print_status(self, str):
         scr = self.scr
         scr.attrset(curses.color_pair(0))
@@ -239,6 +233,24 @@ class Screen:
         for item in self.items:
             if regex.search(str(item)):
                 item.marked = True
+
+    def focus_pattern(self, pat):
+        for idx in cyclic_xrange(self.idx, len(self.items)):
+            if pat in str(self.items[idx]).lower():
+                self._change_item(idx)
+                break
+
+    def search_by_regex(self):
+        s = self.query("Search by regex:")
+        try:
+            regex = re.compile(s.strip())
+        except:
+            return
+
+        for idx in cyclic_xrange(self.idx, len(self.items)):
+            if regex.search(str(self.items[idx])):
+                self._change_item(idx)
+                break
 
     def enumerate_selected(self):
         if self.items.has_marked():
@@ -287,6 +299,7 @@ class Screen:
             ord('*'):          self.select_all,
             ord('G'):          self.goto_line,
             ord('%'):          self.mark_by_regex,
+            ord('/'):          self.search_by_regex,
         }
 
         while 1:
