@@ -45,22 +45,62 @@ def cyclic_xrange(start, cnt):
         yield idx
 
 class Item(object):
-    def __init__(self, str):
+    def __init__(self, str, idx, callback):
         self._str = str
-        self.marked = False
+        self._marked = False
+        self._callback = callback
+        self._idx = idx
+
+    def _getmarked(self):
+        return self._marked
+
+    def _setmarked(self, val):
+        if self._marked != val:
+            self._marked = val
+            self._callback(self._idx, val)
+
+    marked = property(_getmarked, _setmarked)
 
     def __str__(self):
         return self._str
 
-    def toggle(self):
-        self.marked = not self.marked
+class Items:
+    def __init__(self, matches, item_changed_callback, has_marked_callback):
+        self._items = [Item(match, idx, self._item_state_changed)
+                       for (idx, match) in enumerate(matches)]
+        self._nmarked = 0
+        self._item_changed_callback = item_changed_callback
+        self._has_marked_callback = has_marked_callback
+
+    def has_marked(self):
+        return self._nmarked > 0
+
+    def remove(self, items):
+        for idx in reversed(list(items)):
+            del self._items[idx]
+        for (idx, item) in enumerate(self._items):
+            item._idx = idx
+        self._nmarked = sum(int(item.marked) for item in self._items)
+
+    def _item_state_changed(self, idx, val):
+        nmarked = self._nmarked
+        self._nmarked += (1 if val else -1)
+
+        self._item_changed_callback(idx)
+        if not nmarked or not self._nmarked:
+            self._has_marked_callback()
+
+    def __len__(self):
+        return len(self._items)
+
+    def __getitem__(self, idx):
+        return self._items[idx]
 
 class Screen:
-    def __init__(self, items):
+    def __init__(self, matches):
         self.offset = 0
         self.idx = 0
-        self.items = items
-        self.has_marked = False
+        self.items = Items(matches, self.draw_item, self.redraw)
 
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
@@ -69,26 +109,24 @@ class Screen:
     def refresh(self):
         self.scr.refresh()
 
-    def items_num(self):
-        return len(self.items)
-
     def bound_idx(self, idx):
-        return max(0, min(idx, self.items_num() - 1))
+        return max(0, min(idx, len(self.items) - 1))
 
     def bound_offset(self, offset):
-        return max(0, min(offset, self.items_num() - self.lines))
+        return max(0, min(offset, len(self.items) - self.lines))
 
     def contains_line(self, line):
         return self.offset <= line < self.offset + self.lines
 
     def draw_item(self, idx):
-        if not self.contains_line(idx):
+        if idx >= len(self.items) or not self.contains_line(idx):
             return
 
         item = self.items[idx]
         y = idx - self.offset
-        fmt = (str(idx + 1).rjust(len(str(self.items_num())) + 1) + ' ' +
-              ("[%(marked)s] " if self.has_marked else '') + "%(text)s")
+        has_marked = self.items.has_marked()
+        fmt = (str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' ' +
+              ("[%(marked)s] " if has_marked else '') + "%(text)s")
         s = fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
 
         attr = curses.color_pair(0)
@@ -108,15 +146,10 @@ class Screen:
 
     def redraw(self):
         for curidx in xrange(self.offset, self.offset + self.lines):
-            if curidx < self.items_num():
+            if curidx < len(self.items):
                 self.draw_item(curidx)
             else:
                 self.clear_line(curidx - self.offset)
-
-    def update_has_marked(self):
-        if self.has_marked != reduce(operator.or_, [item.marked for item in self.items]):
-            self.has_marked = not self.has_marked
-            self.redraw()
 
     def _change_item(self, arg):
         previdx, prevoffset = self.idx, self.offset
@@ -139,7 +172,7 @@ class Screen:
     next_item  = lambda self: self._change_item(self.idx + 1)
     prev_item  = lambda self: self._change_item(self.idx - 1)
     first_item = lambda self: self._change_item(0)
-    last_item  = lambda self: self._change_item(self.items_num() - 1)
+    last_item  = lambda self: self._change_item(len(self.items) - 1)
 
     def next_page(self):
         if self.idx - self.offset == self.lines - 1:
@@ -158,24 +191,18 @@ class Screen:
 
     def toggle_item(self):
         item = self.current_item()
-        item.toggle()
-        self.update_has_marked()
-        self.draw_item(self.idx)
+        item.marked = not item.marked
 
     def invert_selection(self):
         for item in self.items:
-            item.toggle()
-        self.update_has_marked()
-        self.redraw()
+            item.marked = not item.marked
 
     def select_all(self):
         for item in self.items:
             item.marked = True
-        self.update_has_marked()
-        self.redraw()
 
     def focus_pattern(self, pat):
-        for idx in cyclic_xrange(self.idx, self.items_num()):
+        for idx in cyclic_xrange(self.idx, len(self.items)):
             if pat in str(self.items[idx]).lower():
                 self._change_item(idx)
                 break
@@ -196,7 +223,6 @@ class Screen:
         res = q.edit()
 
         self.print_status('')
-
         return res
 
     def goto_line(self):
@@ -213,44 +239,21 @@ class Screen:
         for item in self.items:
             if regex.search(str(item)):
                 item.marked = True
-        self.update_has_marked()
-        self.redraw()
 
-    def enumerate_marked(self):
-        if self.has_marked:
+    def enumerate_selected(self):
+        if self.items.has_marked():
             for (idx, item) in enumerate(self.items):
                 if item.marked:
                     yield (idx, item)
         else:
             yield (self.idx, self.current_item())
 
-    def enumerate_unmarked(self):
-        if self.has_marked:
-            for (idx, item) in enumerate(self.items):
-                if not item.marked:
-                    yield (idx, item)
-        else:
-            for (idx, item) in enumerate(self.items):
-                if idx != self.idx:
-                    yield (idx, item)
-
     def remove_marked(self):
-        newidx = -1
-        newitems = []
-        for (idx, item) in self.enumerate_unmarked():
-            if idx >= self.idx and newidx == -1:
-                newidx = len(newitems)
-            newitems.append(item)
-
-        if newidx == -1:
-            newidx = len(newitems) - 1
-
-        self.items = newitems
+        self.items.remove(idx for (idx, _) in self.enumerate_selected())
         if not self.items:
             return
-        self.idx = newidx
-        self._change_item(newidx)
-        self.update_has_marked()
+
+        self._change_item(self.idx)
         self.redraw()
 
     def mainloop(self, stdscr):
@@ -259,7 +262,6 @@ class Screen:
 
         self.scr = stdscr
         self.lines = curses.LINES - 1
-        self.update_has_marked()
         self.redraw()
 
         pattern = ''
@@ -294,7 +296,7 @@ class Screen:
                 return []
 
             if c == ord('\n'):
-                return [item for (_, item) in self.enumerate_marked()]
+                return [item for (_, item) in self.enumerate_selected()]
             elif bindings.get(c):
                 bindings[c]()
                 pattern = ''
@@ -351,12 +353,12 @@ def print_items(items):
         print str(item),
 
 def main():
-    items = [Item(s) for s in find_matches(process_args())]
-    if not items:
+    matches = find_matches(process_args())
+    if not matches:
         return
 
     with TTYLocker():
-        items = wrapper(Screen(items).mainloop)
+        items = wrapper(Screen(matches).mainloop)
 
     print_items(items)
 
