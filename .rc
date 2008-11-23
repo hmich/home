@@ -8,6 +8,6 @@ export DATA=$R/Areator/Source/DataProcessing
 export LESSCHARDEF=8bcccbc.18b95.33b.
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+[ -x /usr/bin/lesspipe.sh ] && eval "$(lesspipe.sh)"
 
 tty > /dev/null && stty -ixon -ixoff
