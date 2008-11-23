@@ -14,7 +14,7 @@ export LESSCHARDEF=8bcccbc.18b95.33b.
 shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
 
 # make less more friendly for non-text input files, see lesspipe(1)
-[ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+[ -x /usr/bin/lesspipe.sh ] && eval "$(lesspipe.sh)"
 
 # set variable identifying the chroot you work in (used in the prompt below)
 if [ -z "$debian_chroot" ] && [ -r /etc/debian_chroot ]; then
