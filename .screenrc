@@ -1,14 +1,15 @@
 ignorecase      on
 startup_message off
 vbell           off
-shell           bash
+shell           zsh
 autodetach      on
 silencewait     15
-escape          "``"
 defscrollback   10000
 defflow         off
 defutf8         on
 defencoding     cp1251
+escape          ^Ss
+maptimeout      0
 
 # Color table:
 #  Black             .    leave color unchanged

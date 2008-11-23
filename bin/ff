@@ -1,0 +1,3 @@
+#!/bin/sh
+
+find "$R" | grep -i "$1" | sel -1l

@@ -10,7 +10,9 @@ alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
 alias l=ls
 
-alias c=cd
+alias ..='cd ..'
+alias ...='cd ...'
+alias cd_='cd "$_"'
 
 alias cp='cp -i'
 alias mv='mv -i'
@@ -21,6 +23,7 @@ alias df='df -Th'
 alias free='free -mt'
 
 alias h=history
+alias d=popd
 
 alias less='less -iMNx4'
 alias rless="LESSOPEN='|tac %s' less"
@@ -34,7 +37,7 @@ alias mountrain='sudo sshfs -o allow_other ahmetov@rain.ifmo.ru: rain'
 alias x=startx
 alias gv='gv -widgetless'
 
-alias grep='grep --color'
+alias grep='grep -i --color'
 
 alias p='git log --graph -p'
 alias d='git diff -p HEAD'
@@ -44,3 +47,5 @@ alias ci='git commit'
 alias co='git checkout'
 alias svnci='git svn dcommit'
 alias svnco='git svn rebase'
+
+alias sta=cygstart

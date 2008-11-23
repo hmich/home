@@ -1,0 +1,13 @@
+if [ -f ~/.aliases ]; then
+   . ~/.aliases
+fi
+
+export EDITOR=vim
+export R=/cygdrive/c/work/src
+export DATA=$R/Areator/Source/DataProcessing
+export LESSCHARDEF=8bcccbc.18b95.33b.
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe ] && eval "$(lesspipe)"
+
+tty > /dev/null && stty -ixon -ixoff
