@@ -1,7 +1,7 @@
 ignorecase      on
 startup_message off
 vbell           off
-shell           zsh
+shell           bash
 autodetach      on
 silencewait     15
 defscrollback   10000
