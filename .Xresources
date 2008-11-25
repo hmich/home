@@ -2,7 +2,7 @@
 
 Rxvt.font: xft:Terminus
 Rxvt.scrollstyle: plain
-Rxvt.saveLines: 1024
+Rxvt.saveLines: 100000
 Rxvt.cursorBlink: true
 Rxvt.reverseVideo: true
 Rxvt.modifier: mod1

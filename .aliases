@@ -27,6 +27,7 @@ alias d=popd
 
 alias less='less -iMNx4'
 alias rless="LESSOPEN='|tac %s' less"
+alias L=less
 
 alias pack='apt-cache search'
 alias inst='sudo apt-get install'
@@ -38,6 +39,7 @@ alias x=startx
 alias gv='gv -widgetless'
 
 alias grep='grep -i --color'
+alias G=grep
 
 alias p='git log --graph -p'
 alias d='git diff -p HEAD'

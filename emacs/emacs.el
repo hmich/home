@@ -655,6 +655,7 @@
 ;; (setq swbuff-clear-delay 9)
 
 (require 'misc-cmds)
+(require 'wc)
 
 ;; Find file at point
 ;; (require 'ffap)
