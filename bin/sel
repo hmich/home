@@ -235,7 +235,7 @@ class Screen:
     def mark_by_regex(self):
         s = self.status.query("Mark by regex:")
         try:
-            regex = re.compile(s.strip())
+            regex = re.compile(s.strip(), re.IGNORECASE)
         except:
             return
 
@@ -243,23 +243,38 @@ class Screen:
             if regex.search(str(item)):
                 item.marked = True
 
-    def focus_pattern(self, pat):
-        for idx in cyclic_xrange(self.idx, len(self.items)):
-            if pat in str(self.items[idx]).lower():
+    def _focus_pattern(self, startidx):
+        for idx in cyclic_xrange(startidx, len(self.items)):
+            if self.pattern in str(self.items[idx]).lower():
                 self._change_item(idx)
                 break
+
+    def _focus_regex(self, startidx):
+        for idx in cyclic_xrange(startidx, len(self.items)):
+            if self.regex.search(str(self.items[idx])):
+                self._change_item(idx)
+                break
+
+    def focus_pattern(self, pat):
+        self.regex = None
+        self.pattern = pat
+        self._focus_pattern(self.idx)
 
     def search_by_regex(self):
         s = self.status.query("Search by regex:")
         try:
-            regex = re.compile(s.strip())
+            self.regex = re.compile(s.strip(), re.IGNORECASE)
         except:
             return
 
-        for idx in cyclic_xrange(self.idx, len(self.items)):
-            if regex.search(str(self.items[idx])):
-                self._change_item(idx)
-                break
+        self.pattern = None
+        self._focus_regex(self.idx)
+
+    def next_match(self):
+        if self.pattern:
+            self._focus_pattern(self.idx + 1)
+        elif self.regex:
+            self._focus_regex(self.idx + 1)
 
     def enumerate_selected(self):
         if self.items.has_marked():
@@ -277,10 +292,16 @@ class Screen:
         self._change_item(self.idx)
         self.redraw()
 
-    def mainloop(self, stdscr):
+    def init_curses(self):
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.curs_set(0)
+        # sometimes raises an exception in cygwin
+        try:
+            curses.curs_set(0)
+        except:
+            pass
 
+    def mainloop(self, stdscr):
+        self.init_curses()
         self.status = Status()
         self.scr = stdscr
         self.lines = curses.LINES - 1
@@ -308,6 +329,7 @@ class Screen:
             ord('G'):          self.goto_line,
             ord('%'):          self.mark_by_regex,
             ord('/'):          self.search_by_regex,
+            ord('N'):          self.next_match,
         }
 
         res = []
@@ -320,7 +342,9 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
-            if c == ord('\n'):
+            if c == ord('Q'):
+                break
+            elif c == ord('\n'):
                 res = [item for (_, item) in self.enumerate_selected()]
                 break
             elif bindings.get(c):
@@ -330,6 +354,7 @@ class Screen:
                     break
             elif 0 <= c < 256 and (chr(c) in string.printable):
                 pattern += chr(c)
+                self.regex = None
                 self.focus_pattern(pattern)
             else:
                 pattern = ''
@@ -359,16 +384,12 @@ class TTYLocker:
 
 def process_args():
     parser = optparse.OptionParser()
-    parser.add_option('-l', '--lines', action='store_true', dest='lines_regex', default=False)
     parser.add_option('-0', '--null', action='store_true', dest='null_terminated', default=False)
 
     (options, args) = parser.parse_args()
+    args = args or ['^.*$']
 
-    if options.lines_regex:
-        args.append('^.*$')
-    args = args or ['[\S]+']
-
-    return options, [re.compile(str) for str in args]
+    return options, [re.compile(str, re.IGNORECASE) for str in args]
 
 def itermatches(regexps):
     for line in sys.stdin.xreadlines():
