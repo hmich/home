@@ -204,20 +204,25 @@ class Screen:
         self.status.addstr(str)
         self.status.refresh()
 
+    def show_status(self):
+        nitems = len(self.items)
+        nvisible_items = min(nitems - self.offset + 1, self.lines)
+        msg = "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, nitems)
+        self.print_status(msg.rjust(curses.COLS - 1))
+
     def query(self, str):
         str += ' '
         self.print_status(str)
-
         win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
-        q = curses.textpad.Textbox(win)
-        res = q.edit()
-
-        self.print_status('')
-        return res
+        return curses.textpad.Textbox(win).edit()
 
     def goto_line(self):
-        line = self.query("Goto line:")
-        self._change_item(int(line) - 1)
+        linestr = self.query("Goto line:")
+        try:
+            line = int(linestr)
+        except ValueError:
+            return
+        self._change_item(line - 1)
 
     def mark_by_regex(self):
         s = self.query("Mark by regex:")
@@ -274,8 +279,6 @@ class Screen:
         self.lines = curses.LINES - 1
         self.redraw()
 
-        pattern = ''
-
         bindings = {
             curses.KEY_DOWN:   self.next_item,
             ord('J'):          self.next_item,
@@ -301,7 +304,9 @@ class Screen:
         }
 
         res = []
+        pattern = ''
         while 1:
+            self.show_status()
 
             try:
                 c = self.getch()
@@ -349,7 +354,6 @@ def process_args():
     parser = optparse.OptionParser()
     parser.add_option('-l', '--lines', action='store_true', dest='lines_regex', default=False)
 
-    global options
     (options, args) = parser.parse_args()
 
     if options.lines_regex:
@@ -358,15 +362,14 @@ def process_args():
 
     return [re.compile(str) for str in args]
 
-def find_matches(regexps):
-    res = []
+def itermatches(regexps):
     for line in sys.stdin.xreadlines():
         for re in regexps:
-            res.extend(re.findall(line))
-    return res
+            for match in re.findall(line):
+                yield match
 
 def main():
-    matches = find_matches(process_args())
+    matches = list(itermatches(process_args()))
     if not matches:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
