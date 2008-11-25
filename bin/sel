@@ -96,6 +96,26 @@ class Items:
     def __getitem__(self, idx):
         return self._items[idx]
 
+class Status:
+    def __init__(self):
+        self.win = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
+        self.win.attrset(curses.color_pair(0))
+
+    def clear(self):
+        self.win.move(0, 0)
+        self.win.clrtoeol()
+
+    def put(self, str):
+        self.clear()
+        self.win.addstr(str)
+        self.win.refresh()
+
+    def query(self, str):
+        str += ' '
+        self.put(str)
+        win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
+        return curses.textpad.Textbox(win).edit()
+
 class Screen:
     def __init__(self, matches):
         self.offset = 0
@@ -137,10 +157,9 @@ class Screen:
         self.scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
         self.scr.refresh()
 
-    def clear_line(self, line, scr=None):
-        scr = scr or self.scr
-        scr.move(line, 0)
-        scr.clrtoeol()
+    def clear_line(self, line):
+        self.scr.move(line, 0)
+        self.scr.clrtoeol()
 
     def redraw(self):
         for curidx in xrange(self.offset, self.offset + self.lines):
@@ -199,25 +218,14 @@ class Screen:
         for item in self.items:
             item.marked = True
 
-    def print_status(self, str):
-        self.clear_line(0, self.status)
-        self.status.addstr(str)
-        self.status.refresh()
-
-    def show_status(self):
+    def update_status(self):
         nitems = len(self.items)
         nvisible_items = min(nitems - self.offset + 1, self.lines)
         msg = "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, nitems)
-        self.print_status(msg.rjust(curses.COLS - 1))
-
-    def query(self, str):
-        str += ' '
-        self.print_status(str)
-        win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
-        return curses.textpad.Textbox(win).edit()
+        self.status.put(msg.rjust(curses.COLS - 1))
 
     def goto_line(self):
-        linestr = self.query("Goto line:")
+        linestr = self.status.query("Goto line:")
         try:
             line = int(linestr)
         except ValueError:
@@ -225,7 +233,7 @@ class Screen:
         self._change_item(line - 1)
 
     def mark_by_regex(self):
-        s = self.query("Mark by regex:")
+        s = self.status.query("Mark by regex:")
         try:
             regex = re.compile(s.strip())
         except:
@@ -242,7 +250,7 @@ class Screen:
                 break
 
     def search_by_regex(self):
-        s = self.query("Search by regex:")
+        s = self.status.query("Search by regex:")
         try:
             regex = re.compile(s.strip())
         except:
@@ -273,8 +281,7 @@ class Screen:
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.curs_set(0)
 
-        self.status = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
-        self.status.attrset(curses.color_pair(0))
+        self.status = Status()
         self.scr = stdscr
         self.lines = curses.LINES - 1
         self.redraw()
@@ -306,7 +313,7 @@ class Screen:
         res = []
         pattern = ''
         while 1:
-            self.show_status()
+            self.update_status()
 
             try:
                 c = self.getch()
