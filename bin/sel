@@ -28,15 +28,15 @@ from __future__ import with_statement
 import os
 import sys
 import re
-import operator
 import string
 import optparse
 
 import curses
 import curses.textpad
-from curses.wrapper import wrapper
+import curses.wrapper
 
 PATTERN_TIMEOUT = 2000
+NOTHING_SELECTED_EXIT_STATUS = 1
 
 def cyclic_xrange(start, cnt):
     for idx in xrange(start, cnt):
@@ -84,7 +84,7 @@ class Items:
 
     def _item_state_changed(self, idx, val):
         nmarked = self._nmarked
-        self._nmarked += (1 if val else -1)
+        self._nmarked += 1 if val else -1
 
         self._item_changed_callback(idx)
         if not nmarked or not self._nmarked:
@@ -105,9 +105,6 @@ class Screen:
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
         return self.scr.getch()
-
-    def refresh(self):
-        self.scr.refresh()
 
     def bound_idx(self, idx):
         return max(0, min(idx, len(self.items) - 1))
@@ -138,11 +135,12 @@ class Screen:
         self.scr.attrset(attr)
         self.clear_line(y)
         self.scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
-        self.refresh()
+        self.scr.refresh()
 
-    def clear_line(self, line):
-        self.scr.move(line, 0)
-        self.scr.clrtoeol()
+    def clear_line(self, line, scr=None):
+        scr = scr or self.scr
+        scr.move(line, 0)
+        scr.clrtoeol()
 
     def redraw(self):
         for curidx in xrange(self.offset, self.offset + self.lines):
@@ -202,11 +200,9 @@ class Screen:
             item.marked = True
 
     def print_status(self, str):
-        scr = self.scr
-        scr.attrset(curses.color_pair(0))
-        self.clear_line(curses.LINES - 1)
-        scr.addstr(str)
-        self.refresh()
+        self.clear_line(0, self.status)
+        self.status.addstr(str)
+        self.status.refresh()
 
     def query(self, str):
         str += ' '
@@ -272,6 +268,8 @@ class Screen:
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.curs_set(0)
 
+        self.status = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
+        self.status.attrset(curses.color_pair(0))
         self.scr = stdscr
         self.lines = curses.LINES - 1
         self.redraw()
@@ -302,26 +300,32 @@ class Screen:
             ord('/'):          self.search_by_regex,
         }
 
+        res = []
         while 1:
+
             try:
                 c = self.getch()
             except KeyboardInterrupt:
-                return []
+                break
 
             if c == ord('\n'):
-                return [item for (_, item) in self.enumerate_selected()]
+                res = [item for (_, item) in self.enumerate_selected()]
+                break
             elif bindings.get(c):
                 bindings[c]()
                 pattern = ''
                 if not self.items:
-                    return []
+                    break
             elif 0 <= c < 256 and (chr(c) in string.printable):
                 pattern += chr(c)
                 self.focus_pattern(pattern)
             else:
                 pattern = ''
 
-        return []
+        self.scr.clear()
+        self.scr.refresh()
+
+        return res
 
 class TTYLocker:
     def __enter__(self):
@@ -361,19 +365,19 @@ def find_matches(regexps):
             res.extend(re.findall(line))
     return res
 
-def print_items(items):
-    for item in items:
-        print str(item),
-
 def main():
     matches = find_matches(process_args())
     if not matches:
-        return
+        sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
     with TTYLocker():
-        items = wrapper(Screen(matches).mainloop)
+        items = curses.wrapper(Screen(matches).mainloop)
 
-    print_items(items)
+    if not items:
+        sys.exit(NOTHING_SELECTED_EXIT_STATUS)
+
+    for item in items:
+        print str(item),
 
 if __name__ == '__main__':
     main()
