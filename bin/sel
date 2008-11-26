@@ -26,12 +26,14 @@
 from __future__ import with_statement
 
 import os
+import os.path
 import sys
 import re
 import string
 import optparse
 
 import curses
+import curses.ascii
 import curses.textpad
 import curses.wrapper
 
@@ -43,6 +45,12 @@ def cyclic_xrange(start, cnt):
         yield idx
     for idx in xrange(start):
         yield idx
+
+def listdir_sorted(dir):
+    entries = sorted((f for f in os.listdir(dir)), key=string.lower)
+    dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
+    files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
+    return dirs + files
 
 class Item(object):
     def __init__(self, str, idx, callback):
@@ -120,6 +128,7 @@ class Screen:
     def __init__(self, matches):
         self.offset = 0
         self.idx = 0
+        self.dir = os.getcwd()
         self.items = Items(matches, self.draw_item, self.redraw)
 
     def getch(self):
@@ -135,26 +144,35 @@ class Screen:
     def contains_line(self, line):
         return self.offset <= line < self.offset + self.lines
 
+    def item_line(self, idx):
+        item = self.items[idx]
+        has_marked = self.items.has_marked()
+        fmt = ("[%(marked)s] " if has_marked else '') + "%(text)s"
+        return fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
+
     def draw_item(self, idx):
         if idx >= len(self.items) or not self.contains_line(idx):
             return
 
-        item = self.items[idx]
         y = idx - self.offset
-        has_marked = self.items.has_marked()
-        fmt = (str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' ' +
-              ("[%(marked)s] " if has_marked else '') + "%(text)s")
-        s = fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
+        line_num = str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' '
+        item = self.items[idx]
+        s = self.item_line(idx)
+
+        self.clear_line(y)
+        self.scr.attrset(curses.color_pair(0))
+        self.scr.addstr(y, 0, line_num)
 
         attr = curses.color_pair(0)
         if item.marked:
             attr |= curses.A_BOLD
         if self.idx == idx:
             attr |= curses.color_pair(1)
+        elif self.is_dir(idx):
+            attr |= curses.color_pair(2) | curses.A_BOLD
 
         self.scr.attrset(attr)
-        self.clear_line(y)
-        self.scr.addstr(y, 0, s + ' ' * (curses.COLS - len(s) - 1))
+        self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
         self.scr.refresh()
 
     def clear_line(self, line):
@@ -222,7 +240,7 @@ class Screen:
         nitems = len(self.items)
         nvisible_items = min(nitems - self.offset + 1, self.lines)
         msg = "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, nitems)
-        self.status.put(msg.rjust(curses.COLS - 1))
+        self.status.put(self.dir + msg.rjust(curses.COLS - len(self.dir) - 1))
 
     def goto_line(self):
         linestr = self.status.query("Goto line:")
@@ -294,11 +312,32 @@ class Screen:
 
     def init_curses(self):
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_BLACK)
         # sometimes raises an exception in cygwin
         try:
             curses.curs_set(0)
         except:
             pass
+
+    def is_dir(self, idx = None):
+        idx = idx or self.idx
+        return os.path.isdir(os.path.join(self.dir, str(self.items[idx])))
+
+    def read_dir(self, dir):
+        if not os.path.isabs(dir):
+            dir = os.path.join(self.dir, dir)
+
+        entries = listdir_sorted(dir)
+
+        self.dir = os.path.abspath(dir)
+        self.offset = 0
+        self.idx = 0
+        self.items = Items(entries, self.draw_item, self.redraw)
+
+        self.redraw()
+
+    def up_dir(self):
+        self.read_dir(os.path.split(self.dir)[0])
 
     def mainloop(self, stdscr):
         self.init_curses()
@@ -308,28 +347,34 @@ class Screen:
         self.redraw()
 
         bindings = {
-            curses.KEY_DOWN:   self.next_item,
-            ord('J'):          self.next_item,
-            curses.KEY_UP:     self.prev_item,
-            ord('K'):          self.prev_item,
-            curses.KEY_NPAGE:  self.next_page,
-            ord('H'):          self.next_page,
-            curses.KEY_PPAGE:  self.prev_page,
-            ord('L'):          self.prev_page,
-            curses.KEY_HOME:   self.first_item,
-            ord('<'):          self.first_item,
-            curses.KEY_END:    self.last_item,
-            ord('>'):          self.last_item,
-            curses.KEY_DC:     self.remove_marked,
-            ord('D'):          self.remove_marked,
-            curses.KEY_IC:     self.toggle_item,
-            ord(' '):          self.toggle_item,
-            ord('!'):          self.invert_selection,
-            ord('*'):          self.select_all,
-            ord('G'):          self.goto_line,
-            ord('%'):          self.mark_by_regex,
-            ord('/'):          self.search_by_regex,
-            ord('N'):          self.next_match,
+            curses.KEY_DOWN:      self.next_item,
+            ord('J'):             self.next_item,
+            14:                   self.next_item, # Ctrl-N
+            curses.KEY_UP:        self.prev_item,
+            ord('K'):             self.prev_item,
+            16:                   self.prev_item, # Ctrl-P
+            curses.KEY_NPAGE:     self.next_page,
+            ord('H'):             self.next_page,
+            6:                    self.next_page, # Ctrl-F
+            curses.KEY_PPAGE:     self.prev_page,
+            ord('L'):             self.prev_page,
+            2:                    self.prev_page, # Ctrl-B
+            curses.KEY_HOME:      self.first_item,
+            ord('<'):             self.first_item,
+            curses.KEY_END:       self.last_item,
+            ord('>'):             self.last_item,
+            curses.KEY_DC:        self.remove_marked,
+            ord('D'):             self.remove_marked,
+            curses.KEY_IC:        self.toggle_item,
+            ord(' '):             self.toggle_item,
+            ord('!'):             self.invert_selection,
+            ord('*'):             self.select_all,
+            ord('G'):             self.goto_line,
+            ord('%'):             self.mark_by_regex,
+            ord('/'):             self.search_by_regex,
+            ord('N'):             self.next_match,
+            curses.KEY_BACKSPACE: self.up_dir,
+            ord('^'):             self.up_dir,
         }
 
         res = []
@@ -342,17 +387,25 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
-            if c == ord('Q'):
+            # log = open('log', 'a')
+            # log.write(str(c) + '\n')
+
+            if c == 4: # Ctrl-D
+                res = [self.dir]
                 break
             elif c == ord('\n'):
-                res = [item for (_, item) in self.enumerate_selected()]
-                break
+                if self.is_dir() and not self.items.has_marked():
+                    self.read_dir(str(self.current_item()))
+                    pattern = ''
+                else:
+                    res = [item for (_, item) in self.enumerate_selected()]
+                    break
             elif bindings.get(c):
                 bindings[c]()
                 pattern = ''
                 if not self.items:
                     break
-            elif 0 <= c < 256 and (chr(c) in string.printable):
+            elif curses.ascii.isprint(c):
                 pattern += chr(c)
                 self.regex = None
                 self.focus_pattern(pattern)
@@ -362,7 +415,7 @@ class Screen:
         self.scr.clear()
         self.scr.refresh()
 
-        return res
+        return map(lambda x: os.path.join(self.dir, str(x)), res)
 
 class TTYLocker:
     def __enter__(self):
@@ -402,17 +455,20 @@ def separator(options):
 
 def main():
     options, regexps = process_args()
-    matches = list(itermatches(regexps))
+    if os.isatty(0):
+        matches = listdir_sorted(os.getcwd())
+    else:
+        matches = list(itermatches(regexps))
     if not matches:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
     with TTYLocker():
-        items = curses.wrapper(Screen(matches).mainloop)
+        res = curses.wrapper(Screen(matches).mainloop)
 
-    if not items:
+    if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
-    sys.stdout.write(separator(options).join(map(str, items)))
+    sys.stdout.write(separator(options).join(res))
 
 if __name__ == '__main__':
     main()

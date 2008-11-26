@@ -8,7 +8,6 @@ LSFLAGS="-shAF --color=auto --group-directories-first"
 # some more ls aliases
 alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
-alias l=ls
 
 alias ..='cd ..'
 alias ...='cd ...'
@@ -42,8 +41,9 @@ alias grep='grep -i --color'
 alias G=grep
 
 alias p='git log --graph -p'
-alias d='git diff -p HEAD'
+alias d='git diff HEAD'
 alias o='git oneline --graph'
+alias l='git log --graph'
 alias st='git st'
 alias ci='git commit'
 alias co='git checkout'
@@ -51,3 +51,7 @@ alias svnci='git svn dcommit'
 alias svnco='git svn rebase'
 
 alias sta=cygstart
+
+alias sd='F="$(sel)" && if [ -d "$F" ]; then cd "$F"; else cd "$(dirname "$F")"; fi'
+alias seldo='sel -0 | xargs -0'
+alias gitsel='git diff --name-only | sel -0 | xargs -0 git'
