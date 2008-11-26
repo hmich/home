@@ -37,6 +37,7 @@ import curses.ascii
 import curses.textpad
 import curses.wrapper
 
+VERSION=0.1
 PATTERN_TIMEOUT = 2000
 NOTHING_SELECTED_EXIT_STATUS = 1
 
@@ -147,7 +148,9 @@ class Screen:
     def item_line(self, idx):
         item = self.items[idx]
         has_marked = self.items.has_marked()
-        fmt = ("[%(marked)s] " if has_marked else '') + "%(text)s"
+        fmt = (('[%(marked)s] ' if has_marked else '') +
+               ('[%(text)s]' if self.is_dir(idx) else '%(text)s'))
+
         return fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
 
     def draw_item(self, idx):
@@ -311,8 +314,11 @@ class Screen:
         self.redraw()
 
     def init_curses(self):
+        curses.use_default_colors()
+        curses.init_pair(0, curses.COLOR_WHITE, -1)
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_BLUE, -1)
+
         # sometimes raises an exception in cygwin
         try:
             curses.curs_set(0)
@@ -436,13 +442,17 @@ class TTYLocker:
         os.dup(self._saved_stdout)
 
 def process_args():
-    parser = optparse.OptionParser()
-    parser.add_option('-0', '--null', action='store_true', dest='null_terminated', default=False)
+    parser = optparse.OptionParser(usage='usage: %prog [options] [regexp]...', version='%prog ' + str(VERSION), description=
+'''Allows you to quickly select from a number of options,
+including filenames and strings parsed from the standard input using regexps.''')
+
+    parser.add_option('-0', '--null', action='store_true', dest='null_terminated', default=False, help='separate output items with null character')
+    parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
 
     (options, args) = parser.parse_args()
     args = args or ['^.*$']
 
-    return options, [re.compile(str, re.IGNORECASE) for str in args]
+    return options, [re.compile(s, re.IGNORECASE) for s in args]
 
 def itermatches(regexps):
     for line in sys.stdin.xreadlines():
@@ -451,7 +461,7 @@ def itermatches(regexps):
                 yield match
 
 def separator(options):
-    return '\x00' if options.null_terminated else ' '
+    return '\x00' if options.null_terminated else options.ofs
 
 def main():
     options, regexps = process_args()
