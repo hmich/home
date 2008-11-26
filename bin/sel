@@ -410,8 +410,8 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
-            log = open('log', 'a')
-            log.write(str(c) + '\n')
+            #log = open('log', 'a')
+            #log.write(str(c) + '\n')
 
             if c == 4: # Ctrl-D
                 res = [self.dir]
