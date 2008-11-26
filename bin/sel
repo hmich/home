@@ -54,11 +54,10 @@ def listdir_sorted(dir):
     return dirs + files
 
 class Item(object):
-    def __init__(self, str, idx, callback):
+    def __init__(self, str, callback):
         self._str = str
         self._marked = False
         self._callback = callback
-        self._idx = idx
 
     def _getmarked(self):
         return self._marked
@@ -75,21 +74,28 @@ class Item(object):
 
 class Items:
     def __init__(self, matches, item_changed_callback, has_marked_callback):
-        self._items = [Item(match, idx, self._item_state_changed)
-                       for (idx, match) in enumerate(matches)]
-        self._nmarked = 0
+        self._items = [Item(match, self._item_state_changed) for match in matches]
+        self._update_data()
         self._item_changed_callback = item_changed_callback
         self._has_marked_callback = has_marked_callback
 
     def has_marked(self):
         return self._nmarked > 0
 
-    def remove(self, items):
-        for idx in reversed(list(items)):
-            del self._items[idx]
+    def _update_data(self):
         for (idx, item) in enumerate(self._items):
             item._idx = idx
         self._nmarked = sum(int(item.marked) for item in self._items)
+
+    def remove(self, items):
+        for idx in reversed(list(items)):
+            del self._items[idx]
+        self._update_data()
+
+    def insert(self, idx, matches):
+        newitems = [Item(match, self._item_state_changed) for match in matches]
+        self._items = self._items[:idx] + newitems + self._items[idx:]
+        self._update_data()
 
     def _item_state_changed(self, idx, val):
         nmarked = self._nmarked
@@ -329,6 +335,15 @@ class Screen:
         idx = idx or self.idx
         return os.path.isdir(os.path.join(self.dir, str(self.items[idx])))
 
+    def expand_dir(self):
+        if not self.is_dir():
+            return
+
+        dir = str(self.current_item())
+        items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
+        self.items.insert(self.idx + 1, items)
+        self.redraw()
+
     def read_dir(self, dir):
         if not os.path.isabs(dir):
             dir = os.path.join(self.dir, dir)
@@ -381,6 +396,8 @@ class Screen:
             ord('N'):             self.next_match,
             curses.KEY_BACKSPACE: self.up_dir,
             ord('^'):             self.up_dir,
+            ord('I'):             self.expand_dir,
+            9:                    self.expand_dir, # Ctrl-I
         }
 
         res = []
@@ -393,8 +410,8 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
-            # log = open('log', 'a')
-            # log.write(str(c) + '\n')
+            log = open('log', 'a')
+            log.write(str(c) + '\n')
 
             if c == 4: # Ctrl-D
                 res = [self.dir]
