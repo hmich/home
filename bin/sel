@@ -45,7 +45,6 @@ class ColorsManager(object):
     _colors = []
 
     def init(cls):
-        print type(cls._colors)
         for (idx, (fg, bg)) in enumerate(cls._colors):
             curses.init_pair(idx, fg, bg)
     init = classmethod(init)
@@ -77,10 +76,10 @@ def listdir_sorted(dir):
     return dirs + files
 
 class Item(object):
-    def __init__(self, str, callback):
+    def __init__(self, str):
         self._str = str
         self._marked = False
-        self._callback = callback
+        self.state_changed_event = []
 
     def _getmarked(self):
         return self._marked
@@ -88,7 +87,8 @@ class Item(object):
     def _setmarked(self, val):
         if self._marked != val:
             self._marked = val
-            self._callback(self._idx, val)
+            for listener in self.state_changed_event:
+                listener(self._idx, val)
 
     marked = property(_getmarked, _setmarked)
 
@@ -96,11 +96,17 @@ class Item(object):
         return self._str
 
 class Items:
-    def __init__(self, matches, item_changed_callback, has_marked_callback):
-        self._items = [Item(match, self._item_state_changed) for match in matches]
+    def __init__(self, matches):
+        self._items = [self._create_item(match) for match in matches]
         self._update_data()
-        self._item_changed_callback = item_changed_callback
-        self._has_marked_callback = has_marked_callback
+
+        self.item_changed_event = []
+        self.has_marked_event = []
+
+    def _create_item(self, elem):
+        res = Item(elem)
+        res.state_changed_event.append(self._item_state_changed)
+        return res
 
     def has_marked(self):
         return self._nmarked > 0
@@ -116,7 +122,7 @@ class Items:
         self._update_data()
 
     def insert(self, idx, matches):
-        newitems = [Item(match, self._item_state_changed) for match in matches]
+        newitems = [self._create_item(match) for match in matches]
         self._items = self._items[:idx] + newitems + self._items[idx:]
         self._update_data()
 
@@ -124,9 +130,11 @@ class Items:
         nmarked = self._nmarked
         self._nmarked += 1 if val else -1
 
-        self._item_changed_callback(idx)
+        for listener in self.item_changed_event:
+            listener(idx)
         if not nmarked or not self._nmarked:
-            self._has_marked_callback()
+            for listener in self.has_marked_event:
+                listener()
 
     def __len__(self):
         return len(self._items)
@@ -159,7 +167,13 @@ class Screen:
         self.offset = 0
         self.idx = 0
         self.dir = os.getcwd()
-        self.items = Items(matches, self.draw_item, self.redraw)
+        self.items = self._create_items(matches)
+
+    def _create_items(self, elems):
+        res = Items(elems)
+        res.item_changed_event.append(self.draw_item)
+        res.has_marked_event.append(self.redraw)
+        return res
 
     def getch(self):
         self.scr.timeout(PATTERN_TIMEOUT)
@@ -375,7 +389,7 @@ class Screen:
         self.dir = os.path.abspath(dir)
         self.offset = 0
         self.idx = 0
-        self.items = Items(entries, self.draw_item, self.redraw)
+        self.items = self._create_items(entries)
 
         self.redraw()
 
