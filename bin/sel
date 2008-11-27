@@ -37,9 +37,29 @@ import curses.ascii
 import curses.textpad
 import curses.wrapper
 
-VERSION=0.1
+VERSION = 0.1
 PATTERN_TIMEOUT = 2000
 NOTHING_SELECTED_EXIT_STATUS = 1
+
+class ColorsManager(object):
+    _colors = []
+
+    def init(cls):
+        print type(cls._colors)
+        for (idx, (fg, bg)) in enumerate(cls._colors):
+            curses.init_pair(idx, fg, bg)
+    init = classmethod(init)
+
+    def color(cls, fg, bg):
+        cls._colors.append((fg, bg))
+        return len(cls._colors) - 1
+    color = classmethod(color)
+
+class Colors:
+    color = ColorsManager.color
+    DEFAULT = color(curses.COLOR_WHITE, -1)
+    SELECTION = color(curses.COLOR_WHITE, curses.COLOR_BLUE)
+    DIRS = color(curses.COLOR_BLUE, -1)
 
 def cyclic_xrange(start, cnt):
     for idx in xrange(start, cnt):
@@ -114,7 +134,7 @@ class Items:
 class Status:
     def __init__(self):
         self.win = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
-        self.win.attrset(curses.color_pair(0))
+        self.win.attrset(curses.color_pair(Colors.DEFAULT))
 
     def clear(self):
         self.win.move(0, 0)
@@ -169,16 +189,16 @@ class Screen:
         s = self.item_line(idx)
 
         self.clear_line(y)
-        self.scr.attrset(curses.color_pair(0))
+        self.scr.attrset(curses.color_pair(Colors.DEFAULT))
         self.scr.addstr(y, 0, line_num)
 
-        attr = curses.color_pair(0)
+        attr = curses.color_pair(Colors.DEFAULT)
         if item.marked:
             attr |= curses.A_BOLD
         if self.idx == idx:
-            attr |= curses.color_pair(1)
+            attr |= curses.color_pair(Colors.SELECTION)
         elif self.is_dir(idx):
-            attr |= curses.color_pair(2) | curses.A_BOLD
+            attr |= curses.color_pair(Colors.DIRS) | curses.A_BOLD
 
         self.scr.attrset(attr)
         self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
@@ -321,9 +341,7 @@ class Screen:
 
     def init_curses(self):
         curses.use_default_colors()
-        curses.init_pair(0, curses.COLOR_WHITE, -1)
-        curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
-        curses.init_pair(2, curses.COLOR_BLUE, -1)
+        ColorsManager.init()
 
         # sometimes raises an exception in cygwin
         try:
