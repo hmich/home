@@ -244,7 +244,7 @@ class Screen:
 
         return fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
 
-    def draw_item(self, idx):
+    def draw_item(self, idx, refresh = True):
         if idx >= len(self.items) or not self.list.contains_line(idx):
             return
 
@@ -267,7 +267,8 @@ class Screen:
 
         self.scr.attrset(attr)
         self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
-        self.scr.refresh()
+        if refresh:
+            self.scr.refresh()
 
     def clear_line(self, line):
         self.scr.move(line, 0)
@@ -276,9 +277,10 @@ class Screen:
     def redraw(self):
         for curidx in self.list.visible_lines():
             if curidx < len(self.items):
-                self.draw_item(curidx)
+                self.draw_item(curidx, False)
             else:
                 self.clear_line(curidx - self.list.offset)
+        self.scr.refresh()
 
     def current_item(self):
         return self.items[self.list.idx]
