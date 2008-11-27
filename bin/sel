@@ -162,10 +162,67 @@ class Status:
         win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
         return curses.textpad.Textbox(win).edit()
 
+class ScrollingList:
+    def __init__(self, owner, nitems, lines, idx = 0, offset = 0):
+        self.nitems = nitems
+        self.lines = lines
+        self.owner = owner
+        self.offset = self._bound_offset(offset)
+        self.idx = self._bound_idx(idx)
+
+    def _bound_idx(self, idx):
+        return max(0, min(idx, self.nitems - 1))
+
+    def _bound_offset(self, offset):
+        return max(0, min(offset, self.nitems - self.lines))
+
+    def __str__(self):
+        nvisible_items = min(self.nitems - self.offset + 1, self.lines)
+        return "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, self.nitems)
+
+    def contains_line(self, line):
+        return self.offset <= line < self.offset + self.lines
+
+    def visible_lines(self):
+        return xrange(self.offset, self.offset + self.lines)
+
+    def change_size(self, nitems):
+        self.nitems = nitems
+        self.offset = self._bound_offset(self.offset)
+        self.idx = self._bound_idx(self.idx)
+
+    def change_item(self, arg):
+        previdx, prevoffset = self.idx, self.offset
+
+        self.idx = self._bound_idx(arg)
+        if not self.contains_line(self.idx):
+            if self.idx < self.offset:
+                self.offset = self.idx
+            else:
+                self.offset = self.idx - self.lines + 1
+
+        self.offset = self._bound_offset(self.offset)
+
+        if self.offset == prevoffset:
+            self.owner.draw_item(previdx)
+            self.owner.draw_item(self.idx)
+        else:
+            self.owner.redraw()
+
+    def next_page(self):
+        if self.idx - self.offset == self.lines - 1:
+            self.change_item(self.idx + self.lines)
+        else:
+            self.change_item(self.offset + self.lines - 1)
+
+    def prev_page(self):
+        if self.idx == self.offset:
+            self.change_item(self.idx - self.lines)
+        else:
+            self.change_item(self.offset)
+
 class Screen:
     def __init__(self, matches):
-        self.offset = 0
-        self.idx = 0
         self.dir = os.getcwd()
         self.items = self._create_items(matches)
 
@@ -179,15 +236,6 @@ class Screen:
         self.scr.timeout(PATTERN_TIMEOUT)
         return self.scr.getch()
 
-    def bound_idx(self, idx):
-        return max(0, min(idx, len(self.items) - 1))
-
-    def bound_offset(self, offset):
-        return max(0, min(offset, len(self.items) - self.lines))
-
-    def contains_line(self, line):
-        return self.offset <= line < self.offset + self.lines
-
     def item_line(self, idx):
         item = self.items[idx]
         has_marked = self.items.has_marked()
@@ -197,10 +245,10 @@ class Screen:
         return fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
 
     def draw_item(self, idx):
-        if idx >= len(self.items) or not self.contains_line(idx):
+        if idx >= len(self.items) or not self.list.contains_line(idx):
             return
 
-        y = idx - self.offset
+        y = idx - self.list.offset
         line_num = str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' '
         item = self.items[idx]
         s = self.item_line(idx)
@@ -210,7 +258,7 @@ class Screen:
         self.scr.addstr(y, 0, line_num)
 
         attr = Attrs.DEFAULT
-        if self.idx == idx:
+        if self.list.idx == idx:
             attr = Attrs.SELECTED
         elif item.marked:
             attr = Attrs.MARKED
@@ -226,49 +274,14 @@ class Screen:
         self.scr.clrtoeol()
 
     def redraw(self):
-        for curidx in xrange(self.offset, self.offset + self.lines):
+        for curidx in self.list.visible_lines():
             if curidx < len(self.items):
                 self.draw_item(curidx)
             else:
-                self.clear_line(curidx - self.offset)
-
-    def _change_item(self, arg):
-        previdx, prevoffset = self.idx, self.offset
-
-        self.idx = self.bound_idx(arg)
-        if not self.contains_line(self.idx):
-            if self.idx < self.offset:
-                self.offset = self.idx
-            else:
-                self.offset = self.idx - self.lines + 1
-
-        self.offset = self.bound_offset(self.offset)
-
-        if self.offset == prevoffset:
-            self.draw_item(previdx)
-            self.draw_item(self.idx)
-        else:
-            self.redraw()
-
-    next_item  = lambda self: self._change_item(self.idx + 1)
-    prev_item  = lambda self: self._change_item(self.idx - 1)
-    first_item = lambda self: self._change_item(0)
-    last_item  = lambda self: self._change_item(len(self.items) - 1)
-
-    def next_page(self):
-        if self.idx - self.offset == self.lines - 1:
-            self._change_item(self.idx + self.lines)
-        else:
-            self._change_item(self.offset + self.lines - 1)
-
-    def prev_page(self):
-        if self.idx == self.offset:
-            self._change_item(self.idx - self.lines)
-        else:
-            self._change_item(self.offset)
+                self.clear_line(curidx - self.list.offset)
 
     def current_item(self):
-        return self.items[self.idx]
+        return self.items[self.list.idx]
 
     def toggle_item(self):
         item = self.current_item()
@@ -283,10 +296,7 @@ class Screen:
             item.marked = True
 
     def update_status(self):
-        nitems = len(self.items)
-        nvisible_items = min(nitems - self.offset + 1, self.lines)
-        msg = "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, nitems)
-        self.status.put(self.dir + msg.rjust(curses.COLS - len(self.dir) - 1))
+        self.status.put(self.dir + str(self.list).rjust(curses.COLS - len(self.dir) - 1))
 
     def goto_line(self):
         linestr = self.status.query("Goto line:")
@@ -294,7 +304,7 @@ class Screen:
             line = int(linestr)
         except ValueError:
             return
-        self._change_item(line - 1)
+        self.list.change_item(line - 1)
 
     def mark_by_regex(self):
         s = self.status.query("Mark by regex:")
@@ -310,19 +320,19 @@ class Screen:
     def _focus_pattern(self, startidx):
         for idx in cyclic_xrange(startidx, len(self.items)):
             if self.pattern in str(self.items[idx]).lower():
-                self._change_item(idx)
+                self.list.change_item(idx)
                 break
 
     def _focus_regex(self, startidx):
         for idx in cyclic_xrange(startidx, len(self.items)):
             if self.regex.search(str(self.items[idx])):
-                self._change_item(idx)
+                self.list.change_item(idx)
                 break
 
     def focus_pattern(self, pat):
         self.regex = None
         self.pattern = pat
-        self._focus_pattern(self.idx)
+        self._focus_pattern(self.list.idx)
 
     def search_by_regex(self):
         s = self.status.query("Search by regex:")
@@ -332,13 +342,13 @@ class Screen:
             return
 
         self.pattern = None
-        self._focus_regex(self.idx)
+        self._focus_regex(self.list.idx)
 
     def next_match(self):
         if self.pattern:
-            self._focus_pattern(self.idx + 1)
+            self._focus_pattern(self.list.idx + 1)
         elif self.regex:
-            self._focus_regex(self.idx + 1)
+            self._focus_regex(self.list.idx + 1)
 
     def enumerate_selected(self):
         if self.items.has_marked():
@@ -346,14 +356,14 @@ class Screen:
                 if item.marked:
                     yield (idx, item)
         else:
-            yield (self.idx, self.current_item())
+            yield (self.list.idx, self.current_item())
 
     def remove_marked(self):
         self.items.remove(idx for (idx, _) in self.enumerate_selected())
         if not self.items:
             return
 
-        self._change_item(self.idx)
+        self.list.change_size(len(self.items))
         self.redraw()
 
     def init_curses(self):
@@ -368,7 +378,7 @@ class Screen:
             pass
 
     def is_dir(self, idx = None):
-        idx = idx or self.idx
+        idx = idx or self.list.idx
         return os.path.isdir(os.path.join(self.dir, str(self.items[idx])))
 
     def expand_dir(self):
@@ -377,7 +387,7 @@ class Screen:
 
         dir = str(self.current_item())
         items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
-        self.items.insert(self.idx + 1, items)
+        self.items.insert(self.list.idx + 1, items)
         self.redraw()
 
     def read_dir(self, dir):
@@ -387,20 +397,29 @@ class Screen:
         entries = listdir_sorted(dir)
 
         self.dir = os.path.abspath(dir)
-        self.offset = 0
-        self.idx = 0
         self.items = self._create_items(entries)
-
+        self.list = ScrollingList(self, len(self.items), curses.LINES - 1)
         self.redraw()
 
     def up_dir(self):
-        self.read_dir(os.path.split(self.dir)[0])
+        (parent, cur) = os.path.split(self.dir)
+        self.read_dir(parent)
+        for (idx, item) in enumerate(self.items):
+            if str(item) == cur:
+                self.list.change_item(idx)
+
+    next_page  = lambda self: self.list.next_page()
+    prev_page  = lambda self: self.list.prev_page()
+    next_item  = lambda self: self.list.change_item(self.list.idx + 1)
+    prev_item  = lambda self: self.list.change_item(self.list.idx - 1)
+    first_item = lambda self: self.list.change_item(0)
+    last_item  = lambda self: self.list.change_item(len(self.items) - 1)
 
     def mainloop(self, stdscr):
         self.init_curses()
         self.status = Status()
         self.scr = stdscr
-        self.lines = curses.LINES - 1
+        self.list = ScrollingList(self, len(self.items), curses.LINES - 1)
         self.redraw()
 
         bindings = {
