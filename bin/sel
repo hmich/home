@@ -55,11 +55,14 @@ class ColorsManager(object):
         return len(cls._colors) - 1
     color = classmethod(color)
 
-class Colors:
-    color = ColorsManager.color
-    DEFAULT = color(curses.COLOR_WHITE, -1)
-    SELECTION = color(curses.COLOR_WHITE, curses.COLOR_BLUE)
-    DIRS = color(curses.COLOR_BLUE, -1)
+class Attrs:
+    def init(cls):
+        color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
+        cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
+        cls.MARKED = cls.DEFAULT | curses.A_BOLD
+        cls.SELECTED = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
+        cls.DIRS = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
+    init = classmethod(init)
 
 def cyclic_xrange(start, cnt):
     for idx in xrange(start, cnt):
@@ -134,7 +137,7 @@ class Items:
 class Status:
     def __init__(self):
         self.win = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
-        self.win.attrset(curses.color_pair(Colors.DEFAULT))
+        self.win.attrset(Attrs.STATUS)
 
     def clear(self):
         self.win.move(0, 0)
@@ -189,16 +192,16 @@ class Screen:
         s = self.item_line(idx)
 
         self.clear_line(y)
-        self.scr.attrset(curses.color_pair(Colors.DEFAULT))
+        self.scr.attrset(Attrs.LINENUM)
         self.scr.addstr(y, 0, line_num)
 
-        attr = curses.color_pair(Colors.DEFAULT)
-        if item.marked:
-            attr |= curses.A_BOLD
+        attr = Attrs.DEFAULT
         if self.idx == idx:
-            attr |= curses.color_pair(Colors.SELECTION)
+            attr = Attrs.SELECTED
+        elif item.marked:
+            attr = Attrs.MARKED
         elif self.is_dir(idx):
-            attr |= curses.color_pair(Colors.DIRS) | curses.A_BOLD
+            attr = Attrs.DIRS
 
         self.scr.attrset(attr)
         self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
@@ -341,6 +344,7 @@ class Screen:
 
     def init_curses(self):
         curses.use_default_colors()
+        Attrs.init()
         ColorsManager.init()
 
         # sometimes raises an exception in cygwin
