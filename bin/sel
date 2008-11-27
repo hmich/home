@@ -163,7 +163,7 @@ class Status:
         return curses.textpad.Textbox(win).edit()
 
 class ScrollingList:
-    def __init__(self, owner, nitems, lines, idx = 0, offset = 0):
+    def __init__(self, owner, nitems, lines, idx, offset):
         self.nitems = nitems
         self.lines = lines
         self.owner = owner
@@ -358,13 +358,15 @@ class Screen:
         else:
             yield (self.list.idx, self.current_item())
 
+    def _update_list(self, idx = 0, offset = 0):
+        self.list = ScrollingList(self, len(self.items), curses.LINES - 1, idx, offset)
+        self.redraw()
+
     def remove_marked(self):
         self.items.remove(idx for (idx, _) in self.enumerate_selected())
         if not self.items:
             return
-
-        self.list.change_size(len(self.items))
-        self.redraw()
+        self._update_list(self.list.idx, self.list.offset)
 
     def init_curses(self):
         curses.use_default_colors()
@@ -388,7 +390,7 @@ class Screen:
         dir = str(self.current_item())
         items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
         self.items.insert(self.list.idx + 1, items)
-        self.redraw()
+        self._update_list(self.list.idx, self.list.offset)
 
     def read_dir(self, dir):
         if not os.path.isabs(dir):
@@ -398,8 +400,7 @@ class Screen:
 
         self.dir = os.path.abspath(dir)
         self.items = self._create_items(entries)
-        self.list = ScrollingList(self, len(self.items), curses.LINES - 1)
-        self.redraw()
+        self._update_list()
 
     def up_dir(self):
         (parent, cur) = os.path.split(self.dir)
@@ -419,8 +420,7 @@ class Screen:
         self.init_curses()
         self.status = Status()
         self.scr = stdscr
-        self.list = ScrollingList(self, len(self.items), curses.LINES - 1)
-        self.redraw()
+        self._update_list()
 
         bindings = {
             curses.KEY_DOWN:      self.next_item,
