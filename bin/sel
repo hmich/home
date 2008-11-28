@@ -31,6 +31,7 @@ import sys
 import re
 import string
 import optparse
+import logging
 
 import curses
 import curses.ascii
@@ -40,6 +41,17 @@ import curses.wrapper
 VERSION = 0.1
 PATTERN_TIMEOUT = 2000
 NOTHING_SELECTED_EXIT_STATUS = 1
+
+class Attrs:
+    def init(cls):
+        color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
+        cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
+        cls.MARKED = cls.DEFAULT | curses.A_BOLD
+        cls.SELECTED = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
+        cls.DIR = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
+        cls.EXEC = color(curses.COLOR_GREEN, -1 ) | curses.A_BOLD
+        cls.LINK = color(curses.COLOR_CYAN, -1 ) | curses.A_BOLD
+    init = classmethod(init)
 
 class ColorsManager(object):
     _colors = []
@@ -54,15 +66,6 @@ class ColorsManager(object):
         return len(cls._colors) - 1
     color = classmethod(color)
 
-class Attrs:
-    def init(cls):
-        color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
-        cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
-        cls.MARKED = cls.DEFAULT | curses.A_BOLD
-        cls.SELECTED = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
-        cls.DIRS = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
-    init = classmethod(init)
-
 def cyclic_xrange(start, cnt):
     for idx in xrange(start, cnt):
         yield idx
@@ -76,10 +79,10 @@ def listdir_sorted(dir):
     return dirs + files
 
 class Item(object):
-    def __init__(self, str):
+    def __init__(self, str, action):
         self._str = str
         self._marked = False
-        self.state_changed_event = []
+        self.action = action
 
     def _getmarked(self):
         return self._marked
@@ -87,34 +90,76 @@ class Item(object):
     def _setmarked(self, val):
         if self._marked != val:
             self._marked = val
-            for listener in self.state_changed_event:
-                listener(self._idx, val)
+            self._owner._item_state_changed(self._idx, val)
 
     marked = property(_getmarked, _setmarked)
 
     def __str__(self):
         return self._str
 
-class Items:
-    def __init__(self, matches):
-        self._items = [self._create_item(match) for match in matches]
-        self._update_data()
+    def _mark_str(self):
+        if not self._owner.has_marked():
+            return ''
+        return '[%s] ' % ('x' if self.marked else ' ')
 
+    def screen_str(self):
+        return self._mark_str() + str(self)
+
+    def attr(self):
+        return Attrs.DEFAULT
+
+class Dir(Item):
+    def __init__(self, str, action):
+        Item.__init__(self, str, action)
+
+    def screen_str(self):
+        return Item.screen_str(self) + '/'
+
+    def attr(self):
+        return Attrs.DIR
+
+class Link(Item):
+    def __init__(self, str, action):
+        Item.__init__(self, str, action)
+
+    def screen_str(self):
+        return Item.screen_str(self) + '@'
+
+    def attr(self):
+        return Attrs.LINK
+
+class DirLink(Link):
+    def __init__(self, str, action):
+        Link.__init__(self, str, action)
+
+    def screen_str(self):
+        return Item.screen_str(self) + '/@'
+
+class Executable(Item):
+    def __init__(self, str, action):
+        Item.__init__(self, str, action)
+
+    def screen_str(self):
+        return Item.screen_str(self) + '*'
+
+    def attr(self):
+        return Attrs.EXEC
+
+class Items:
+    def __init__(self, items):
+        self._set_items(items)
         self.item_changed_event = []
         self.has_marked_event = []
-
-    def _create_item(self, elem):
-        res = Item(elem)
-        res.state_changed_event.append(self._item_state_changed)
-        return res
 
     def has_marked(self):
         return self._nmarked > 0
 
-    def _update_data(self):
-        for (idx, item) in enumerate(self._items):
+    def _set_items(self, items):
+        self._items = items
+        for (idx, item) in enumerate(items):
+            item._owner = self
             item._idx = idx
-        self._nmarked = sum(int(item.marked) for item in self._items)
+        self._nmarked = sum(int(item.marked) for item in items)
 
     def remove(self, items):
         for idx in reversed(list(items)):
@@ -122,9 +167,8 @@ class Items:
         self._update_data()
 
     def insert(self, idx, matches):
-        newitems = [self._create_item(match) for match in matches]
-        self._items = self._items[:idx] + newitems + self._items[idx:]
-        self._update_data()
+        newitems = [Item(match, self) for match in matches]
+        self._set_items(self._items[:idx] + newitems + self._items[idx:])
 
     def _item_state_changed(self, idx, val):
         nmarked = self._nmarked
@@ -221,13 +265,37 @@ class ScrollingList:
         else:
             self.change_item(self.offset)
 
+def simple_factory(owner, str):
+    return Item(str, owner.accept_selection)
+
+def filesystem_factory(owner, str):
+    path = os.path.join(owner.dir, str)
+
+    if os.path.isdir(path):
+        def expand_dir():
+            if not owner.items.has_marked():
+                owner.read_dir(str)
+            else:
+                owner.accept_selection()
+        if os.path.islink(path):
+            return DirLink(str, expand_dir)
+        else:
+            return Dir(str, expand_dir)
+    elif os.access(path, os.X_OK):
+        return Executable(str, owner.accept_selection)
+    elif os.path.islink(path):
+        return Link(str, owner.accept_selection)
+    else:
+        return Item(str, owner.accept_selection)
+
 class Screen:
-    def __init__(self, matches):
+    def __init__(self, factory, matches):
         self.dir = os.getcwd()
+        self.factory = factory
         self.items = self._create_items(matches)
 
     def _create_items(self, elems):
-        res = Items(elems)
+        res = Items([self.factory(self, e) for e in elems])
         res.item_changed_event.append(self.draw_item)
         res.has_marked_event.append(self.redraw)
         return res
@@ -236,14 +304,6 @@ class Screen:
         self.scr.timeout(PATTERN_TIMEOUT)
         return self.scr.getch()
 
-    def item_line(self, idx):
-        item = self.items[idx]
-        has_marked = self.items.has_marked()
-        fmt = (('[%(marked)s] ' if has_marked else '') +
-               ('[%(text)s]' if self.is_dir(idx) else '%(text)s'))
-
-        return fmt % {'marked': 'x' if item.marked else ' ', 'text': str(item)}
-
     def draw_item(self, idx, refresh = True):
         if idx >= len(self.items) or not self.list.contains_line(idx):
             return
@@ -251,19 +311,18 @@ class Screen:
         y = idx - self.list.offset
         line_num = str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' '
         item = self.items[idx]
-        s = self.item_line(idx)
+        s = item.screen_str()
 
         self.clear_line(y)
         self.scr.attrset(Attrs.LINENUM)
         self.scr.addstr(y, 0, line_num)
 
-        attr = Attrs.DEFAULT
         if self.list.idx == idx:
             attr = Attrs.SELECTED
         elif item.marked:
             attr = Attrs.MARKED
-        elif self.is_dir(idx):
-            attr = Attrs.DIRS
+        else:
+            attr = item.attr()
 
         self.scr.attrset(attr)
         self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
@@ -411,6 +470,12 @@ class Screen:
             if str(item) == cur:
                 self.list.change_item(idx)
 
+    def set_result(self, res):
+        self.result = res;
+
+    def accept_selection(self):
+        self.set_result([item for (_, item) in self.enumerate_selected()])
+
     next_page  = lambda self: self.list.next_page()
     prev_page  = lambda self: self.list.prev_page()
     next_item  = lambda self: self.list.change_item(self.list.idx + 1)
@@ -455,11 +520,13 @@ class Screen:
             ord('^'):             self.up_dir,
             ord('I'):             self.expand_dir,
             9:                    self.expand_dir, # Ctrl-I
+            4:                    lambda: self.set_result([self.dir]), # Ctrl-D
+            ord('\n'):            lambda: self.current_item().action(),
         }
 
-        res = []
         pattern = ''
-        while 1:
+        self.result = None
+        while self.items and self.result == None:
             self.update_status()
 
             try:
@@ -467,35 +534,17 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
-            #log = open('log', 'a')
-            #log.write(str(c) + '\n')
-
-            if c == 4: # Ctrl-D
-                res = [self.dir]
-                break
-            elif c == ord('\n'):
-                if self.is_dir() and not self.items.has_marked():
-                    self.read_dir(str(self.current_item()))
-                    pattern = ''
-                else:
-                    res = [item for (_, item) in self.enumerate_selected()]
-                    break
-            elif bindings.get(c):
+            if bindings.get(c):
                 bindings[c]()
                 pattern = ''
-                if not self.items:
-                    break
             elif curses.ascii.isprint(c):
                 pattern += chr(c)
-                self.regex = None
                 self.focus_pattern(pattern)
-            else:
-                pattern = ''
 
         self.scr.clear()
         self.scr.refresh()
 
-        return map(lambda x: os.path.join(self.dir, str(x)), res)
+        return map(lambda x: os.path.join(self.dir, str(x)), self.result or [])
 
 class TTYLocker:
     def __enter__(self):
@@ -520,7 +569,7 @@ def process_args():
 '''Allows you to quickly select from a number of options,
 including filenames and strings parsed from the standard input using regexps.''')
 
-    parser.add_option('-0', '--null', action='store_true', dest='null_terminated', default=False, help='separate output items with null character')
+    parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output items with null character')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
 
     (options, args) = parser.parse_args()
@@ -541,13 +590,15 @@ def main():
     options, regexps = process_args()
     if os.isatty(0):
         matches = listdir_sorted(os.getcwd())
+        factory = filesystem_factory
     else:
         matches = list(itermatches(regexps))
+        factory = simple_factory
     if not matches:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
     with TTYLocker():
-        res = curses.wrapper(Screen(matches).mainloop)
+        res = curses.wrapper(Screen(factory, matches).mainloop)
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
