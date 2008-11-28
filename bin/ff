@@ -1,2 +1,2 @@
 #!/bin/sh
-find "$R" | grep -i "$1" | sel 
+ack -f "$R" | grep -i "$1" | sel 
