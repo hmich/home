@@ -28,6 +28,13 @@ from __future__ import with_statement
 import os
 import os.path
 import sys
+import time
+import signal
+
+import struct
+import fcntl
+import termios
+
 import re
 import string
 import optparse
@@ -39,7 +46,7 @@ import curses.textpad
 import curses.wrapper
 
 VERSION = 0.1
-PATTERN_TIMEOUT = 2000
+PATTERN_TIMEOUT = 2
 NOTHING_SELECTED_EXIT_STATUS = 1
 
 class Attrs:
@@ -73,9 +80,11 @@ def cyclic_xrange(start, cnt):
         yield idx
 
 def listdir_sorted(dir):
-    entries = sorted((f for f in os.listdir(dir)), key=string.lower)
+    entries = os.listdir(dir)
+
     dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
     files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
+
     return dirs + files
 
 class Item(object):
@@ -186,9 +195,14 @@ class Items:
     def __getitem__(self, idx):
         return self._items[idx]
 
+class TermSize:
+    def init(cls):
+        cls.height, cls.width = struct.unpack("hhhh", fcntl.ioctl(sys.__stdout__, termios.TIOCGWINSZ, "\000"*8))[0:2]
+    init = classmethod(init)
+
 class Status:
     def __init__(self):
-        self.win = curses.newwin(1, curses.COLS, curses.LINES - 1, 0)
+        self.win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
         self.win.attrset(Attrs.STATUS)
 
     def clear(self):
@@ -203,7 +217,7 @@ class Status:
     def query(self, str):
         str += ' '
         self.put(str)
-        win = curses.newwin(1, curses.COLS - len(str), curses.LINES - 1, len(str))
+        win = curses.newwin(1, TermSize.width - len(str), TermSize.height - 1, len(str))
         return curses.textpad.Textbox(win).edit()
 
 class ScrollingList:
@@ -288,11 +302,16 @@ def filesystem_factory(owner, str):
     else:
         return Item(str, owner.accept_selection)
 
+class ResizeError(Exception):
+    def __init__(self):
+        Exception.__init__(self)
+
 class Screen:
     def __init__(self, factory, matches):
         self.dir = os.getcwd()
         self.factory = factory
         self.items = self._create_items(matches)
+        self.resized = False
 
     def _create_items(self, elems):
         res = Items([self.factory(self, e) for e in elems])
@@ -301,7 +320,7 @@ class Screen:
         return res
 
     def getch(self):
-        self.scr.timeout(PATTERN_TIMEOUT)
+        self.scr.timeout(100)
         return self.scr.getch()
 
     def draw_item(self, idx, refresh = True):
@@ -325,7 +344,7 @@ class Screen:
             attr = item.attr()
 
         self.scr.attrset(attr)
-        self.scr.addstr(y, len(line_num), s + ' ' * (curses.COLS - len(s) - len(line_num)))
+        self.scr.addstr(y, len(line_num), s + ' ' * (TermSize.width - len(s) - len(line_num)))
         if refresh:
             self.scr.refresh()
 
@@ -357,7 +376,7 @@ class Screen:
             item.marked = True
 
     def update_status(self):
-        self.status.put(self.dir + str(self.list).rjust(curses.COLS - len(self.dir) - 1))
+        self.status.put(self.dir + str(self.list).rjust(TermSize.width - len(self.dir) - 1))
 
     def goto_line(self):
         linestr = self.status.query("Goto line:")
@@ -420,7 +439,7 @@ class Screen:
             yield (self.list.idx, self.current_item())
 
     def _update_list(self, idx = 0, offset = 0):
-        self.list = ScrollingList(self, len(self.items), curses.LINES - 1, idx, offset)
+        self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
         self.redraw()
 
     def remove_marked(self):
@@ -483,6 +502,13 @@ class Screen:
     first_item = lambda self: self.list.change_item(0)
     last_item  = lambda self: self.list.change_item(len(self.items) - 1)
 
+    def clear_screen(self):
+        self.scr.clear()
+        self.scr.refresh()
+
+    def resize(self, *args):
+        self.resized = True
+
     def mainloop(self, stdscr):
         self.init_curses()
         self.status = Status()
@@ -525,6 +551,8 @@ class Screen:
         }
 
         pattern = ''
+        lastpress = time.time()
+
         self.result = None
         while self.items and self.result == None:
             self.update_status()
@@ -534,15 +562,21 @@ class Screen:
             except KeyboardInterrupt:
                 break
 
+            if self.resized:
+                self.resized = False
+                raise ResizeError()
+
             if bindings.get(c):
                 bindings[c]()
                 pattern = ''
             elif curses.ascii.isprint(c):
                 pattern += chr(c)
+                lastpress = time.time()
                 self.focus_pattern(pattern)
+            elif time.time() - lastpress > PATTERN_TIMEOUT:
+                pattern = ''
 
-        self.scr.clear()
-        self.scr.refresh()
+        self.clear_screen()
 
         return map(lambda x: os.path.join(self.dir, str(x)), self.result or [])
 
@@ -594,11 +628,21 @@ def main():
     else:
         matches = list(itermatches(regexps))
         factory = simple_factory
+
     if not matches:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
+    scr = Screen(factory, matches)
+    signal.signal(signal.SIGWINCH, scr.resize)
+
+    res = None
     with TTYLocker():
-        res = curses.wrapper(Screen(factory, matches).mainloop)
+        while res == None:
+            try:
+                TermSize.init()
+                res = curses.wrapper(scr.mainloop)
+            except ResizeError, e:
+                pass
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
