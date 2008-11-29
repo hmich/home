@@ -282,25 +282,23 @@ class ScrollingList:
 def simple_factory(owner, str):
     return Item(str, owner.accept_selection)
 
-def filesystem_factory(owner, str):
-    path = os.path.join(owner.dir, str)
-
+def filesystem_factory(owner, path):
     if os.path.isdir(path):
         def expand_dir():
             if not owner.items.has_marked():
-                owner.read_dir(str)
+                owner.read_dir(path)
             else:
                 owner.accept_selection()
         if os.path.islink(path):
-            return DirLink(str, expand_dir)
+            return DirLink(path, expand_dir)
         else:
-            return Dir(str, expand_dir)
+            return Dir(path, expand_dir)
     elif os.access(path, os.X_OK):
-        return Executable(str, owner.accept_selection)
+        return Executable(path, owner.accept_selection)
     elif os.path.islink(path):
-        return Link(str, owner.accept_selection)
+        return Link(path, owner.accept_selection)
     else:
-        return Item(str, owner.accept_selection)
+        return Item(path, owner.accept_selection)
 
 class ResizeError(Exception):
     def __init__(self):
@@ -308,7 +306,6 @@ class ResizeError(Exception):
 
 class Screen:
     def __init__(self, factory, matches):
-        self.dir = os.getcwd()
         self.factory = factory
         self.items = self._create_items(matches)
         self.resized = False
@@ -376,7 +373,8 @@ class Screen:
             item.marked = True
 
     def update_status(self):
-        self.status.put(self.dir + str(self.list).rjust(TermSize.width - len(self.dir) - 1))
+        curdir = os.getcwd()
+        self.status.put(curdir + str(self.list).rjust(TermSize.width - len(curdir) - 1))
 
     def goto_line(self):
         linestr = self.status.query("Goto line:")
@@ -461,7 +459,7 @@ class Screen:
 
     def is_dir(self, idx = None):
         idx = idx or self.list.idx
-        return os.path.isdir(os.path.join(self.dir, str(self.items[idx])))
+        return os.path.isdir(str(self.items[idx]))
 
     def expand_dir(self):
         if not self.is_dir():
@@ -473,17 +471,13 @@ class Screen:
         self._update_list(self.list.idx, self.list.offset)
 
     def read_dir(self, dir):
-        if not os.path.isabs(dir):
-            dir = os.path.join(self.dir, dir)
-
         entries = listdir_sorted(dir)
-
-        self.dir = os.path.abspath(dir)
+        os.chdir(dir)
         self.items = self._create_items(entries)
         self._update_list()
 
     def up_dir(self):
-        (parent, cur) = os.path.split(self.dir)
+        (parent, cur) = os.path.split(os.getcwd())
         self.read_dir(parent)
         for (idx, item) in enumerate(self.items):
             if str(item) == cur:
@@ -546,7 +540,7 @@ class Screen:
             ord('^'):             self.up_dir,
             ord('I'):             self.expand_dir,
             9:                    self.expand_dir, # Ctrl-I
-            4:                    lambda: self.set_result([self.dir]), # Ctrl-D
+            4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
         }
 
@@ -578,7 +572,7 @@ class Screen:
 
         self.clear_screen()
 
-        return map(lambda x: os.path.join(self.dir, str(x)), self.result or [])
+        return map(lambda x: os.path.join(os.getcwd(), str(x)), self.result or [])
 
 class TTYLocker:
     def __enter__(self):
