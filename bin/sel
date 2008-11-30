@@ -85,7 +85,7 @@ def listdir_sorted(dir):
     dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
     files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
 
-    return dirs + files
+    return ['..'] + dirs + files
 
 class Item(object):
     def __init__(self, str, action):
@@ -173,7 +173,7 @@ class Items:
     def remove(self, items):
         for idx in reversed(list(items)):
             del self._items[idx]
-        self._update_data()
+        self._set_items(self._items)
 
     def insert(self, idx, matches):
         newitems = [Item(match, self) for match in matches]
@@ -567,7 +567,7 @@ class Screen:
                 pattern += chr(c)
                 lastpress = time.time()
                 self.focus_pattern(pattern)
-            elif time.time() - lastpress > PATTERN_TIMEOUT:
+            elif c != -1 or time.time() - lastpress > PATTERN_TIMEOUT:
                 pattern = ''
 
         self.clear_screen()
