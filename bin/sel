@@ -85,13 +85,16 @@ def listdir_sorted(dir):
     dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
     files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
 
-    return ['..'] + dirs + files
+    return dirs + files
 
 class Item(object):
     def __init__(self, str, action):
         self._str = str
         self._marked = False
-        self.action = action
+        self._action = action
+
+    def action(self):
+        self._action(self)
 
     def _getmarked(self):
         return self._marked
@@ -280,25 +283,30 @@ class ScrollingList:
             self.change_item(self.offset)
 
 def simple_factory(owner, str):
-    return Item(str, owner.accept_selection)
+    return Item(str, lambda item: owner.accept_selection())
 
 def filesystem_factory(owner, path):
+    accept = lambda item: owner.accept_selection()
+
     if os.path.isdir(path):
-        def expand_dir():
+        def read_dir(item):
             if not owner.items.has_marked():
-                owner.read_dir(path)
+                if str(item) == '..':
+                    owner.up_dir()
+                else:
+                    owner.read_dir(path)
             else:
                 owner.accept_selection()
         if os.path.islink(path):
-            return DirLink(path, expand_dir)
+            return DirLink(path, read_dir)
         else:
-            return Dir(path, expand_dir)
+            return Dir(path, read_dir)
     elif os.access(path, os.X_OK):
-        return Executable(path, owner.accept_selection)
+        return Executable(path, accept)
     elif os.path.islink(path):
-        return Link(path, owner.accept_selection)
+        return Link(path, accept)
     else:
-        return Item(path, owner.accept_selection)
+        return Item(path, accept)
 
 class ResizeError(Exception):
     def __init__(self):
@@ -457,21 +465,21 @@ class Screen:
         except:
             pass
 
-    def is_dir(self, idx = None):
-        idx = idx or self.list.idx
-        return os.path.isdir(str(self.items[idx]))
+    # def is_dir(self, idx = None):
+    #     idx = idx or self.list.idx
+    #     return os.path.isdir(str(self.items[idx]))
 
-    def expand_dir(self):
-        if not self.is_dir():
-            return
+    # def expand_dir(self):
+    #     if not self.is_dir():
+    #         return
 
-        dir = str(self.current_item())
-        items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
-        self.items.insert(self.list.idx + 1, items)
-        self._update_list(self.list.idx, self.list.offset)
+    #     dir = str(self.current_item())
+    #     items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
+    #     self.items.insert(self.list.idx + 1, items)
+    #     self._update_list(self.list.idx, self.list.offset)
 
     def read_dir(self, dir):
-        entries = listdir_sorted(dir)
+        entries = listdir_sorted(dir) or ['..']
         os.chdir(dir)
         self.items = self._create_items(entries)
         self._update_list()
@@ -538,8 +546,8 @@ class Screen:
             ord('N'):             self.next_match,
             curses.KEY_BACKSPACE: self.up_dir,
             ord('^'):             self.up_dir,
-            ord('I'):             self.expand_dir,
-            9:                    self.expand_dir, # Ctrl-I
+            #ord('I'):             self.expand_dir,
+            #9:                    self.expand_dir, # Ctrl-I
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
         }
