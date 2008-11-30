@@ -28,9 +28,9 @@ from __future__ import with_statement
 import os
 import os.path
 import sys
-import time
 import signal
 
+import time
 import struct
 import fcntl
 import termios
@@ -55,6 +55,7 @@ class Attrs:
         cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
         cls.MARKED = cls.DEFAULT | curses.A_BOLD
         cls.SELECTED = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
+        cls.HIGHLIGHT = color(curses.COLOR_WHITE, curses.COLOR_RED) | curses.A_BOLD
         cls.DIR = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
         cls.EXEC = color(curses.COLOR_GREEN, -1 ) | curses.A_BOLD
         cls.LINK = color(curses.COLOR_CYAN, -1 ) | curses.A_BOLD
@@ -166,6 +167,9 @@ class Items:
     def has_marked(self):
         return self._nmarked > 0
 
+    def index(self, val):
+        return self._items.index(val)
+
     def _set_items(self, items):
         self._items = items
         for (idx, item) in enumerate(items):
@@ -238,7 +242,7 @@ class ScrollingList:
         return max(0, min(offset, self.nitems - self.lines))
 
     def __str__(self):
-        nvisible_items = min(self.nitems - self.offset + 1, self.lines)
+        nvisible_items = min(self.nitems - self.offset, self.lines)
         return "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, self.nitems)
 
     def contains_line(self, line):
@@ -313,27 +317,54 @@ class ResizeError(Exception):
         Exception.__init__(self)
 
 class Screen:
-    def __init__(self, factory, matches):
+    def __init__(self, factory, matches, browse_mode):
         self.factory = factory
         self.items = self._create_items(matches)
         self.resized = False
+        self._create_items(matches)
+        self.browse_mode = browse_mode
 
     def _create_items(self, elems):
-        res = Items([self.factory(self, e) for e in elems])
-        res.item_changed_event.append(self.draw_item)
-        res.has_marked_event.append(self.redraw)
-        return res
+        self._set_items([self.factory(self, e) for e in elems])
+        self._olditems = None
+
+    def _update_list(self, idx = 0, offset = 0):
+        self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
+        self.redraw()
+
+    def _set_items(self, items):
+        self.items = Items(items)
+        self.items.item_changed_event.append(self.draw_item)
+        self.items.has_marked_event.append(self.redraw)
 
     def getch(self):
         self.scr.timeout(100)
         return self.scr.getch()
+
+    def highlightstr(self, y, x, attr, s, pattern):
+        start = 0
+        ls = s.lower()
+        while start < len(s):
+            idx = ls.find(pattern, start)
+            if not pattern or idx == -1:
+                self.scr.attrset(attr)
+                self.scr.addstr(y, x + start, s[start:])
+                break
+            else:
+                self.scr.attrset(attr)
+                self.scr.addstr(y, x + start, s[start:idx])
+
+                self.scr.attrset(Attrs.HIGHLIGHT)
+                self.scr.addstr(y, x + idx, s[idx:(idx + len(pattern))])
+
+                start = idx + len(pattern)
 
     def draw_item(self, idx, refresh = True):
         if idx >= len(self.items) or not self.list.contains_line(idx):
             return
 
         y = idx - self.list.offset
-        line_num = str(idx + 1).rjust(len(str(len(self.items))) + 1) + ' '
+        line_num = str(idx + 1).rjust(len(str(len(self.items)))) + ' '
         item = self.items[idx]
         s = item.screen_str()
 
@@ -348,8 +379,9 @@ class Screen:
         else:
             attr = item.attr()
 
-        self.scr.attrset(attr)
-        self.scr.addstr(y, len(line_num), s + ' ' * (TermSize.width - len(s) - len(line_num)))
+        s = s.ljust(TermSize.width - len(line_num))
+        self.highlightstr(y, len(line_num), attr, s, self.pattern)
+
         if refresh:
             self.scr.refresh()
 
@@ -403,38 +435,37 @@ class Screen:
             if regex.search(str(item)):
                 item.marked = True
 
-    def _focus_pattern(self, startidx):
-        for idx in cyclic_xrange(startidx, len(self.items)):
-            if self.pattern in str(self.items[idx]).lower():
-                self.list.change_item(idx)
-                break
+    def _filter(self, items):
+        if not items:
+            self.redraw()
+            return False
+        if not self._olditems:
+            self._olditems = self.items
+        self._set_items(list(items))
+        self._update_list()
+        return True
 
-    def _focus_regex(self, startidx):
-        for idx in cyclic_xrange(startidx, len(self.items)):
-            if self.regex.search(str(self.items[idx])):
-                self.list.change_item(idx)
-                break
+    def _items_by_pattern(self, pat):
+        for item in self.items:
+            if pat in str(item).lower():
+                yield item
 
-    def focus_pattern(self, pat):
-        self.regex = None
-        self.pattern = pat
-        self._focus_pattern(self.list.idx)
+    def _items_by_regex(self, regex):
+        for item in self.items:
+            if regex.search(str(item).lower()):
+                yield item
+
+    def filter_by_pattern(self, pattern):
+        return self._filter(list(self._items_by_pattern(pattern)))
 
     def search_by_regex(self):
         s = self.status.query("Search by regex:")
         try:
-            self.regex = re.compile(s.strip(), re.IGNORECASE)
+            regex = re.compile(s.strip(), re.IGNORECASE)
         except:
             return
 
-        self.pattern = None
-        self._focus_regex(self.list.idx)
-
-    def next_match(self):
-        if self.pattern:
-            self._focus_pattern(self.list.idx + 1)
-        elif self.regex:
-            self._focus_regex(self.list.idx + 1)
+        self._filter(list(self._items_by_regex(regex)))
 
     def enumerate_selected(self):
         if self.items.has_marked():
@@ -444,14 +475,10 @@ class Screen:
         else:
             yield (self.list.idx, self.current_item())
 
-    def _update_list(self, idx = 0, offset = 0):
-        self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
-        self.redraw()
-
     def remove_marked(self):
         self.items.remove(idx for (idx, _) in self.enumerate_selected())
-        if not self.items:
-            return
+        # if not self.items:
+        #     return
         self._update_list(self.list.idx, self.list.offset)
 
     def init_curses(self):
@@ -465,31 +492,34 @@ class Screen:
         except:
             pass
 
-    # def is_dir(self, idx = None):
-    #     idx = idx or self.list.idx
-    #     return os.path.isdir(str(self.items[idx]))
-
-    # def expand_dir(self):
-    #     if not self.is_dir():
-    #         return
-
-    #     dir = str(self.current_item())
-    #     items = [os.path.join(dir, f) for f in listdir_sorted(dir)]
-    #     self.items.insert(self.list.idx + 1, items)
-    #     self._update_list(self.list.idx, self.list.offset)
-
     def read_dir(self, dir):
         entries = listdir_sorted(dir) or ['..']
         os.chdir(dir)
-        self.items = self._create_items(entries)
+        self._create_items(entries)
         self._update_list()
 
     def up_dir(self):
+        if not self.browse_mode:
+            return
         (parent, cur) = os.path.split(os.getcwd())
         self.read_dir(parent)
         for (idx, item) in enumerate(self.items):
             if str(item) == cur:
                 self.list.change_item(idx)
+
+    def restore_items(self):
+        if not self._olditems:
+            return
+        cur = self.current_item() if self.items else  None
+        self._set_items(list(self._olditems))
+        self._update_list(self.items.index(cur) if cur else 0)
+        self._olditems = None
+
+    def restore_or_up_dir(self):
+        if self._olditems:
+            self.restore_items()
+        else:
+            self.up_dir()
 
     def set_result(self, res):
         self.result = res;
@@ -512,6 +542,7 @@ class Screen:
         self.resized = True
 
     def mainloop(self, stdscr):
+        self.pattern = ''
         self.init_curses()
         self.status = Status()
         self.scr = stdscr
@@ -543,20 +574,18 @@ class Screen:
             ord('G'):             self.goto_line,
             ord('%'):             self.mark_by_regex,
             ord('/'):             self.search_by_regex,
-            ord('N'):             self.next_match,
-            curses.KEY_BACKSPACE: self.up_dir,
+            curses.KEY_BACKSPACE: self.restore_or_up_dir,
             ord('^'):             self.up_dir,
+            27:                   self.restore_items, #bEsc
             #ord('I'):             self.expand_dir,
             #9:                    self.expand_dir, # Ctrl-I
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
         }
 
-        pattern = ''
         lastpress = time.time()
-
         self.result = None
-        while self.items and self.result == None:
+        while self.result == None:
             self.update_status()
 
             try:
@@ -569,14 +598,16 @@ class Screen:
                 raise ResizeError()
 
             if bindings.get(c):
+                self.pattern = ''
                 bindings[c]()
-                pattern = ''
             elif curses.ascii.isprint(c):
-                pattern += chr(c)
+                self.pattern += chr(c)
                 lastpress = time.time()
-                self.focus_pattern(pattern)
+                if not self.filter_by_pattern(self.pattern):
+                    self.pattern = ''
             elif c != -1 or time.time() - lastpress > PATTERN_TIMEOUT:
-                pattern = ''
+                self.pattern = ''
+                self.redraw()
 
         self.clear_screen()
 
@@ -625,7 +656,8 @@ def separator(options):
 
 def main():
     options, regexps = process_args()
-    if os.isatty(0):
+    browse_mode = os.isatty(0)
+    if browse_mode:
         matches = listdir_sorted(os.getcwd())
         factory = filesystem_factory
     else:
@@ -635,17 +667,17 @@ def main():
     if not matches:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
-    scr = Screen(factory, matches)
-    signal.signal(signal.SIGWINCH, scr.resize)
-
-    res = None
     with TTYLocker():
+        TermSize.init()
+        scr = Screen(factory, matches, browse_mode)
+        signal.signal(signal.SIGWINCH, scr.resize)
+
+        res = None
         while res == None:
             try:
-                TermSize.init()
                 res = curses.wrapper(scr.mainloop)
             except ResizeError, e:
-                pass
+                TermSize.init()
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
