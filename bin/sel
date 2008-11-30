@@ -603,7 +603,8 @@ class TTYLocker:
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [regexp]...', version='%prog ' + str(VERSION), description=
 '''Allows you to quickly select from a number of options,
-including filenames and strings parsed from the standard input using regexps.''')
+including filenames and strings parsed from the standard input using regexps.
+Please send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output items with null character')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
