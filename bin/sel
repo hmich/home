@@ -50,6 +50,7 @@ PATTERN_TIMEOUT = 2
 NOTHING_SELECTED_EXIT_STATUS = 1
 
 class Attrs:
+    @classmethod
     def init(cls):
         color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
         cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
@@ -59,20 +60,19 @@ class Attrs:
         cls.DIR = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
         cls.EXEC = color(curses.COLOR_GREEN, -1 ) | curses.A_BOLD
         cls.LINK = color(curses.COLOR_CYAN, -1 ) | curses.A_BOLD
-    init = classmethod(init)
 
 class ColorsManager(object):
     _colors = []
 
+    @classmethod
     def init(cls):
         for (idx, (fg, bg)) in enumerate(cls._colors):
             curses.init_pair(idx, fg, bg)
-    init = classmethod(init)
 
+    @classmethod
     def color(cls, fg, bg):
         cls._colors.append((fg, bg))
         return len(cls._colors) - 1
-    color = classmethod(color)
 
 def cyclic_xrange(start, cnt):
     for idx in xrange(start, cnt):
@@ -182,6 +182,13 @@ class Items:
             del self._items[idx]
         self._set_items(self._items)
 
+    def remove_items(self, items):
+        s = set(items)
+        for (idx, item) in reversed(list(enumerate(self._items))):
+            if item in s:
+                del self._items[idx]
+        self._set_items(self._items)
+
     def insert(self, idx, matches):
         newitems = [Item(match, self) for match in matches]
         self._set_items(self._items[:idx] + newitems + self._items[idx:])
@@ -203,9 +210,9 @@ class Items:
         return self._items[idx]
 
 class TermSize:
+    @classmethod
     def init(cls):
         cls.height, cls.width = struct.unpack("hhhh", fcntl.ioctl(sys.__stdout__, termios.TIOCGWINSZ, "\000"*8))[0:2]
-    init = classmethod(init)
 
 class Status:
     def __init__(self):
@@ -316,6 +323,10 @@ class ResizeError(Exception):
     def __init__(self):
         Exception.__init__(self)
 
+class RunShellError(Exception):
+    def __init__(self):
+        Exception.__init__(self)
+
 class Screen:
     def __init__(self, factory, matches, browse_mode):
         self.factory = factory
@@ -323,6 +334,7 @@ class Screen:
         self.resized = False
         self._create_items(matches)
         self.browse_mode = browse_mode
+        self.list = None
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
@@ -468,6 +480,8 @@ class Screen:
         self._filter(list(self._items_by_regex(regex)))
 
     def enumerate_selected(self):
+        if not self.items:
+            return
         if self.items.has_marked():
             for (idx, item) in enumerate(self.items):
                 if item.marked:
@@ -476,9 +490,9 @@ class Screen:
             yield (self.list.idx, self.current_item())
 
     def remove_marked(self):
+        if self._olditems:
+            self._olditems.remove_items(item for (_, item) in self.enumerate_selected())
         self.items.remove(idx for (idx, _) in self.enumerate_selected())
-        # if not self.items:
-        #     return
         self._update_list(self.list.idx, self.list.offset)
 
     def init_curses(self):
@@ -493,10 +507,14 @@ class Screen:
             pass
 
     def read_dir(self, dir):
-        entries = listdir_sorted(dir) or ['..']
-        os.chdir(dir)
-        self._create_items(entries)
-        self._update_list()
+        try:
+            entries = listdir_sorted(dir) or ['..']
+            os.chdir(dir)
+        except OSError:
+            pass
+        else:
+            self._create_items(entries)
+            self._update_list()
 
     def up_dir(self):
         if not self.browse_mode:
@@ -541,12 +559,20 @@ class Screen:
     def resize(self, *args):
         self.resized = True
 
+    def run_shell(self):
+        self.clear_screen()
+        raise RunShellError()
+
     def mainloop(self, stdscr):
         self.pattern = ''
         self.init_curses()
         self.status = Status()
         self.scr = stdscr
-        self._update_list()
+
+        if self.list == None:
+            self._update_list()
+        else:
+            self._update_list(self.list.idx, self.list.offset)
 
         bindings = {
             curses.KEY_DOWN:      self.next_item,
@@ -569,16 +595,15 @@ class Screen:
             ord('D'):             self.remove_marked,
             curses.KEY_IC:        self.toggle_item,
             ord(' '):             self.toggle_item,
-            ord('!'):             self.invert_selection,
+            ord('~'):             self.invert_selection,
+            ord('!'):             self.run_shell,
             ord('*'):             self.select_all,
             ord('G'):             self.goto_line,
             ord('%'):             self.mark_by_regex,
             ord('/'):             self.search_by_regex,
             curses.KEY_BACKSPACE: self.restore_or_up_dir,
             ord('^'):             self.up_dir,
-            27:                   self.restore_items, #bEsc
-            #ord('I'):             self.expand_dir,
-            #9:                    self.expand_dir, # Ctrl-I
+            27:                   self.restore_items, # Esc
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
         }
@@ -676,8 +701,10 @@ def main():
         while res == None:
             try:
                 res = curses.wrapper(scr.mainloop)
-            except ResizeError, e:
+            except ResizeError:
                 TermSize.init()
+            except RunShellError:
+                os.system(os.getenv('SHELL'))
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
