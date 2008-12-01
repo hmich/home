@@ -253,6 +253,9 @@ def listdir_sorted(dir):
 
     return dirs + files
 
+def quote_string(s):
+    return '"' + s + '"'
+
 def simple_factory(owner, str):
     return Item(str, lambda item: owner.accept_selection())
 
@@ -283,9 +286,10 @@ class ResizeError(Exception):
     def __init__(self):
         Exception.__init__(self)
 
-class RunShellError(Exception):
-    def __init__(self):
+class InvocationError(Exception):
+    def __init__(self, cmd):
         Exception.__init__(self)
+        self.cmd = cmd
 
 class StrHighlighter:
     def __init__(self, str):
@@ -306,6 +310,9 @@ class RegexHighlighter:
         if not match:
             return -1, -1
         return start + match.start(), start + match.end()
+
+def shell_path():
+    return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 class Screen:
     def __init__(self, factory, matches, browse_mode):
@@ -568,9 +575,17 @@ class Screen:
     def resize(self, *args):
         self.resized = True
 
-    def run_shell(self):
+    def invoke_shell(self):
         self.clear_screen()
-        raise RunShellError()
+        raise InvocationError(shell_path())
+
+    def run_command(self):
+        args = [str(item) for _, item in self.enumerate_selected()]
+        cmd = self.status.query("Run command on selection:")
+        if not cmd:
+            return
+        self.clear_screen()
+        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)))
 
     def clear_highlighter(self):
         if not self.highlighter:
@@ -607,7 +622,8 @@ class Screen:
             curses.KEY_IC:        self.toggle_item,
             ord(' '):             self.toggle_item,
             ord('~'):             self.invert_selection,
-            ord('!'):             self.run_shell,
+            ord('!'):             self.run_command,
+            ord('@'):             self.invoke_shell,
             ord('*'):             self.select_all,
             ord('G'):             self.goto_line,
             ord('%'):             self.mark_by_regex,
@@ -715,9 +731,6 @@ def separator(options):
     else:
         return options.ofs
 
-def shell_name():
-    return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
-
 def main():
     options, regexps = process_args()
     browse_mode = os.isatty(0)
@@ -742,15 +755,15 @@ def main():
                 res = curses.wrapper(scr.mainloop)
             except ResizeError:
                 TermSize.init()
-            except RunShellError:
-                os.system(shell_name())
+            except InvocationError, e:
+                os.system(e.cmd)
                 scr.reread_dir()
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
     if options.quote:
-        res = map(lambda s: '"' + s + '"', res)
+        res = map(quote_string, res)
 
     sys.stdout.write(str(separator(options)).join(res))
 
