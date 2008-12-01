@@ -67,7 +67,7 @@ class ColorsManager(object):
 
     @classmethod
     def init(cls):
-        for (idx, (fg, bg)) in enumerate(cls._colors):
+        for idx, (fg, bg) in enumerate(cls._colors):
             curses.init_pair(idx, fg, bg)
 
     @classmethod
@@ -128,7 +128,7 @@ class Items:
 
     def _set_items(self, items):
         self._items = items
-        for (idx, item) in enumerate(items):
+        for idx, item in enumerate(items):
             item._owner = self
             item._idx = idx
         self._nmarked = sum(int(item.marked) for item in items)
@@ -140,14 +140,10 @@ class Items:
 
     def remove_items(self, items):
         s = set(items)
-        for (idx, item) in reversed(list(enumerate(self._items))):
+        for idx, item in reversed(list(enumerate(self._items))):
             if item in s:
                 del self._items[idx]
         self._set_items(self._items)
-
-    def insert(self, idx, matches):
-        newitems = [Item(match, self) for match in matches]
-        self._set_items(self._items[:idx] + newitems + self._items[idx:])
 
     def _item_state_changed(self, idx, val):
         nmarked = self._nmarked
@@ -477,7 +473,7 @@ class Screen:
         if not self.items:
             return
         if self.items.has_marked():
-            for (idx, item) in enumerate(self.items):
+            for idx, item in enumerate(self.items):
                 if item.marked:
                     yield (idx, item)
         else:
@@ -485,8 +481,8 @@ class Screen:
 
     def remove_marked(self):
         if self._olditems:
-            self._olditems.remove_items(item for (_, item) in self.enumerate_selected())
-        self.items.remove(idx for (idx, _) in self.enumerate_selected())
+            self._olditems.remove_items(item for _, item in self.enumerate_selected())
+        self.items.remove(idx for idx, _ in self.enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
     def init_curses(self):
@@ -513,11 +509,30 @@ class Screen:
     def up_dir(self):
         if not self.browse_mode:
             return
+
         (parent, cur) = os.path.split(os.getcwd())
         self.read_dir(parent)
-        for (idx, item) in enumerate(self.items):
+
+        for idx, item in enumerate(self.items):
             if str(item) == cur:
                 self.list.change_item(idx)
+
+    def reread_dir(self):
+        if not self.browse_mode:
+            return
+
+        cur = ''
+        if self.items:
+            cur = str(self.current_item())
+
+        self.read_dir(os.getcwd())
+        if not cur:
+            return
+
+        for idx, item in enumerate(self.items):
+            if str(item) == cur:
+                self.list.change_item(idx)
+                break
 
     def restore_items(self):
         if not self._olditems:
@@ -537,7 +552,7 @@ class Screen:
         self.result = res;
 
     def accept_selection(self):
-        self.set_result([item for (_, item) in self.enumerate_selected()])
+        self.set_result([item for _, item in self.enumerate_selected()])
 
     next_page  = lambda self: self.list.next_page()
     prev_page  = lambda self: self.list.prev_page()
@@ -599,7 +614,10 @@ class Screen:
             ord('/'):             self.search_by_regex,
             curses.KEY_BACKSPACE: self.restore_or_up_dir,
             ord('^'):             self.up_dir,
+            ord('R'):             self.reread_dir,
+            18:                   self.reread_dir, # Ctrl-R
             27:                   self.restore_items, # Esc
+            12:                   self.redraw, # Ctrl-L
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
         }
@@ -726,6 +744,7 @@ def main():
                 TermSize.init()
             except RunShellError:
                 os.system(shell_name())
+                scr.reread_dir()
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
