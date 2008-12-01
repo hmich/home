@@ -51,7 +51,5 @@ alias svnco='git svn rebase'
 
 alias sta=cygstart
 
-alias s='sel -0 | xargs -0'
 alias sd='F="$(sel)" && if [ -d "$F" ]; then pushd "$F"; else pushd "$(dirname "$F")"; fi'
 alias gits='git diff --name-only | sel -0 | xargs -0 git'
-alias edit='vi "$(sel)"'

@@ -1,0 +1,4 @@
+#!/bin/sh
+cmd="$@"
+eval set -- "$(sel -q)"
+$cmd "$@"
