@@ -75,25 +75,12 @@ class ColorsManager(object):
         cls._colors.append((fg, bg))
         return len(cls._colors) - 1
 
-def cyclic_xrange(start, cnt):
-    for idx in xrange(start, cnt):
-        yield idx
-    for idx in xrange(start):
-        yield idx
-
-def listdir_sorted(dir):
-    entries = os.listdir(dir)
-
-    dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
-    files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
-
-    return dirs + files
-
 class Item(object):
-    def __init__(self, str, action):
+    def __init__(self, str, action, attr = None):
         self._str = str
         self._marked = False
         self._action = action
+        self.attr = attr or Attrs.DEFAULT
 
     def action(self):
         self._action(self)
@@ -119,45 +106,13 @@ class Item(object):
     def screen_str(self):
         return self._mark_str() + str(self)
 
-    def attr(self):
-        return Attrs.DEFAULT
-
-class Dir(Item):
-    def __init__(self, str, action):
-        Item.__init__(self, str, action)
+class FileItem(Item):
+    def __init__(self, str, action, attr, suffix):
+        Item.__init__(self, str, action, attr)
+        self._suffix = suffix
 
     def screen_str(self):
-        return Item.screen_str(self) + '/'
-
-    def attr(self):
-        return Attrs.DIR
-
-class Link(Item):
-    def __init__(self, str, action):
-        Item.__init__(self, str, action)
-
-    def screen_str(self):
-        return Item.screen_str(self) + '@'
-
-    def attr(self):
-        return Attrs.LINK
-
-class DirLink(Link):
-    def __init__(self, str, action):
-        Link.__init__(self, str, action)
-
-    def screen_str(self):
-        return Item.screen_str(self) + '/@'
-
-class Executable(Item):
-    def __init__(self, str, action):
-        Item.__init__(self, str, action)
-
-    def screen_str(self):
-        return Item.screen_str(self) + '*'
-
-    def attr(self):
-        return Attrs.EXEC
+        return Item.screen_str(self) + self._suffix
 
 class Items:
     def __init__(self, items):
@@ -294,6 +249,14 @@ class ScrollingList:
         else:
             self.change_item(self.offset)
 
+def listdir_sorted(dir):
+    entries = os.listdir(dir)
+
+    dirs = [f for f in entries if os.path.isdir(os.path.join(dir, f))]
+    files = [f for f in entries if os.path.isfile(os.path.join(dir, f))]
+
+    return dirs + files
+
 def simple_factory(owner, str):
     return Item(str, lambda item: owner.accept_selection())
 
@@ -310,13 +273,13 @@ def filesystem_factory(owner, path):
             else:
                 owner.accept_selection()
         if os.path.islink(path):
-            return DirLink(path, read_dir)
+            return FileItem(path, read_dir, Attrs.LINK, '/@')
         else:
-            return Dir(path, read_dir)
+            return FileItem(path, read_dir, Attrs.DIR, '/')
     elif os.access(path, os.X_OK):
-        return Executable(path, accept)
+        return FileItem(path, accept, Attrs.EXEC, '*')
     elif os.path.islink(path):
-        return Link(path, accept)
+        return FileItem(path, accept, Attrs.LINK, '@')
     else:
         return Item(path, accept)
 
@@ -328,14 +291,36 @@ class RunShellError(Exception):
     def __init__(self):
         Exception.__init__(self)
 
+class StrHighlighter:
+    def __init__(self, str):
+        self.str = str
+
+    def __call__(self, str, start):
+        idx = str.find(self.str, start)
+        if idx == -1:
+            return -1, -1
+        return idx, idx + len(self.str)
+
+class RegexHighlighter:
+    def __init__(self, regex):
+        self.regex = regex
+
+    def __call__(self, str, start):
+        match = self.regex.search(str[start:])
+        if not match:
+            return -1, -1
+        return start + match.start(), start + match.end()
+
 class Screen:
     def __init__(self, factory, matches, browse_mode):
         self.factory = factory
-        self.items = self._create_items(matches)
+        self.matches = matches
+        self.items = None
         self.resized = False
-        self._create_items(matches)
         self.browse_mode = browse_mode
         self.list = None
+        self.result = None
+        self.highlighter = None
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
@@ -354,23 +339,26 @@ class Screen:
         self.scr.timeout(100)
         return self.scr.getch()
 
-    def highlightstr(self, y, x, attr, s, pattern):
-        start = 0
+    def highlightstr(self, y, x, attr, s):
+        idx = 0
         ls = s.lower()
-        while start < len(s):
-            idx = ls.find(pattern, start)
-            if not pattern or idx == -1:
+        while idx < len(s):
+            start = -1
+            if self.highlighter:
+                start, end = self.highlighter(s, idx)
+            if start == -1:
                 self.scr.attrset(attr)
-                self.scr.addstr(y, x + start, s[start:])
+                self.scr.addstr(y, x + idx, s[idx:])
                 break
             else:
                 self.scr.attrset(attr)
-                self.scr.addstr(y, x + start, s[start:idx])
+                self.scr.addstr(y, x + idx, s[idx:start])
 
                 self.scr.attrset(Attrs.HIGHLIGHT)
-                self.scr.addstr(y, x + idx, s[idx:(idx + len(pattern))])
+                self.scr.addstr(y, x + start, s[start:end])
 
-                start = idx + len(pattern)
+                idx = end
+        self.scr.attrset(attr)
 
     def draw_item(self, idx, refresh = True):
         if idx >= len(self.items) or not self.list.contains_line(idx):
@@ -390,10 +378,10 @@ class Screen:
         elif item.marked:
             attr = Attrs.MARKED
         else:
-            attr = item.attr()
+            attr = item.attr
 
         s = s.ljust(TermSize.width - len(line_num))
-        self.highlightstr(y, len(line_num), attr, s, self.pattern)
+        self.highlightstr(y, len(line_num), attr, s)
 
         if refresh:
             self.scr.refresh()
@@ -469,16 +457,21 @@ class Screen:
                 yield item
 
     def filter_by_pattern(self, pattern):
+        self.highlighter = StrHighlighter(pattern)
         return self._filter(list(self._items_by_pattern(pattern)))
 
     def search_by_regex(self):
         s = self.status.query("Search by regex:")
+        if not s:
+            return False
+
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except:
             return
 
-        self._filter(list(self._items_by_regex(regex)))
+        self.highlighter = RegexHighlighter(regex)
+        return self._filter(list(self._items_by_regex(regex)))
 
     def enumerate_selected(self):
         if not self.items:
@@ -564,6 +557,18 @@ class Screen:
         self.clear_screen()
         raise RunShellError()
 
+    def clear_highlighter(self):
+        if not self.highlighter:
+            return
+        self.highlighter = None
+        self.redraw()
+
+    def clear_pattern(self):
+        if not self.pattern:
+            return
+        self.pattern = ''
+        self.clear_highlighter()
+
     def keybindings(self):
         return {
             curses.KEY_DOWN:      self.next_item,
@@ -600,19 +605,22 @@ class Screen:
         }
 
     def mainloop(self, stdscr):
-        self.pattern = ''
         self.init_curses()
         self.status = Status()
         self.scr = stdscr
 
-        if self.list == None:
+        if not self.items:
+            self._create_items(self.matches)
+
+        if not self.list:
             self._update_list()
         else:
             self._update_list(self.list.idx, self.list.offset)
 
+        self.pattern = ''
         lastpress = time.time()
         bindings = self.keybindings()
-        self.result = None
+
         while self.result == None:
             self.update_status()
 
@@ -626,16 +634,16 @@ class Screen:
                 raise ResizeError()
 
             if bindings.get(c):
-                self.pattern = ''
+                self.clear_highlighter()
+                self.clear_pattern()
                 bindings[c]()
             elif curses.ascii.isprint(c):
                 self.pattern += chr(c)
                 lastpress = time.time()
                 if not self.filter_by_pattern(self.pattern):
-                    self.pattern = ''
+                    self.clear_pattern()
             elif c != -1 or time.time() - lastpress > PATTERN_TIMEOUT:
-                self.pattern = ''
-                self.redraw()
+                self.clear_pattern()
 
         self.clear_screen()
 
