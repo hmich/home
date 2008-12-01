@@ -32,3 +32,9 @@ esac
 if [ -f /etc/bash_completion ]; then
     . /etc/bash_completion
 fi
+
+sd() {
+    DIR="$1"
+    [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
+    [ -d "$DIR" ] && pushd "$DIR" && ls
+}

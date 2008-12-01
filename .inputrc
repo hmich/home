@@ -2,7 +2,8 @@ set completion-ignore-case on
 set show-all-if-ambiguous on
 set visible-stats on
 
-"\M-s": menu-complete
+#"\M-s": menu-complete
+"\M-s": "s \n"
 "\e[A": history-search-backward
 "\e[B": history-search-forward
 "\M-p": history-search-backward
