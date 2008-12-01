@@ -29,6 +29,7 @@ import os
 import os.path
 import sys
 import signal
+import pwd
 
 import time
 import struct
@@ -563,18 +564,8 @@ class Screen:
         self.clear_screen()
         raise RunShellError()
 
-    def mainloop(self, stdscr):
-        self.pattern = ''
-        self.init_curses()
-        self.status = Status()
-        self.scr = stdscr
-
-        if self.list == None:
-            self._update_list()
-        else:
-            self._update_list(self.list.idx, self.list.offset)
-
-        bindings = {
+    def keybindings(self):
+        return {
             curses.KEY_DOWN:      self.next_item,
             ord('J'):             self.next_item,
             14:                   self.next_item, # Ctrl-N
@@ -608,7 +599,19 @@ class Screen:
             ord('\n'):            lambda: self.current_item().action(),
         }
 
+    def mainloop(self, stdscr):
+        self.pattern = ''
+        self.init_curses()
+        self.status = Status()
+        self.scr = stdscr
+
+        if self.list == None:
+            self._update_list()
+        else:
+            self._update_list(self.list.idx, self.list.offset)
+
         lastpress = time.time()
+        bindings = self.keybindings()
         self.result = None
         while self.result == None:
             self.update_status()
@@ -662,8 +665,10 @@ def process_args():
 including filenames and strings parsed from the standard input using regexps.
 Please send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
 
-    parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output items with null character')
+    parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output fields with null character')
+    parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
+    parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False, help='quote output fields')
 
     (options, args) = parser.parse_args()
     args = args or ['^.*$']
@@ -677,7 +682,15 @@ def itermatches(regexps):
                 yield match
 
 def separator(options):
-    return '\x00' if options.null_terminated else options.ofs
+    if options.null_terminated:
+        return '\x00'
+    elif options.newlines:
+        return '\n'
+    else:
+        return options.ofs
+
+def shell_name():
+    return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 def main():
     options, regexps = process_args()
@@ -704,12 +717,15 @@ def main():
             except ResizeError:
                 TermSize.init()
             except RunShellError:
-                os.system(os.getenv('SHELL'))
+                os.system(shell_name())
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
-    sys.stdout.write(separator(options).join(res))
+    if options.quote:
+        res = map(lambda s: '"' + s + '"', res)
+
+    sys.stdout.write(str(separator(options)).join(res))
 
 if __name__ == '__main__':
     main()
