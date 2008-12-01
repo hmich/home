@@ -169,20 +169,20 @@ class TermSize:
 class Status:
     def __init__(self):
         self.win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
-        self.win.attrset(Attrs.STATUS)
 
     def clear(self):
         self.win.move(0, 0)
         self.win.clrtoeol()
 
-    def put(self, str):
+    def put(self, str, attr):
         self.clear()
+        self.win.attrset(attr)
         self.win.addstr(str)
         self.win.refresh()
 
     def query(self, str):
         str += ' '
-        self.put(str)
+        self.put(str, Attrs.STATUS)
         win = curses.newwin(1, TermSize.width - len(str), TermSize.height - 1, len(str))
         return curses.textpad.Textbox(win).edit()
 
@@ -324,6 +324,7 @@ class Screen:
         self.list = None
         self.result = None
         self.highlighter = None
+        self.msg = None
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
@@ -417,14 +418,18 @@ class Screen:
             item.marked = True
 
     def update_status(self):
-        curdir = os.getcwd()
-        self.status.put(curdir + str(self.list).rjust(TermSize.width - len(curdir) - 1))
+        if self.msg:
+            self.status.put(self.msg, Attrs.HIGHLIGHT)
+        else:
+            curdir = os.getcwd()
+            self.status.put(curdir + str(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
     def goto_line(self):
         linestr = self.status.query("Goto line:")
         try:
             line = int(linestr)
         except ValueError:
+            self.msg = "Invalid line number"
             return
         self.list.change_item(line - 1)
 
@@ -432,7 +437,8 @@ class Screen:
         s = self.status.query("Mark by regex:")
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
-        except:
+        except Exception, e:
+            self.msg = "Invalid regexp: " + str(e)
             return
 
         for item in self.items:
@@ -470,7 +476,8 @@ class Screen:
 
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
-        except:
+        except Exception, e:
+            self.msg = "Invalid regexp: " + str(e)
             return
 
         self.highlighter = RegexHighlighter(regex)
@@ -507,8 +514,8 @@ class Screen:
         try:
             entries = listdir_sorted(dir) or ['..']
             os.chdir(dir)
-        except OSError:
-            pass
+        except OSError, e:
+            self.msg = 'Can\'t read dir: ' + str(e)
         else:
             self._create_items(entries)
             self._update_list()
@@ -668,10 +675,12 @@ class Screen:
                 raise ResizeError()
 
             if bindings.get(c):
+                self.msg = None
                 self.clear_highlighter()
                 self.clear_pattern()
                 bindings[c]()
             elif curses.ascii.isprint(c):
+                self.msg = None
                 self.pattern += chr(c)
                 lastpress = time.time()
                 if not self.filter_by_pattern(self.pattern):
@@ -756,7 +765,8 @@ def main():
             except ResizeError:
                 TermSize.init()
             except InvocationError, e:
-                os.system(e.cmd)
+                if os.system(e.cmd):
+                    scr.msg = 'Nonzero exit status!'
                 scr.reread_dir()
 
     if not res:
