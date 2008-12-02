@@ -177,7 +177,7 @@ class Status:
     def put(self, str, attr):
         self.clear()
         self.win.attrset(attr)
-        self.win.addstr(str)
+        self.win.addstr(str[:TermSize.width - 1])
         self.win.refresh()
 
     def query(self, str):
@@ -376,7 +376,7 @@ class Screen:
 
         self.clear_line(y)
         self.scr.attrset(Attrs.LINENUM)
-        self.scr.addstr(y, 0, line_num)
+        self.scr.addstr(y, 0, line_num[:TermSize.width])
 
         if self.list.idx == idx:
             attr = Attrs.SELECTED
@@ -386,7 +386,7 @@ class Screen:
             attr = item.attr
 
         s = s.ljust(TermSize.width - len(line_num))
-        self.highlightstr(y, len(line_num), attr, s)
+        self.highlightstr(y, len(line_num), attr, s[:TermSize.width - len(line_num)])
 
         if refresh:
             self.scr.refresh()
@@ -631,7 +631,7 @@ class Screen:
             ord(' '):             self.toggle_item,
             ord('~'):             self.invert_selection,
             ord('!'):             self.run_command,
-            ord('@'):             self.invoke_shell,
+            ord('$'):             self.invoke_shell,
             ord('*'):             self.select_all,
             ord('G'):             self.goto_line,
             ord('%'):             self.mark_by_regex,
