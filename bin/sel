@@ -272,6 +272,7 @@ def filesystem_factory(owner, path):
                     owner.read_dir(path)
             else:
                 owner.accept_selection()
+
         if os.path.islink(path):
             return FileItem(path, read_dir, Attrs.LINK, '/@')
         else:
@@ -329,7 +330,7 @@ class Screen:
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
-        self._olditems = None
+        self._allitems = None
 
     def _update_list(self, idx = 0, offset = 0):
         self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
@@ -449,9 +450,10 @@ class Screen:
     def _filter(self, items):
         if not items:
             self.redraw()
+            self.msg = 'No matches!'
             return False
-        if not self._olditems:
-            self._olditems = self.items
+        if not self._allitems:
+            self._allitems = self.items
         self._set_items(list(items))
         self._update_list()
         return True
@@ -495,8 +497,8 @@ class Screen:
             yield (self.list.idx, self.current_item())
 
     def remove_marked(self):
-        if self._olditems:
-            self._olditems.remove_items(item for _, item in self.enumerate_selected())
+        if self._allitems:
+            self._allitems.remove_items(item for _, item in self.enumerate_selected())
         self.items.remove(idx for idx, _ in self.enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
@@ -550,15 +552,15 @@ class Screen:
                 break
 
     def restore_items(self):
-        if not self._olditems:
+        if not self._allitems:
             return
         cur = self.current_item() if self.items else  None
-        self._set_items(list(self._olditems))
+        self._set_items(list(self._allitems))
         self._update_list(self.items.index(cur) if cur else 0)
-        self._olditems = None
+        self._allitems = None
 
     def restore_or_up_dir(self):
-        if self._olditems:
+        if self._allitems:
             self.restore_items()
         else:
             self.up_dir()
@@ -587,13 +589,15 @@ class Screen:
         self.clear_screen()
         raise InvocationError(shell_path())
 
-    def run_command(self):
-        args = [str(item) for _, item in self.enumerate_selected()]
-        cmd = self.status.query("Run command on selection:")
+    def run_command(self, cmd):
         if not cmd:
             return
         self.clear_screen()
+        args = [str(item) for _, item in self.enumerate_selected()]
         raise InvocationError(cmd + " " + " ".join(map(quote_string, args)))
+
+    def query_run_command(self):
+        self.run_command(self.status.query("Run command on selection:"))
 
     def clear_highlighter(self):
         if not self.highlighter:
@@ -630,7 +634,7 @@ class Screen:
             curses.KEY_IC:        self.toggle_item,
             ord(' '):             self.toggle_item,
             ord('~'):             self.invert_selection,
-            ord('!'):             self.run_command,
+            ord('!'):             self.query_run_command,
             ord('$'):             self.invoke_shell,
             ord('*'):             self.select_all,
             ord('G'):             self.goto_line,
@@ -644,6 +648,9 @@ class Screen:
             12:                   self.redraw, # Ctrl-L
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
+            curses.KEY_F2:        lambda: self.run_command('cygstart'),
+            curses.KEY_F3:        lambda: self.run_command('vim'),
+            curses.KEY_F4:        lambda: self.run_command('vim'),
         }
 
     def mainloop(self, stdscr):
@@ -769,6 +776,8 @@ def main():
                 if os.system(e.cmd):
                     scr.msg = 'Nonzero exit status!'
                 scr.reread_dir()
+            except curses.error:
+                break
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
