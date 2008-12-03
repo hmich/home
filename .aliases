@@ -51,4 +51,5 @@ alias svnco='git svn rebase'
 
 alias sta=cygstart
 
-alias gits='git diff --name-only | sel'
+alias sgit='git diff --name-only | sel'
+alias sfind='find | sel'
