@@ -1,4 +1,0 @@
-#!/bin/sh
-cmd="$@"
-eval set -- "$(sel -q)"
-[ -n "$cmd" ] && $cmd "$@"
