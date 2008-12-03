@@ -75,6 +75,48 @@ class ColorsManager(object):
         cls._colors.append((fg, bg))
         return len(cls._colors) - 1
 
+class Keys:
+    @classmethod
+    def init(cls):
+        key = cls._register_key
+        cls.DOWN = key(curses.KEY_DOWN, 'Down')
+        cls.UP = key(curses.KEY_UP, 'Up')
+        cls.PAGE_DOWN = key(curses.KEY_NPAGE, 'Page Down')
+        cls.PAGE_UP = key(curses.KEY_PPAGE, 'Page Up')
+        cls.HOME = key(curses.KEY_HOME, 'Home')
+        cls.END = key(curses.KEY_END, 'End')
+        cls.DELETE = key(curses.KEY_DC, 'Delete')
+        cls.INSERT = key(curses.KEY_IC, 'Insert')
+        cls.BACKSPACE = key(curses.KEY_BACKSPACE, 'Backspace')
+        cls.CTRL_N = key(14, 'Ctrl-N')
+        cls.CTRL_P = key(16, 'Ctrl-P')
+        cls.CTRL_F = key(6, 'Ctrl-F')
+        cls.CTRL_B = key(2, 'Ctrl-B')
+        cls.CTRL_R = key(18, 'Ctrl-R')
+        cls.CTRL_L = key(12, 'Ctrl-L')
+        cls.CTRL_X = key(24, 'Ctrl-X')
+        cls.CTRL_D = key(4, 'Ctrl-D')
+        cls.ESCAPE = key(27, 'Escape')
+        cls.RETURN = key(ord('\n'), 'Return')
+        cls.F1 = key(curses.KEY_F1, 'F1')
+        cls.F2 = key(curses.KEY_F2, 'F2')
+        cls.F3 = key(curses.KEY_F3, 'F3')
+        cls.F4 = key(curses.KEY_F4, 'F4')
+
+    _keys = {}
+
+    @classmethod
+    def _register_key(cls, code, str):
+        cls._keys[code] = str
+        return code
+
+    @classmethod
+    def str(cls, code):
+        if code in cls._keys:
+            return cls._keys[code]
+        else:
+            return "'" + code + "'"
+
 class Item(object):
     def __init__(self, str, action, attr = None):
         self._str = str
@@ -506,6 +548,7 @@ class Screen:
         curses.use_default_colors()
         Attrs.init()
         ColorsManager.init()
+        Keys.init()
 
         # sometimes raises an exception in cygwin
         try:
@@ -612,47 +655,61 @@ class Screen:
         self.clear_highlighter()
 
     def keybindings(self):
-        return {
-            curses.KEY_DOWN:      self.next_item,
-            ord('J'):             self.next_item,
-            14:                   self.next_item, # Ctrl-N
-            curses.KEY_UP:        self.prev_item,
-            ord('K'):             self.prev_item,
-            16:                   self.prev_item, # Ctrl-P
-            curses.KEY_NPAGE:     self.next_page,
-            ord('H'):             self.next_page,
-            6:                    self.next_page, # Ctrl-F
-            curses.KEY_PPAGE:     self.prev_page,
-            ord('L'):             self.prev_page,
-            2:                    self.prev_page, # Ctrl-B
-            curses.KEY_HOME:      self.first_item,
-            ord('<'):             self.first_item,
-            curses.KEY_END:       self.last_item,
-            ord('>'):             self.last_item,
-            curses.KEY_DC:        self.remove_marked,
-            ord('D'):             self.remove_marked,
-            curses.KEY_IC:        self.toggle_item,
-            ord(' '):             self.toggle_item,
-            ord('~'):             self.invert_selection,
-            ord('!'):             self.query_run_command,
-            ord('$'):             self.invoke_shell,
-            ord('*'):             self.select_all,
-            ord('G'):             self.goto_line,
-            ord('%'):             self.mark_by_regex,
-            ord('/'):             self.search_by_regex,
-            curses.KEY_BACKSPACE: self.restore_or_up_dir,
-            ord('^'):             self.up_dir,
-            ord('R'):             self.reread_dir,
-            18:                   self.reread_dir, # Ctrl-R
-            27:                   self.restore_items, # Esc
-            12:                   self.redraw, # Ctrl-L
-            24:                   lambda: self.set_result([]), # Ctrl-X
-            4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
-            ord('\n'):            lambda: self.current_item().action(),
-            curses.KEY_F2:        lambda: self.run_command('cygstart'),
-            curses.KEY_F3:        lambda: self.run_command('vim'),
-            curses.KEY_F4:        lambda: self.run_command('vim'),
-        }
+        return [
+            (self.next_item,         [Keys.DOWN, 'J', Keys.CTRL_N], 'next line'),
+            (self.prev_item,         [Keys.UP, Keys.CTRL_P, 'K'], 'prev line'),
+            (self.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, 'H'], 'next page'),
+            (self.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, 'L'], 'prev page'),
+            (self.first_item,        [Keys.HOME, '<'], 'first item'),
+            (self.last_item,         [Keys.END, '>'], 'last item'),
+            (self.remove_marked,     [Keys.DELETE, 'D'], 'delete selected items'),
+            (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
+            (self.invert_selection,  ['~'], 'invert selection'),
+            (self.select_all,        ['*'], 'select all items'),
+            (self.query_run_command, ['!'], 'run command on selection'),
+            (self.invoke_shell,      ['$'], 'invoke shell'),
+            (self.goto_line,         ['G'], 'goto line'),
+            (self.mark_by_regex,     ['%'], 'mark by regexp'),
+            (self.search_by_regex,   ['/'], 'filter by regexp'),
+            (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'go to parent directory'),
+            (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of current directory'),
+            (self.restore_items,     [Keys.ESCAPE], 'reset current filter'),
+            (self.redraw,            [Keys.CTRL_L], 'redraw'),
+            (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
+            (lambda: self.set_result([]),            [Keys.CTRL_X], 'exit without accepting selection'),
+            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as an only result'),
+            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item')]
+            #curses.KEY_F2:        lambda: self.run_command('cygstart'),
+            #curses.KEY_F3:        lambda: self.run_command('vim'),
+            #curses.KEY_F4:        lambda: self.run_command('vim'),
+
+    def keybindings_map(self):
+        res = {}
+        for binding in self.keybindings():
+            for key in binding[1]:
+                if isinstance(key, str):
+                    res[ord(key)] = binding[0]
+                else:
+                    res[key] = binding[0]
+        return res
+
+    def show_bindings(self):
+        bindings = []
+        for binding in self.keybindings():
+            bindings.append((", ".join(map(Keys.str, binding[1])), binding[2]))
+        width = max(len(binding[0]) for binding in bindings) + 1
+
+        lines = (['Current keybindings:', ''] +
+                 [binding[0].ljust(width) + binding[1] for binding in bindings] +
+                 ['', 'Press any key to continue'])
+
+        self.clear_screen()
+        self.scr.attrset(Attrs.DEFAULT)
+
+        for idx, line in enumerate(lines):
+            self.scr.addstr(idx, 0, line[:TermSize.width])
+
+        self.scr.getch()
 
     def mainloop(self, stdscr):
         self.init_curses()
@@ -669,7 +726,7 @@ class Screen:
 
         self.pattern = ''
         lastpress = time.time()
-        bindings = self.keybindings()
+        bindings = self.keybindings_map()
 
         while self.result == None:
             self.update_status()
