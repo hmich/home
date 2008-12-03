@@ -646,6 +646,7 @@ class Screen:
             18:                   self.reread_dir, # Ctrl-R
             27:                   self.restore_items, # Esc
             12:                   self.redraw, # Ctrl-L
+            24:                   lambda: self.set_result([]), # Ctrl-X
             4:                    lambda: self.set_result([os.getcwd()]), # Ctrl-D
             ord('\n'):            lambda: self.current_item().action(),
             curses.KEY_F2:        lambda: self.run_command('cygstart'),
@@ -700,23 +701,70 @@ class Screen:
 
         return map(lambda x: os.path.join(os.getcwd(), str(x)), self.result or [])
 
-class TTYLocker:
+class TTYStdinLocker:
     def __enter__(self):
         self._saved_stdin = os.dup(0)
-        self._saved_stdout = os.dup(1)
-
         os.close(0)
-        os.close(1)
-
         os.open('/dev/tty', os.O_RDONLY)
-        os.open('/dev/tty', os.O_RDWR)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.close(0)
-        os.close(1)
-
         os.dup(self._saved_stdin)
+
+class TTYStdoutLocker:
+    def __enter__(self):
+        self._saved_stdout = os.dup(1)
+        os.close(1)
+        os.open('/dev/tty', os.O_RDWR)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        os.close(1)
         os.dup(self._saved_stdout)
+
+class TTYLocker:
+    def __init__(self):
+        self.inlocker = TTYStdinLocker()
+        self.outlocker = TTYStdoutLocker()
+
+    def __enter__(self):
+        self.inlocker.__enter__()
+        self.outlocker.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inlocker.__exit__(exc_type, exc_val, exc_tb)
+        self.outlocker.__exit__(exc_type, exc_val, exc_tb)
+
+def separator(options):
+    if options.null_terminated:
+        return '\x00'
+    elif options.newlines:
+        return '\n'
+    else:
+        return options.ofs
+
+def exec_processor(cmd):
+    def doexec(args):
+        with TTYStdinLocker():
+            try:
+                os.execlp(cmd[0], *(cmd + args))
+            except OSError, e:
+                sys.stderr.write('Can not invoke program: ' + str(e) + '\n')
+    return doexec
+
+def quoting_processor(func):
+    return lambda args: func(map(quote_string, args))
+
+def print_processor(sep):
+    return lambda args: sys.stdout.write(sep.join(args))
+
+def create_processor(options, args):
+    if args:
+        proc = exec_processor(args)
+    else:
+        proc = print_processor(separator(options))
+        if options.quote:
+            proc = quoting_processor(proc)
+    return proc
 
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [regexp]...', version='%prog ' + str(VERSION), description=
@@ -728,11 +776,12 @@ Please send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
     parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
     parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False, help='quote output fields')
+    parser.add_option('-r', '--regexp', action='store', type='string', dest='regexp', default='^.*$', help='regular expression for parsing input data')
 
+    parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
-    args = args or ['^.*$']
 
-    return options, [re.compile(s, re.IGNORECASE) for s in args]
+    return options, create_processor(options, args)
 
 def itermatches(regexps):
     for line in sys.stdin.xreadlines():
@@ -740,22 +789,14 @@ def itermatches(regexps):
             for match in re.findall(line):
                 yield match
 
-def separator(options):
-    if options.null_terminated:
-        return '\x00'
-    elif options.newlines:
-        return '\n'
-    else:
-        return options.ofs
-
 def main():
-    options, regexps = process_args()
+    options, proc = process_args()
     browse_mode = os.isatty(0)
     if browse_mode:
         matches = listdir_sorted(os.getcwd())
         factory = filesystem_factory
     else:
-        matches = list(itermatches(regexps))
+        matches = list(itermatches([re.compile(options.regexp, re.IGNORECASE)]))
         factory = simple_factory
 
     if not matches:
@@ -782,10 +823,7 @@ def main():
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
 
-    if options.quote:
-        res = map(quote_string, res)
-
-    sys.stdout.write(str(separator(options)).join(res))
+    proc(res)
 
 if __name__ == '__main__':
     main()
