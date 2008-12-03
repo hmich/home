@@ -359,6 +359,9 @@ class RegexHighlighter:
 def shell_path():
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
+def editor_name():
+    return os.getenv('EDITOR') or 'vim'
+
 class Screen:
     def __init__(self, factory, matches, options):
         self.factory = factory
@@ -384,8 +387,6 @@ class Screen:
             (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
             (self.invert_selection,  ['~'], 'invert selection'),
             (self.select_all,        ['*'], 'select all items'),
-            (self.query_run_command, ['!'], 'run command on selection'),
-            (self.invoke_shell,      ['$'], 'invoke shell'),
             (self.goto_line,         ['G'], 'goto line'),
             (self.mark_by_regex,     ['%'], 'mark by regexp'),
             (self.search_by_regex,   ['/'], 'filter by regexp'),
@@ -394,7 +395,10 @@ class Screen:
             (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
             (lambda: self.set_result([]),            [Keys.CTRL_X], 'exit without accepting selection'),
             (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as an only result'),
-            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item')]
+            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
+            (self.query_run_command, ['!'], 'run command on selection'),
+            (self.invoke_shell,      ['$'], 'invoke shell'),
+            (self.invoke_editor,     [Keys.F3, Keys.F4], 'invoke editor on the selected items')]
 
         if options.interactive:
             bindings += [
@@ -658,12 +662,15 @@ class Screen:
         self.clear_screen()
         raise InvocationError(shell_path(), False)
 
-    def run_command(self, cmd):
+    def invoke_editor(self):
+        self.run_command(editor_name(), False)
+
+    def run_command(self, cmd, wait_for_keypress=True):
         if not cmd:
             return
         self.clear_screen()
         args = [str(item) for _, item in self.enumerate_selected()]
-        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)), True)
+        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)), wait_for_keypress)
 
     def query_run_command(self):
         self.run_command(self.status.query("Run command on selection:"))
@@ -874,7 +881,7 @@ def main():
                 TermSize.init()
             except InvocationError, e:
                 status = os.system(e.cmd)
-                if e.wait_for_user:
+                if e.wait_for_keypress:
                     sys.stdout.write('\n')
                     if status:
                         sys.stdout.write('Shell returned ' + str(status) + '\n')
