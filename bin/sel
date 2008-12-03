@@ -360,16 +360,48 @@ def shell_path():
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 class Screen:
-    def __init__(self, factory, matches, browse_mode):
+    def __init__(self, factory, matches, options):
         self.factory = factory
         self.matches = matches
         self.items = None
         self.resized = False
-        self.browse_mode = browse_mode
         self.list = None
         self.result = None
         self.highlighter = None
         self.msg = None
+        self.bindings = self.create_bindings(options)
+
+    def create_bindings(self, options):
+        Keys.init()
+        bindings = [
+            (self.next_item,         [Keys.DOWN, 'J', Keys.CTRL_N], 'next line'),
+            (self.prev_item,         [Keys.UP, Keys.CTRL_P, 'K'], 'prev line'),
+            (self.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, 'H'], 'next page'),
+            (self.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, 'L'], 'prev page'),
+            (self.first_item,        [Keys.HOME, '<'], 'first item'),
+            (self.last_item,         [Keys.END, '>'], 'last item'),
+            (self.remove_marked,     [Keys.DELETE, 'D'], 'delete selected items'),
+            (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
+            (self.invert_selection,  ['~'], 'invert selection'),
+            (self.select_all,        ['*'], 'select all items'),
+            (self.query_run_command, ['!'], 'run command on selection'),
+            (self.invoke_shell,      ['$'], 'invoke shell'),
+            (self.goto_line,         ['G'], 'goto line'),
+            (self.mark_by_regex,     ['%'], 'mark by regexp'),
+            (self.search_by_regex,   ['/'], 'filter by regexp'),
+            (self.restore_items,     [Keys.ESCAPE], 'reset current filter'),
+            (self.redraw,            [Keys.CTRL_L], 'redraw'),
+            (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
+            (lambda: self.set_result([]),            [Keys.CTRL_X], 'exit without accepting selection'),
+            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as an only result'),
+            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item')]
+
+        if options.interactive:
+            bindings += [
+                (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'go to the parent directory'),
+                (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory')]
+
+        return bindings
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
@@ -549,7 +581,6 @@ class Screen:
         curses.use_default_colors()
         Attrs.init()
         ColorsManager.init()
-        Keys.init()
 
         # sometimes raises an exception in cygwin
         try:
@@ -568,9 +599,6 @@ class Screen:
             self._update_list()
 
     def up_dir(self):
-        if not self.browse_mode:
-            return
-
         (parent, cur) = os.path.split(os.getcwd())
         self.read_dir(parent)
 
@@ -579,9 +607,6 @@ class Screen:
                 self.list.change_item(idx)
 
     def reread_dir(self):
-        if not self.browse_mode:
-            return
-
         cur = ''
         if self.items:
             cur = str(self.current_item())
@@ -655,38 +680,9 @@ class Screen:
         self.pattern = ''
         self.clear_highlighter()
 
-    def keybindings(self):
-        return [
-            (self.next_item,         [Keys.DOWN, 'J', Keys.CTRL_N], 'next line'),
-            (self.prev_item,         [Keys.UP, Keys.CTRL_P, 'K'], 'prev line'),
-            (self.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, 'H'], 'next page'),
-            (self.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, 'L'], 'prev page'),
-            (self.first_item,        [Keys.HOME, '<'], 'first item'),
-            (self.last_item,         [Keys.END, '>'], 'last item'),
-            (self.remove_marked,     [Keys.DELETE, 'D'], 'delete selected items'),
-            (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
-            (self.invert_selection,  ['~'], 'invert selection'),
-            (self.select_all,        ['*'], 'select all items'),
-            (self.query_run_command, ['!'], 'run command on selection'),
-            (self.invoke_shell,      ['$'], 'invoke shell'),
-            (self.goto_line,         ['G'], 'goto line'),
-            (self.mark_by_regex,     ['%'], 'mark by regexp'),
-            (self.search_by_regex,   ['/'], 'filter by regexp'),
-            (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'go to parent directory'),
-            (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of current directory'),
-            (self.restore_items,     [Keys.ESCAPE], 'reset current filter'),
-            (self.redraw,            [Keys.CTRL_L], 'redraw'),
-            (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
-            (lambda: self.set_result([]),            [Keys.CTRL_X], 'exit without accepting selection'),
-            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as an only result'),
-            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item')]
-            #curses.KEY_F2:        lambda: self.run_command('cygstart'),
-            #curses.KEY_F3:        lambda: self.run_command('vim'),
-            #curses.KEY_F4:        lambda: self.run_command('vim'),
-
-    def keybindings_map(self):
+    def bindings_map(self):
         res = {}
-        for binding in self.keybindings():
+        for binding in self.bindings:
             for key in binding[1]:
                 if isinstance(key, str):
                     res[ord(key)] = binding[0]
@@ -696,7 +692,7 @@ class Screen:
 
     def show_bindings(self):
         bindings = []
-        for binding in self.keybindings():
+        for binding in self.bindings:
             bindings.append((", ".join(map(Keys.str, binding[1])), binding[2]))
         width = max(len(binding[0]) for binding in bindings) + 1
 
@@ -730,7 +726,7 @@ class Screen:
 
         self.pattern = ''
         lastpress = time.time()
-        bindings = self.keybindings_map()
+        bindings = self.bindings_map()
 
         while self.result == None:
             self.update_status()
@@ -854,8 +850,8 @@ def itermatches(regexps):
 
 def main():
     options, proc = process_args()
-    browse_mode = os.isatty(0)
-    if browse_mode:
+    options.interactive = os.isatty(0)
+    if options.interactive:
         matches = listdir_sorted(os.getcwd())
         factory = filesystem_factory
     else:
@@ -867,7 +863,7 @@ def main():
 
     with TTYLocker():
         TermSize.init()
-        scr = Screen(factory, matches, browse_mode)
+        scr = Screen(factory, matches, options)
         signal.signal(signal.SIGWINCH, scr.resize)
 
         res = None
