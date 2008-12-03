@@ -331,9 +331,10 @@ class ResizeError(Exception):
         Exception.__init__(self)
 
 class InvocationError(Exception):
-    def __init__(self, cmd):
+    def __init__(self, cmd, wait_for_keypress):
         Exception.__init__(self)
         self.cmd = cmd
+        self.wait_for_keypress = wait_for_keypress
 
 class StrHighlighter:
     def __init__(self, str):
@@ -630,14 +631,14 @@ class Screen:
 
     def invoke_shell(self):
         self.clear_screen()
-        raise InvocationError(shell_path())
+        raise InvocationError(shell_path(), False)
 
     def run_command(self, cmd):
         if not cmd:
             return
         self.clear_screen()
         args = [str(item) for _, item in self.enumerate_selected()]
-        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)))
+        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)), True)
 
     def query_run_command(self):
         self.run_command(self.status.query("Run command on selection:"))
@@ -709,7 +710,10 @@ class Screen:
         for idx, line in enumerate(lines):
             self.scr.addstr(idx, 0, line[:TermSize.width])
 
+        self.scr.refresh()
+        self.scr.timeout(-1)
         self.scr.getch()
+        self.redraw()
 
     def mainloop(self, stdscr):
         self.init_curses()
@@ -825,15 +829,17 @@ def create_processor(options, args):
 
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [regexp]...', version='%prog ' + str(VERSION), description=
-'''Allows you to quickly select from a number of options,
-including filenames and strings parsed from the standard input using regexps.
-Please send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
+'''If the input is not from terminal, allows you to select from a number of
+options, obtained by parsing input data using specified regular
+expression. Otherwise, simulates a simple directory browser and can be
+used to select a number of files. Please send bug reports and
+suggestions to Igor.Akhmetov _at_ gmail.com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output fields with null character')
     parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
     parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False, help='quote output fields')
-    parser.add_option('-r', '--regexp', action='store', type='string', dest='regexp', default='^.*$', help='regular expression for parsing input data')
+    parser.add_option('-r', '--regexp', action='store', type='string', dest='regexp', default='^.*$', help='parse input data using given regular expression')
 
     parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
@@ -871,8 +877,12 @@ def main():
             except ResizeError:
                 TermSize.init()
             except InvocationError, e:
-                if os.system(e.cmd):
-                    scr.msg = 'Nonzero exit status!'
+                status = os.system(e.cmd)
+                if e.wait_for_user:
+                    sys.stdout.write('\n')
+                    if status:
+                        sys.stdout.write('Shell returned ' + str(status) + '\n')
+                    raw_input("Press ENTER to continue")
                 scr.reread_dir()
             except curses.error:
                 break
