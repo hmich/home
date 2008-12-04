@@ -98,6 +98,7 @@ class Keys:
         cls.CTRL_D = key(4, 'Ctrl-D')
         cls.ESCAPE = key(27, 'Escape')
         cls.RETURN = key(ord('\n'), 'Return')
+        cls.TAB = key(ord('\t'), 'Tab')
         cls.F1 = key(curses.KEY_F1, 'F1')
         cls.F2 = key(curses.KEY_F2, 'F2')
         cls.F3 = key(curses.KEY_F3, 'F3')
@@ -115,7 +116,7 @@ class Keys:
         if code in cls._keys:
             return cls._keys[code]
         else:
-            return "'" + code + "'"
+            return "'%s'" % code
 
 class Item(object):
     def __init__(self, str, action, attr = None):
@@ -297,7 +298,7 @@ def listdir_sorted(dir):
     return dirs + files
 
 def quote_string(s):
-    return '"' + s + '"'
+    return '"%s"' % s
 
 def simple_factory(owner, str):
     return Item(str, lambda item: owner.accept_selection())
@@ -341,7 +342,7 @@ class StrHighlighter:
         self.str = str
 
     def __call__(self, str, start):
-        idx = str.find(self.str, start)
+        idx = str.lower().find(self.str, start)
         if idx == -1:
             return -1, -1
         return idx, idx + len(self.str)
@@ -387,6 +388,7 @@ class Screen:
             (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
             (self.invert_selection,  ['~'], 'invert selection'),
             (self.select_all,        ['*'], 'select all items'),
+            (self.filter_by_mark,    [Keys.TAB], 'show only marked items'),
             (self.goto_line,         ['G'], 'goto line'),
             (self.mark_by_regex,     ['%'], 'mark by regexp'),
             (self.search_by_regex,   ['/'], 'filter by regexp'),
@@ -520,7 +522,7 @@ class Screen:
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = "Invalid regexp: " + str(e)
+            self.msg = "Invalid regexp: %s" % e
             return
 
         for item in self.items:
@@ -560,11 +562,18 @@ class Screen:
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = "Invalid regexp: " + str(e)
+            self.msg = "Invalid regexp: %s" % e
             return
 
         self.highlighter = RegexHighlighter(regex)
         return self._filter(list(self._items_by_regex(regex)))
+
+    def filter_by_mark(self):
+        if self._allitems:
+            self.restore_items()
+        else:
+            self.clear_highlighter()
+            self._filter([item for item in self.items if item.marked])
 
     def enumerate_selected(self):
         if not self.items:
@@ -598,13 +607,15 @@ class Screen:
             entries = listdir_sorted(dir) or ['..']
             os.chdir(dir)
         except OSError, e:
-            self.msg = 'Can\'t read dir: ' + str(e)
+            self.msg = 'Can\'t read dir: %s' % e
         else:
             self._create_items(entries)
             self._update_list()
 
     def query_chdir(self):
-        self.read_dir(self.status.query("Change dir to:"))
+        dir = self.status.query("Change dir to:")
+        dir = os.path.expandvars(os.path.expanduser(dir))
+        self.read_dir(dir)
 
     def up_dir(self):
         (parent, cur) = os.path.split(os.getcwd())
@@ -816,7 +827,7 @@ def exec_processor(cmd):
             try:
                 os.execlp(cmd[0], *(cmd + args))
             except OSError, e:
-                sys.stderr.write('Can not invoke program: ' + str(e) + '\n')
+                sys.stderr.write('Can not invoke program: %s\n' % e)
     return doexec
 
 def quoting_processor(func):
@@ -836,11 +847,14 @@ def create_processor(options, args):
 
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...', version='%prog ' + str(VERSION), description=
-'''If the input is not from terminal, allows you to select from a number of
-options, obtained by parsing input data using specified regular
-expression. Otherwise, simulates a simple directory browser and can be
-used to select a number of files. Please send bug reports and
-suggestions to Igor.Akhmetov _at_ gmail.com.''')
+'''Depending on whether the input is from the terminal or not, simulates a
+simple directory browser, which can be used to select a number of
+files, or allows you to select from a number of options, obtained by
+parsing input data using specified regular expression. If cmd is
+given, then it is run with the selected items as arguments, otherwise
+these items are just printed to the standard output, using given
+separator (space by default). Please send bug reports and suggestions
+to Igor.Akhmetov _at_ gmail.com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output fields with null character')
     parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
@@ -888,7 +902,7 @@ def main():
                 if e.wait_for_keypress:
                     sys.stdout.write('\n')
                     if status:
-                        sys.stdout.write('Shell returned ' + str(status) + '\n')
+                        sys.stdout.write('Shell returned %s\n' % status)
                     raw_input("Press ENTER to continue")
                 scr.reread_dir()
             except curses.error:
