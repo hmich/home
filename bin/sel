@@ -50,6 +50,7 @@ import curses.wrapper
 VERSION = 0.1
 PATTERN_TIMEOUT = 2
 NOTHING_SELECTED_EXIT_STATUS = 1
+DEFAULT_EDITOR = 'vim'
 
 class Attrs:
     @classmethod
@@ -359,7 +360,7 @@ def shell_path():
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 def editor_name():
-    return os.getenv('EDITOR') or 'vim'
+    return os.getenv('EDITOR') or DEFAULT_EDITOR
 
 class Screen:
     def __init__(self, factory, matches, options):
@@ -905,7 +906,7 @@ def main():
         signal.signal(signal.SIGWINCH, scr.resize)
 
         res = None
-        while res == None:
+        while not res:
             try:
                 res = curses.wrapper(scr.mainloop)
             except ResizeError:
