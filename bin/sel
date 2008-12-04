@@ -28,6 +28,7 @@ from __future__ import with_statement
 import os
 import os.path
 import sys
+import subprocess
 import signal
 import pwd
 
@@ -871,6 +872,20 @@ def itermatches(regexps):
             for match in re.findall(line):
                 yield match
 
+def run_command(e):
+    try:
+        retcode = subprocess.call(e.cmd, shell=True)
+
+        if retcode < 0:
+            sys.stdout.write('\nChild was terminated by signal %s' % -retcode)
+        elif retcode:
+            sys.stdout.write('\nChild returned %s' % retcode)
+    except OSError, e:
+        sys.stdout.write('\nExecution failed: %s' % e)
+
+    if e.wait_for_keypress:
+        raw_input('\nPress ENTER to continue')
+
 def main():
     options, proc = process_args()
     options.interactive = os.isatty(0)
@@ -896,12 +911,7 @@ def main():
             except ResizeError:
                 TermSize.init()
             except InvocationError, e:
-                status = os.system(e.cmd)
-                if e.wait_for_keypress:
-                    sys.stdout.write('\n')
-                    if status:
-                        sys.stdout.write('Shell returned %s\n' % status)
-                    raw_input("Press ENTER to continue")
+                run_command(e)
                 scr.reread_dir()
             except curses.error:
                 break
