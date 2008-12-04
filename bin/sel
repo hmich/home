@@ -403,7 +403,8 @@ class Screen:
         if options.interactive:
             bindings += [
                 (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'go to the parent directory'),
-                (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory')]
+                (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory'),
+                (self.query_chdir,       ['C'], 'change dir')]
 
         return bindings
 
@@ -601,6 +602,9 @@ class Screen:
         else:
             self._create_items(entries)
             self._update_list()
+
+    def query_chdir(self):
+        self.read_dir(self.status.query("Change dir to:"))
 
     def up_dir(self):
         (parent, cur) = os.path.split(os.getcwd())
@@ -831,7 +835,7 @@ def create_processor(options, args):
     return proc
 
 def process_args():
-    parser = optparse.OptionParser(usage='usage: %prog [options] [regexp]...', version='%prog ' + str(VERSION), description=
+    parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...', version='%prog ' + str(VERSION), description=
 '''If the input is not from terminal, allows you to select from a number of
 options, obtained by parsing input data using specified regular
 expression. Otherwise, simulates a simple directory browser and can be
