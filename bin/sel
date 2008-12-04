@@ -372,6 +372,7 @@ class Screen:
         self.matches = matches
         self.items = None
         self.resized = False
+        self.interrupted = False
         self.list = None
         self.result = None
         self.highlighter = None
@@ -399,7 +400,7 @@ class Screen:
             (self.redraw,            [Keys.CTRL_L], 'redraw'),
             (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
             (lambda: self.set_result([]),            [Keys.CTRL_X], 'exit without accepting selection'),
-            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as an only result'),
+            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D], 'exit with the name of the current directory as the only result'),
             (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
             (self.query_run_command, ['!'], 'run command on selection'),
             (self.invoke_shell,      ['$'], 'invoke shell'),
@@ -407,7 +408,7 @@ class Screen:
 
         if options.interactive:
             bindings += [
-                (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'go to the parent directory'),
+                (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'reset current filter if any or go to the parent directory'),
                 (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory'),
                 (self.query_chdir,       ['C'], 'change dir')]
 
@@ -660,7 +661,7 @@ class Screen:
         self.result = res
 
     def accept_selection(self):
-        self.set_result([item for _, item in self.enumerate_selected()])
+        self.set_result([repr(item) for _, item in self.enumerate_selected()])
 
     next_page  = lambda self: self.list.next_page()
     prev_page  = lambda self: self.list.prev_page()
@@ -675,6 +676,9 @@ class Screen:
 
     def resize(self, *args):
         self.resized = True
+
+    def interrupt(self, *args):
+        self.interrupted = True
 
     def invoke_shell(self):
         self.clear_screen()
@@ -754,7 +758,7 @@ class Screen:
         lastpress = time.time()
         bindings = self.bindings_map()
 
-        while self.result == None:
+        while self.result is None:
             self.update_status()
 
             try:
@@ -765,6 +769,10 @@ class Screen:
             if self.resized:
                 self.resized = False
                 raise ResizeError()
+
+            if self.interrupted:
+                self.set_result([])
+                break
 
             if bindings.get(c):
                 self.msg = None
@@ -782,7 +790,7 @@ class Screen:
 
         self.clear_screen()
 
-        return map(repr, self.result or [])
+        return self.result
 
 class TTYStdinLocker:
     def __enter__(self):
@@ -907,9 +915,10 @@ def main():
         TermSize.init()
         scr = Screen(factory, matches, options)
         signal.signal(signal.SIGWINCH, scr.resize)
+        signal.signal(signal.SIGINT, scr.interrupt)
 
         res = None
-        while not res:
+        while res is None:
             try:
                 res = curses.wrapper(scr.mainloop)
             except ResizeError:
@@ -917,8 +926,6 @@ def main():
             except InvocationError, e:
                 run_command(e)
                 scr.reread_dir()
-            except curses.error:
-                break
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
