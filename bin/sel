@@ -140,6 +140,9 @@ class Item(object):
 
     marked = property(_getmarked, _setmarked)
 
+    def __repr__(self):
+        return self._str
+
     def __str__(self):
         return self._str
 
@@ -158,6 +161,9 @@ class FileItem(Item):
 
     def screen_str(self):
         return Item.screen_str(self) + self._suffix
+
+    def __repr__(self):
+        return os.path.join(os.getcwd(), str(self))
 
 class Items:
     def __init__(self, items):
@@ -324,7 +330,7 @@ def filesystem_factory(owner, path):
     elif os.path.islink(path):
         return FileItem(path, accept, Attrs.LINK, '@')
     else:
-        return Item(path, accept)
+        return FileItem(path, accept, Attrs.DEFAULT, '')
 
 class ResizeError(Exception):
     def __init__(self):
@@ -778,7 +784,7 @@ class Screen:
 
         self.clear_screen()
 
-        return map(lambda x: os.path.join(os.getcwd(), str(x)), self.result or [])
+        return map(repr, self.result or [])
 
 class TTYStdinLocker:
     def __enter__(self):
