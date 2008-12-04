@@ -253,7 +253,7 @@ class ScrollingList:
 
     def __str__(self):
         nvisible_items = min(self.nitems - self.offset, self.lines)
-        return "%d-%d of %d" % (self.offset + 1, self.offset + nvisible_items, self.nitems)
+        return '%d-%d of %d' % (self.offset + 1, self.offset + nvisible_items, self.nitems)
 
     def contains_line(self, line):
         return self.offset <= line < self.offset + self.lines
@@ -298,9 +298,7 @@ class ScrollingList:
 
 def listdir_sorted(dir):
     for _, dirs, files in os.walk(dir):
-        dirs.sort(key=string.lower)
-        files.sort(key=string.lower)
-        return dirs + files
+        return sorted(dirs, key=string.lower) + sorted(files, key=string.lower)
 
 def quote_string(s):
     return '"%s"' % s
@@ -659,7 +657,7 @@ class Screen:
             self.up_dir()
 
     def set_result(self, res):
-        self.result = res;
+        self.result = res
 
     def accept_selection(self):
         self.set_result([item for _, item in self.enumerate_selected()])
