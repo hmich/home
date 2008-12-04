@@ -877,11 +877,11 @@ def run_command(e):
         retcode = subprocess.call(e.cmd, shell=True)
 
         if retcode < 0:
-            sys.stdout.write('\nChild was terminated by signal %s' % -retcode)
+            sys.stderr.write('\nChild was terminated by signal %s' % -retcode)
         elif retcode:
-            sys.stdout.write('\nChild returned %s' % retcode)
+            sys.stderr.write('\nChild returned %s' % retcode)
     except OSError, e:
-        sys.stdout.write('\nExecution failed: %s' % e)
+        sys.stderr.write('\nExecution failed: %s' % e)
 
     if e.wait_for_keypress:
         raw_input('\nPress ENTER to continue')
