@@ -89,7 +89,8 @@ class Keys:
         cls.END = key(curses.KEY_END, 'End')
         cls.DELETE = key(curses.KEY_DC, 'Delete')
         cls.INSERT = key(curses.KEY_IC, 'Insert')
-        cls.BACKSPACE = key(curses.KEY_BACKSPACE, 'Backspace')
+        cls.CTRL_H = key(curses.KEY_BACKSPACE, 'Ctrl-H')
+        cls.BACKSPACE = key(127, 'Backspace')
         cls.CTRL_N = key(14, 'Ctrl-N')
         cls.CTRL_P = key(16, 'Ctrl-P')
         cls.CTRL_F = key(6, 'Ctrl-F')
@@ -235,7 +236,7 @@ class Status:
         str += ' '
         self.put(str, Attrs.STATUS)
         win = curses.newwin(1, TermSize.width - len(str), TermSize.height - 1, len(str))
-        return curses.textpad.Textbox(win).edit()
+        return curses.textpad.Textbox(win).edit().strip()
 
 class ScrollingList:
     def __init__(self, owner, nitems, lines, idx, offset):
@@ -298,7 +299,7 @@ class ScrollingList:
 
 def listdir_sorted(dir):
     for _, dirs, files in os.walk(dir):
-        return sorted(dirs, key=string.lower) + sorted(files, key=string.lower)
+        return sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..']
 
 def quote_string(s):
     return '"%s"' % s
@@ -408,7 +409,7 @@ class Screen:
 
         if options.interactive:
             bindings += [
-                (self.restore_or_up_dir, [Keys.BACKSPACE, '^'], 'reset current filter if any or go to the parent directory'),
+                (self.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, '^'], 'reset current filter if any or go to the parent directory'),
                 (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory'),
                 (self.query_chdir,       ['C'], 'change dir')]
 
@@ -517,7 +518,7 @@ class Screen:
         try:
             line = int(linestr)
         except ValueError:
-            self.msg = 'Invalid line number'
+            self.msg = 'Invalid line number!'
             return
         self.list.change_item(line - 1)
 
@@ -608,7 +609,7 @@ class Screen:
 
     def read_dir(self, dir):
         try:
-            entries = listdir_sorted(dir) or ['..']
+            entries = listdir_sorted(dir)
             os.chdir(dir)
         except OSError, e:
             self.msg = 'Can\'t read dir %s: %s' % (dir, e)
