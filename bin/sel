@@ -309,16 +309,16 @@ def simple_factory(owner, str):
 def filesystem_factory(owner, path):
     accept = lambda item: owner.accept_selection()
 
-    if os.path.isdir(path):
-        def read_dir(item):
-            if not owner.items.has_marked():
-                if str(item) == '..':
-                    owner.up_dir()
-                else:
-                    owner.read_dir(path)
+    def read_dir(item):
+        if not owner.items.has_marked():
+            if str(item) == '..':
+                owner.up_dir()
             else:
-                owner.accept_selection()
+                owner.read_dir(path)
+        else:
+            owner.accept_selection()
 
+    if os.path.isdir(path):
         if os.path.islink(path):
             return FileItem(path, read_dir, Attrs.LINK, '/@')
         else:
@@ -512,20 +512,20 @@ class Screen:
             self.status.put(curdir + str(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
     def goto_line(self):
-        linestr = self.status.query("Goto line:")
+        linestr = self.status.query('Goto line:')
         try:
             line = int(linestr)
         except ValueError:
-            self.msg = "Invalid line number"
+            self.msg = 'Invalid line number'
             return
         self.list.change_item(line - 1)
 
     def mark_by_regex(self):
-        s = self.status.query("Mark by regex:")
+        s = self.status.query('Mark by regex:')
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = "Invalid regexp: %s" % e
+            self.msg = 'Invalid regexp: %s' % e
             return
 
         for item in self.items:
@@ -610,7 +610,7 @@ class Screen:
             entries = listdir_sorted(dir) or ['..']
             os.chdir(dir)
         except OSError, e:
-            self.msg = 'Can\'t read dir: %s' % e
+            self.msg = 'Can\'t read dir %s: %s' % (dir, e)
         else:
             self._create_items(entries)
             self._update_list()
@@ -851,14 +851,13 @@ def create_processor(options, args):
 
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...', version='%prog ' + str(VERSION), description=
-'''Depending on whether the input is from the terminal or not, simulates a
-simple directory browser, which can be used to select a number of
-files, or allows you to select from a number of options, obtained by
-parsing input data using specified regular expression. If cmd is
-given, then it is run with the selected items as arguments, otherwise
-these items are just printed to the standard output, using given
-separator (space by default). Please send bug reports and suggestions
-to Igor.Akhmetov _at_ gmail.com.''')
+'''Depending on whether the input is from the terminal or not,
+simulates a simple directory browser, which can be used to select a
+number of files, or allows you to select from a number of options,
+obtained by parsing input data using specified regular expression. If
+cmd is given, then it is run with the selected items as arguments,
+otherwise these items are just printed to the standard output. Please
+send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output fields with null character')
     parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
