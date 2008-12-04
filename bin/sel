@@ -726,7 +726,8 @@ class Screen:
         self.scr.attrset(Attrs.DEFAULT)
 
         for idx, line in enumerate(lines):
-            self.scr.addstr(idx, 0, line[:TermSize.width])
+            if idx < TermSize.height:
+                self.scr.addstr(idx, 0, line[:TermSize.width - 1])
 
         self.scr.refresh()
         self.scr.timeout(-1)
