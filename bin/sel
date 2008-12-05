@@ -170,6 +170,17 @@ class FileItem(Item):
     def __repr__(self):
         return os.path.join(os.getcwd(), str(self))
 
+class Link(Item):
+    def __init__(self, str, action):
+        Item.__init__(self, str, action, Attrs.LINK)
+        self._to = os.readlink(repr(self))
+
+    def screen_str(self):
+        return Item.screen_str(self) + '@ -> ' + self._to
+
+    def __repr__(self):
+        return os.path.join(os.getcwd(), str(self))
+
 class Items:
     def __init__(self, items):
         self._set_items(items)
@@ -226,12 +237,9 @@ class Status:
     def __init__(self):
         self.win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
 
-    def clear(self):
+    def put(self, str, attr):
         self.win.move(0, 0)
         self.win.clrtoeol()
-
-    def put(self, str, attr):
-        self.clear()
         self.win.attrset(attr)
         self.win.addstr(str[:TermSize.width - 1])
         self.win.refresh()
@@ -325,13 +333,13 @@ def filesystem_factory(owner, path):
 
     if os.path.isdir(path):
         if os.path.islink(path):
-            return FileItem(path, read_dir, Attrs.LINK, '/@')
+            return Link(path, read_dir)
         else:
             return FileItem(path, read_dir, Attrs.DIR, '/')
     elif os.access(path, os.X_OK):
         return FileItem(path, accept, Attrs.EXEC, '*')
     elif os.path.islink(path):
-        return FileItem(path, accept, Attrs.LINK, '@')
+        return Link(path, accept)
     else:
         return FileItem(path, accept, Attrs.DEFAULT, '')
 
@@ -489,6 +497,7 @@ class Screen:
         self.scr.clrtoeol()
 
     def redraw(self):
+        self.scr.clear()
         for curidx in self.list.visible_lines():
             if curidx < len(self.items):
                 self.draw_item(curidx, False)
@@ -630,6 +639,7 @@ class Screen:
             cur = str(self.current_item())
 
         self.read_dir(os.getcwd())
+
         if not cur:
             return
 
@@ -736,7 +746,7 @@ class Screen:
         self.scr.getch()
         self.redraw()
 
-    def mainloop(self, stdscr):
+    def run(self, stdscr):
         self.status = Status()
         self.scr = stdscr
 
@@ -785,20 +795,6 @@ class Screen:
         self.clear_screen()
 
         return self.result
-
-def init_curses(func):
-    curses.use_default_colors()
-
-    # sometimes raises an exception in cygwin
-    try:
-        curses.curs_set(0)
-    except:
-        pass
-
-    Attrs.init()
-    ColorsManager.init()
-
-    return func()
 
 class TTYStdinLocker:
     def __enter__(self):
@@ -895,6 +891,8 @@ def itermatches(regexps):
 def run_command(e):
     retcode = None
 
+    curses.reset_shell_mode()
+
     try:
         retcode = subprocess.call(e.cmd, shell=True)
 
@@ -907,6 +905,28 @@ def run_command(e):
 
     if retcode != None and (retcode != 0 or e.wait_for_keypress):
         raw_input('\nPress ENTER to continue')
+
+    curses.reset_prog_mode()
+
+def mainloop(scr, wnd):
+    # sometimes raises an exception in cygwin
+    try:
+        curses.curs_set(0)
+    except:
+        pass
+
+    curses.use_default_colors()
+    Attrs.init()
+    ColorsManager.init()
+
+    while True:
+        try:
+            return scr.run(wnd)
+        except ResizeError:
+            TermSize.init()
+        except InvocationError, e:
+            run_command(e)
+            scr.reread_dir()
 
 def main():
     options, proc = process_args()
@@ -927,15 +947,7 @@ def main():
         signal.signal(signal.SIGWINCH, scr.resize)
         signal.signal(signal.SIGINT, scr.interrupt)
 
-        res = None
-        while res is None:
-            try:
-                res = curses.wrapper(lambda wnd: init_curses(lambda: scr.mainloop(wnd)))
-            except ResizeError:
-                TermSize.init()
-            except InvocationError, e:
-                run_command(e)
-                scr.reread_dir()
+        res = curses.wrapper(lambda wnd: mainloop(scr, wnd))
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
