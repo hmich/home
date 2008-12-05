@@ -74,8 +74,12 @@ class ColorsManager(object):
 
     @classmethod
     def color(cls, fg, bg):
-        cls._colors.append((fg, bg))
-        return len(cls._colors) - 1
+        c = (fg, bg)
+        if c in cls._colors:
+            return cls._colors.index(c)
+        else:
+            cls._colors.append(c)
+            return len(cls._colors) - 1
 
 class Keys:
     @classmethod
@@ -405,6 +409,7 @@ class Screen:
             (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
             (self.query_run_command, ['!'], 'run command on selection'),
             (self.invoke_shell,      ['$'], 'invoke shell'),
+            (lambda: self.run_command('cygstart', False), [Keys.F2], 'invoke editor on the selected items'),
             (self.invoke_editor,     [Keys.F3, Keys.F4], 'invoke editor on the selected items')]
 
         if options.interactive:
@@ -596,17 +601,6 @@ class Screen:
         self.items.remove(idx for idx, _ in self.enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
-    def init_curses(self):
-        curses.use_default_colors()
-        Attrs.init()
-        ColorsManager.init()
-
-        # sometimes raises an exception in cygwin
-        try:
-            curses.curs_set(0)
-        except:
-            pass
-
     def read_dir(self, dir):
         try:
             entries = listdir_sorted(dir)
@@ -743,7 +737,6 @@ class Screen:
         self.redraw()
 
     def mainloop(self, stdscr):
-        self.init_curses()
         self.status = Status()
         self.scr = stdscr
 
@@ -792,6 +785,20 @@ class Screen:
         self.clear_screen()
 
         return self.result
+
+def init_curses(func):
+    curses.use_default_colors()
+
+    # sometimes raises an exception in cygwin
+    try:
+        curses.curs_set(0)
+    except:
+        pass
+
+    Attrs.init()
+    ColorsManager.init()
+
+    return func()
 
 class TTYStdinLocker:
     def __enter__(self):
@@ -886,6 +893,8 @@ def itermatches(regexps):
                 yield match
 
 def run_command(e):
+    retcode = None
+
     try:
         retcode = subprocess.call(e.cmd, shell=True)
 
@@ -896,7 +905,7 @@ def run_command(e):
     except OSError, e:
         sys.stderr.write('\nExecution failed: %s' % e)
 
-    if e.wait_for_keypress:
+    if retcode != None and (retcode != 0 or e.wait_for_keypress):
         raw_input('\nPress ENTER to continue')
 
 def main():
@@ -921,7 +930,7 @@ def main():
         res = None
         while res is None:
             try:
-                res = curses.wrapper(scr.mainloop)
+                res = curses.wrapper(lambda wnd: init_curses(lambda: scr.mainloop(wnd)))
             except ResizeError:
                 TermSize.init()
             except InvocationError, e:
