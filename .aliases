@@ -10,9 +10,10 @@ alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
 alias l=ls
 
-alias ..='cd ..'
-alias ...='cd ...'
-alias cd_='cd "$_"'
+alias ..='pushd ..'
+alias ...='pushd ...'
+alias cd=pushd
+alias bd=popd
 
 alias cp='cp -i'
 alias mv='mv -i'
@@ -53,3 +54,4 @@ alias sta=cygstart
 
 alias sgit='git diff --name-only | sel'
 alias sfind='find | sel'
+alias sdirs='cd "$(dirs -p | sel)"'
