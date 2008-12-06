@@ -291,7 +291,10 @@ class ScrollingList:
 
         self.offset = self._bound_offset(self.offset)
 
-        if self.offset == prevoffset:
+        diff = self.offset - prevoffset
+
+        if -1 <= diff <= 1:
+            self.owner.scr.scroll(diff)
             self.owner.draw_item(previdx)
             self.owner.draw_item(self.idx)
         else:
@@ -748,6 +751,7 @@ class Screen:
     def run(self, stdscr):
         self.status = Status()
         self.scr = stdscr
+        self.scr.scrollok(1)
 
         if not self.items:
             self._create_items(self.matches)
