@@ -497,7 +497,6 @@ class Screen:
         self.scr.clrtoeol()
 
     def redraw(self):
-        self.scr.clear()
         for curidx in self.list.visible_lines():
             if curidx < len(self.items):
                 self.draw_item(curidx, False)
@@ -926,6 +925,7 @@ def mainloop(scr, wnd):
             TermSize.init()
         except InvocationError, e:
             run_command(e)
+            scr.clear_screen()
             scr.reread_dir()
 
 def main():
