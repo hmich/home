@@ -31,3 +31,5 @@ sd() {
     [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
     [ -d "$DIR" ] && pushd "$DIR" && ls
 }
+
+fortune

@@ -54,4 +54,4 @@ alias sta=cygstart
 
 alias sgit='git diff --name-only | sel'
 alias sfind='find | sel'
-alias sdirs='cd "$(dirs -p | sel)"'
+alias sdirs='eval "cd $(dirs -p | sel)"'
