@@ -176,7 +176,7 @@ class Link(Item):
         self._to = os.readlink(repr(self))
 
     def screen_str(self):
-        return Item.screen_str(self) + '@ -> ' + self._to
+        return '%s@ -> %s' % (Item.screen_str(self), self._to)
 
     def __repr__(self):
         return os.path.join(os.getcwd(), str(self))
@@ -805,7 +805,7 @@ class TTYStdinLocker:
         os.close(0)
         os.open('/dev/tty', os.O_RDONLY)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
         os.close(0)
         os.dup(self._saved_stdin)
 
@@ -815,7 +815,7 @@ class TTYStdoutLocker:
         os.close(1)
         os.open('/dev/tty', os.O_RDWR)
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *args):
         os.close(1)
         os.dup(self._saved_stdout)
 
@@ -828,9 +828,9 @@ class TTYLocker:
         self.inlocker.__enter__()
         self.outlocker.__enter__()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.inlocker.__exit__(exc_type, exc_val, exc_tb)
-        self.outlocker.__exit__(exc_type, exc_val, exc_tb)
+    def __exit__(self, *args):
+        self.inlocker.__exit__(*args)
+        self.outlocker.__exit__(*args)
 
 def separator(options):
     if options.null_terminated:
