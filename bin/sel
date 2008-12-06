@@ -420,7 +420,7 @@ class Screen:
             (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
             (self.query_run_command, ['!'], 'run command on selection'),
             (self.invoke_shell,      ['$'], 'invoke shell'),
-            (lambda: self.run_command('cygstart', False), [Keys.F2], 'invoke editor on the selected items'),
+            (lambda: self.run_command('cygstart', False), [Keys.F2], 'invoke cygstart on the selected items'),
             (self.invoke_editor,     [Keys.F3, Keys.F4], 'invoke editor on the selected items')]
 
         if options.interactive:
@@ -428,6 +428,9 @@ class Screen:
                 (self.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, '^'], 'reset current filter if any or go to the parent directory'),
                 (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory'),
                 (self.query_chdir,       ['C'], 'change dir')]
+        else:
+            bindings += [
+                (self.restore_items, [Keys.BACKSPACE, Keys.CTRL_H, '^'], 'reset current filter if any')]
 
         return bindings
 
@@ -734,7 +737,8 @@ class Screen:
 
         lines = (['Current keybindings:', ''] +
                  [binding[0].ljust(width) + binding[1] for binding in bindings] +
-                 ['', 'Press any key to continue'])
+                 ['', 'Please send bugs and suggestions to Igor.Akhmetov at gmail dot com',
+                  'Press any key to continue'])
 
         self.clear_screen()
         self.scr.attrset(Attrs.DEFAULT)
@@ -840,13 +844,24 @@ def separator(options):
     else:
         return options.ofs
 
-def exec_processor(cmd):
+def exec_processor(cmd, replace_str):
     def doexec(args):
+        if replace_str:
+            c = []
+            for idx, arg in enumerate(cmd):
+                if arg == replace_str:
+                    c.extend(args)
+                else:
+                    c.append(arg)
+        else:
+            c = cmd + args
+
         with TTYStdinLocker():
             try:
-                os.execlp(cmd[0], *(cmd + args))
+                os.execlp(c[0], *c)
             except OSError, e:
-                sys.stderr.write('Can not invoke program: %s\n' % e)
+                sys.stderr.write("Can not invoke program '%s': %s\n" % (c[0], e))
+
     return doexec
 
 def quoting_processor(func):
@@ -857,7 +872,7 @@ def print_processor(sep):
 
 def create_processor(options, args):
     if args:
-        proc = exec_processor(args)
+        proc = exec_processor(args, options.replace_str)
     else:
         proc = print_processor(separator(options))
         if options.quote:
@@ -869,16 +884,23 @@ def process_args():
 '''Depending on whether the input is from the terminal or not,
 simulates a simple directory browser, which can be used to select a
 number of files, or allows you to select from a number of options,
-obtained by parsing input data using specified regular expression. If
-cmd is given, then it is run with the selected items as arguments,
+obtained by parsing input data using the specified regular expression.
+If cmd is given, then it is run with the selected items as arguments,
 otherwise these items are just printed to the standard output. Please
-send bug reports and suggestions to Igor.Akhmetov _at_ gmail.com.''')
+send bug reports and suggestions to Igor.Akhmetov at gmail dot com.''')
 
-    parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False, help='separate output fields with null character')
-    parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False, help='separate output fields with newlines')
-    parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ', help='output fields separator, space by default')
-    parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False, help='quote output fields')
-    parser.add_option('-r', '--regexp', action='store', type='string', dest='regexp', default='^.*$', help='parse input data using given regular expression')
+    parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False,
+                      help='separate output fields with null character')
+    parser.add_option('-i', '--replace', action='store', type='string', dest='replace_str', default=None,
+                      help='replace occurances of REPLACE_STR in the initial arguments with selected items')
+    parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False,
+                      help='separate output fields with newlines')
+    parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ',
+                      help='output fields separator, space by default')
+    parser.add_option('-r', '--regexp', action='store', type='string', dest='regexp', default='^.*$',
+                      help='parse input data using given regular expression')
+    parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False,
+                      help='quote output fields')
 
     parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
