@@ -737,7 +737,7 @@ class Screen:
 
         lines = (['Current keybindings:', ''] +
                  [binding[0].ljust(width) + binding[1] for binding in bindings] +
-                 ['', 'Please send bugs and suggestions to Igor.Akhmetov at gmail dot com',
+                 ['', 'Please send bug reports and suggestions to Igor.Akhmetov at gmail dot com.', '',
                   'Press any key to continue'])
 
         self.clear_screen()
@@ -844,12 +844,12 @@ def separator(options):
     else:
         return options.ofs
 
-def exec_processor(cmd, replace_str):
+def exec_processor(cmd, replacestr):
     def doexec(args):
-        if replace_str:
+        if replacestr:
             c = []
             for idx, arg in enumerate(cmd):
-                if arg == replace_str:
+                if arg == replacestr:
                     c.extend(args)
                 else:
                     c.append(arg)
@@ -867,21 +867,22 @@ def exec_processor(cmd, replace_str):
 def quoting_processor(func):
     return lambda args: func(map(quote_string, args))
 
-def print_processor(sep):
+def printing_processor(sep):
     return lambda args: sys.stdout.write(sep.join(args))
 
 def create_processor(options, args):
     if args:
-        proc = exec_processor(args, options.replace_str)
+        proc = exec_processor(args, options.replacestr)
     else:
-        proc = print_processor(separator(options))
+        proc = printing_processor(separator(options))
         if options.quote:
             proc = quoting_processor(proc)
     return proc
 
 def process_args():
-    parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...', version='%prog ' + str(VERSION), description=
-'''Depending on whether the input is from the terminal or not,
+    parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...',
+                                   version='%prog ' + str(VERSION), description=
+'''Depending on whether the input is from a terminal or not,
 simulates a simple directory browser, which can be used to select a
 number of files, or allows you to select from a number of options,
 obtained by parsing input data using the specified regular expression.
@@ -891,8 +892,10 @@ send bug reports and suggestions to Igor.Akhmetov at gmail dot com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False,
                       help='separate output fields with null character')
-    parser.add_option('-i', '--replace', action='store', type='string', dest='replace_str', default=None,
-                      help='replace occurances of REPLACE_STR in the initial arguments with selected items')
+    parser.add_option('-a', '--arg-file', action='store', type='string', dest='argfile', default=None,
+                      help='read items from ARGFILE instead of standard input')
+    parser.add_option('-i', '--replace', action='store', type='string', dest='replacestr', default=None,
+                      help='replace occurances of REPLACESTR in the initial arguments with selected items')
     parser.add_option('-n', '--newline', action='store_true', dest='newlines', default=False,
                       help='separate output fields with newlines')
     parser.add_option('-o', '--ofs', action='store', type='string', dest='ofs', default=' ',
@@ -907,8 +910,14 @@ send bug reports and suggestions to Igor.Akhmetov at gmail dot com.''')
 
     return options, create_processor(options, args)
 
-def itermatches(regexps):
-    for line in sys.stdin.xreadlines():
+def create_reader(options):
+    if options.argfile:
+        return open(options.argfile).xreadlines()
+    else:
+        return sys.stdin.xreadlines()
+
+def itermatches(input, regexps):
+    for line in input:
         for re in regexps:
             for match in re.findall(line):
                 yield match
@@ -933,7 +942,7 @@ def run_command(e):
 
     curses.reset_prog_mode()
 
-def mainloop(scr, wnd):
+def mainloop(scr, wnd, options):
     # sometimes raises an exception in cygwin
     try:
         curses.curs_set(0)
@@ -952,16 +961,18 @@ def mainloop(scr, wnd):
         except InvocationError, e:
             run_command(e)
             scr.clear_screen()
-            scr.reread_dir()
+            if options.interactive:
+                scr.reread_dir()
 
 def main():
     options, proc = process_args()
-    options.interactive = os.isatty(0)
+    options.interactive = os.isatty(0) and not options.argfile
     if options.interactive:
         matches = listdir_sorted(os.getcwd())
         factory = filesystem_factory
     else:
-        matches = list(itermatches([re.compile(options.regexp, re.IGNORECASE)]))
+        regexps = [re.compile(options.regexp, re.IGNORECASE)]
+        matches = list(itermatches(create_reader(options), regexps))
         factory = simple_factory
 
     if not matches:
@@ -972,8 +983,7 @@ def main():
         scr = Screen(factory, matches, options)
         signal.signal(signal.SIGWINCH, scr.resize)
         signal.signal(signal.SIGINT, scr.interrupt)
-
-        res = curses.wrapper(lambda wnd: mainloop(scr, wnd))
+        res = curses.wrapper(lambda wnd: mainloop(scr, wnd, options))
 
     if not res:
         sys.exit(NOTHING_SELECTED_EXIT_STATUS)
