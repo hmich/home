@@ -31,6 +31,8 @@ import sys
 import subprocess
 import signal
 import pwd
+import cgitb
+import locale
 
 import time
 import struct
@@ -110,6 +112,14 @@ class Keys:
         cls.F2 = key(curses.KEY_F2, 'F2')
         cls.F3 = key(curses.KEY_F3, 'F3')
         cls.F4 = key(curses.KEY_F4, 'F4')
+        cls.F5 = key(curses.KEY_F5, 'F5')
+        cls.F6 = key(curses.KEY_F6, 'F6')
+        cls.F7 = key(curses.KEY_F7, 'F7')
+        cls.F8 = key(curses.KEY_F8, 'F8')
+        cls.F9 = key(curses.KEY_F9, 'F9')
+        cls.F10 = key(curses.KEY_F10, 'F10')
+        cls.F11 = key(curses.KEY_F11, 'F11')
+        cls.F12 = key(curses.KEY_F12, 'F12')
 
     _keys = {}
 
@@ -965,6 +975,9 @@ def mainloop(scr, wnd, options):
                 scr.reread_dir()
 
 def main():
+    cgitb.enable(format='text')
+    locale.setlocale(locale.LC_ALL, '')
+
     options, proc = process_args()
     options.interactive = os.isatty(0) and not options.argfile
     if options.interactive:
