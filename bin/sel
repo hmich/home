@@ -333,8 +333,8 @@ class ScrollingList:
             self.change_item(self.offset)
 
 def listdir_sorted(dir):
-    for _, dirs, files in os.walk(dir):
-        return sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..']
+    for _, dirs, files in os.walk(fromuni(dir)):
+        return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..'])
 
 def quote_string(s):
     return u'"%s"' % s
@@ -354,14 +354,14 @@ def filesystem_factory(owner, path):
         else:
             owner.accept_selection()
 
-    if os.path.isdir(path):
-        if os.path.islink(path):
+    if os.path.isdir(fromuni(path)):
+        if os.path.islink(fromuni(path)):
             return Link(path, read_dir)
         else:
             return FileItem(path, read_dir, Attrs.DIR, u'/')
-    elif os.access(path, os.X_OK):
+    elif os.access(fromuni(path), os.X_OK):
         return FileItem(path, accept, Attrs.EXEC, u'*')
-    elif os.path.islink(path):
+    elif os.path.islink(fromuni(path)):
         return Link(path, accept)
     else:
         return FileItem(path, accept, Attrs.DEFAULT, u'')
@@ -654,7 +654,7 @@ class Screen:
     def read_dir(self, dir):
         try:
             entries = listdir_sorted(dir)
-            os.chdir(dir)
+            os.chdir(fromuni(dir))
         except OSError, e:
             self.msg = 'Can\'t read dir %s: %s' % (dir, e)
         else:
