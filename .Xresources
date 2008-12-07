@@ -6,3 +6,6 @@ Rxvt.saveLines: 100000
 Rxvt.cursorBlink: true
 Rxvt.reverseVideo: true
 Rxvt.modifier: mod1
+
+URxvt.perl-ext:
+URxvt.perl-ext-common:

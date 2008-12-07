@@ -7,7 +7,6 @@ silencewait     15
 defscrollback   10000
 defflow         off
 defutf8         on
-defencoding     cp1251
 escape          ^Ss
 #maptimeout      0
 
