@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2008 Igor Akhmetov
+# Copyright (c) 2008 Igor Akhmetov (Igor.Akhmetov at gmail dot com)
 #
 # Permission is hereby granted, free of charge, to any person
 # obtaining a copy of this software and associated documentation
@@ -41,6 +41,7 @@ import termios
 
 import re
 import string
+import unicodedata
 import optparse
 import logging
 
@@ -87,39 +88,39 @@ class Keys:
     @classmethod
     def init(cls):
         key = cls._register_key
-        cls.DOWN = key(curses.KEY_DOWN, 'Down')
-        cls.UP = key(curses.KEY_UP, 'Up')
-        cls.PAGE_DOWN = key(curses.KEY_NPAGE, 'Page Down')
-        cls.PAGE_UP = key(curses.KEY_PPAGE, 'Page Up')
-        cls.HOME = key(curses.KEY_HOME, 'Home')
-        cls.END = key(curses.KEY_END, 'End')
-        cls.DELETE = key(curses.KEY_DC, 'Delete')
-        cls.INSERT = key(curses.KEY_IC, 'Insert')
-        cls.CTRL_H = key(curses.KEY_BACKSPACE, 'Ctrl-H')
-        cls.BACKSPACE = key(127, 'Backspace')
-        cls.CTRL_N = key(14, 'Ctrl-N')
-        cls.CTRL_P = key(16, 'Ctrl-P')
-        cls.CTRL_F = key(6, 'Ctrl-F')
-        cls.CTRL_B = key(2, 'Ctrl-B')
-        cls.CTRL_R = key(18, 'Ctrl-R')
-        cls.CTRL_L = key(12, 'Ctrl-L')
-        cls.CTRL_X = key(24, 'Ctrl-X')
-        cls.CTRL_D = key(4, 'Ctrl-D')
-        cls.ESCAPE = key(27, 'Escape')
-        cls.RETURN = key(ord('\n'), 'Return')
-        cls.TAB = key(ord('\t'), 'Tab')
-        cls.F1 = key(curses.KEY_F1, 'F1')
-        cls.F2 = key(curses.KEY_F2, 'F2')
-        cls.F3 = key(curses.KEY_F3, 'F3')
-        cls.F4 = key(curses.KEY_F4, 'F4')
-        cls.F5 = key(curses.KEY_F5, 'F5')
-        cls.F6 = key(curses.KEY_F6, 'F6')
-        cls.F7 = key(curses.KEY_F7, 'F7')
-        cls.F8 = key(curses.KEY_F8, 'F8')
-        cls.F9 = key(curses.KEY_F9, 'F9')
-        cls.F10 = key(curses.KEY_F10, 'F10')
-        cls.F11 = key(curses.KEY_F11, 'F11')
-        cls.F12 = key(curses.KEY_F12, 'F12')
+        cls.DOWN = key('KEY_DOWN', 'Down')
+        cls.UP = key('KEY_UP', 'Up')
+        cls.PAGE_DOWN = key('KEY_NPAGE', 'Page Down')
+        cls.HOME = key('KEY_HOME', 'Home')
+        cls.PAGE_UP = key('KEY_PPAGE', 'Page Up')
+        cls.END = key('KEY_END', 'End')
+        cls.DELETE = key('KEY_DC', 'Delete')
+        cls.INSERT = key('KEY_IC', 'Insert')
+        cls.CTRL_H = key('KEY_BACKSPACE', 'Ctrl-H')
+        cls.BACKSPACE = key('\x7f', 'Backspace')
+        cls.CTRL_N = key('\x0e', 'Ctrl-N')
+        cls.CTRL_P = key('\x10', 'Ctrl-P')
+        cls.CTRL_F = key('\x06', 'Ctrl-F')
+        cls.CTRL_B = key('\x02', 'Ctrl-B')
+        cls.CTRL_R = key('\x12', 'Ctrl-R')
+        cls.CTRL_L = key('\x0c', 'Ctrl-L')
+        cls.CTRL_X = key('\x18', 'Ctrl-X')
+        cls.CTRL_D = key('\x04', 'Ctrl-D')
+        cls.ESCAPE = key('\x1b', 'Escape')
+        cls.RETURN = key('\n', 'Return')
+        cls.TAB = key('\t', 'Tab')
+        cls.F1 = key('KEY_F1', 'F1')
+        cls.F2 = key('KEY_F2', 'F2')
+        cls.F3 = key('KEY_F3', 'F3')
+        cls.F4 = key('KEY_F4', 'F4')
+        cls.F5 = key('KEY_F5', 'F5')
+        cls.F6 = key('KEY_F6', 'F6')
+        cls.F7 = key('KEY_F7', 'F7')
+        cls.F8 = key('KEY_F8', 'F8')
+        cls.F9 = key('KEY_F9', 'F9')
+        cls.F10 = key('KEY_F10', 'F10')
+        cls.F11 = key('KEY_F11', 'F11')
+        cls.F12 = key('KEY_F12', 'F12')
 
     _keys = {}
 
@@ -134,6 +135,15 @@ class Keys:
             return cls._keys[code]
         else:
             return "'%s'" % code
+
+def touni(str):
+    return unicode(str, locale.getpreferredencoding())
+
+def fromuni(str):
+    return str.encode(locale.getpreferredencoding())
+
+def getcwd():
+    return touni(os.getcwd())
 
 class Item(object):
     def __init__(self, str, action, attr = None):
@@ -155,10 +165,7 @@ class Item(object):
 
     marked = property(_getmarked, _setmarked)
 
-    def __repr__(self):
-        return self._str
-
-    def __str__(self):
+    def __unicode__(self):
         return self._str
 
     def _mark_str(self):
@@ -167,7 +174,10 @@ class Item(object):
         return '[%s] ' % ('x' if self.marked else ' ')
 
     def screen_str(self):
-        return self._mark_str() + str(self)
+        return self._mark_str() + unicode(self)
+
+    def result_str(self):
+        return self._str
 
 class FileItem(Item):
     def __init__(self, str, action, attr, suffix):
@@ -177,19 +187,19 @@ class FileItem(Item):
     def screen_str(self):
         return Item.screen_str(self) + self._suffix
 
-    def __repr__(self):
-        return os.path.join(os.getcwd(), str(self))
+    def result_str(self):
+        return os.path.join(getcwd(), unicode(self))
 
 class Link(Item):
     def __init__(self, str, action):
         Item.__init__(self, str, action, Attrs.LINK)
-        self._to = os.readlink(repr(self))
+        self._to = os.readlink(self.result_str())
 
     def screen_str(self):
-        return '%s@ -> %s' % (Item.screen_str(self), self._to)
+        return u'%s@ -> %s' % (Item.screen_str(self), self._to)
 
-    def __repr__(self):
-        return os.path.join(os.getcwd(), str(self))
+    def result_str(self):
+        return os.path.join(getcwd(), unicode(self))
 
 class Items:
     def __init__(self, items):
@@ -251,7 +261,7 @@ class Status:
         self.win.move(0, 0)
         self.win.clrtoeol()
         self.win.attrset(attr)
-        self.win.addstr(str[:TermSize.width - 1])
+        self.win.addstr(fromuni(str[:TermSize.width - 1]))
         self.win.refresh()
 
     def query(self, str):
@@ -274,9 +284,9 @@ class ScrollingList:
     def _bound_offset(self, offset):
         return max(0, min(offset, self.nitems - self.lines))
 
-    def __str__(self):
+    def __unicode__(self):
         nvisible_items = min(self.nitems - self.offset, self.lines)
-        return '%d-%d of %d' % (self.offset + 1, self.offset + nvisible_items, self.nitems)
+        return u'%d-%d of %d' % (self.offset + 1, self.offset + nvisible_items, self.nitems)
 
     def contains_line(self, line):
         return self.offset <= line < self.offset + self.lines
@@ -327,7 +337,7 @@ def listdir_sorted(dir):
         return sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..']
 
 def quote_string(s):
-    return '"%s"' % s
+    return u'"%s"' % s
 
 def simple_factory(owner, str):
     return Item(str, lambda item: owner.accept_selection())
@@ -337,7 +347,7 @@ def filesystem_factory(owner, path):
 
     def read_dir(item):
         if not owner.items.has_marked():
-            if str(item) == '..':
+            if unicode(item) == u'..':
                 owner.up_dir()
             else:
                 owner.read_dir(path)
@@ -348,13 +358,13 @@ def filesystem_factory(owner, path):
         if os.path.islink(path):
             return Link(path, read_dir)
         else:
-            return FileItem(path, read_dir, Attrs.DIR, '/')
+            return FileItem(path, read_dir, Attrs.DIR, u'/')
     elif os.access(path, os.X_OK):
-        return FileItem(path, accept, Attrs.EXEC, '*')
+        return FileItem(path, accept, Attrs.EXEC, u'*')
     elif os.path.islink(path):
         return Link(path, accept)
     else:
-        return FileItem(path, accept, Attrs.DEFAULT, '')
+        return FileItem(path, accept, Attrs.DEFAULT, u'')
 
 class ResizeError(Exception):
     def __init__(self):
@@ -392,6 +402,12 @@ def shell_path():
 def editor_name():
     return os.getenv('EDITOR') or DEFAULT_EDITOR
 
+def is_printable_char(c):
+    try:
+        return unicodedata.category(unicode(c, 'utf8'))[0] in 'LNPS'
+    except:
+        return False
+
 class Screen:
     def __init__(self, factory, matches, options):
         self.factory = factory
@@ -426,7 +442,7 @@ class Screen:
             (self.redraw,            [Keys.CTRL_L], 'redraw'),
             (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
             (lambda: self.set_result([]),            [Keys.CTRL_X, 'Q'], 'exit without accepting selection'),
-            (lambda: self.set_result([os.getcwd()]), [Keys.CTRL_D, 'D'], 'exit with the name of the current directory as the only result'),
+            (lambda: self.set_result([getcwd()]), [Keys.CTRL_D, 'D'], 'exit with the name of the current directory as the only result'),
             (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
             (self.query_run_command, ['!'], 'run command on selection'),
             (self.invoke_shell,      ['$'], 'invoke shell'),
@@ -459,7 +475,16 @@ class Screen:
 
     def getch(self):
         self.scr.timeout(100)
-        return self.scr.getch()
+        try:
+            res = self.scr.getkey()
+            self.scr.timeout(0)
+            while True:
+                try:
+                    res += self.scr.getkey()
+                except:
+                    return res
+        except:
+            return ''
 
     def highlightstr(self, y, x, attr, s):
         idx = 0
@@ -470,16 +495,17 @@ class Screen:
                 start, end = self.highlighter(s, idx)
             if start == -1:
                 self.scr.attrset(attr)
-                self.scr.addstr(y, x + idx, s[idx:])
+                self.scr.addstr(y, x + idx, fromuni(s[idx:]))
                 break
             else:
                 self.scr.attrset(attr)
-                self.scr.addstr(y, x + idx, s[idx:start])
+                self.scr.addstr(y, x + idx, fromuni(s[idx:start]))
 
                 self.scr.attrset(Attrs.HIGHLIGHT)
-                self.scr.addstr(y, x + start, s[start:end])
+                self.scr.addstr(y, x + start, fromuni(s[start:end]))
 
                 idx = end
+
         self.scr.attrset(attr)
 
     def draw_item(self, idx, refresh = True):
@@ -539,8 +565,8 @@ class Screen:
         if self.msg:
             self.status.put(self.msg, Attrs.HIGHLIGHT)
         else:
-            curdir = os.getcwd()
-            self.status.put(curdir + str(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
+            curdir = getcwd()
+            self.status.put(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
     def goto_line(self):
         linestr = self.status.query('Goto line:')
@@ -560,7 +586,7 @@ class Screen:
             return
 
         for item in self.items:
-            if regex.search(str(item)):
+            if regex.search(unicode(item)):
                 item.marked = True
 
     def _filter(self, items):
@@ -576,12 +602,12 @@ class Screen:
 
     def _items_by_pattern(self, pat):
         for item in self.items:
-            if pat in str(item).lower():
+            if pat in unicode(item).lower():
                 yield item
 
     def _items_by_regex(self, regex):
         for item in self.items:
-            if regex.search(str(item).lower()):
+            if regex.search(unicode(item).lower()):
                 yield item
 
     def filter_by_pattern(self, pattern):
@@ -641,25 +667,25 @@ class Screen:
         self.read_dir(dir)
 
     def up_dir(self):
-        (parent, cur) = os.path.split(os.getcwd())
+        (parent, cur) = os.path.split(getcwd())
         self.read_dir(parent)
 
         for idx, item in enumerate(self.items):
-            if str(item) == cur:
+            if unicode(item) == cur:
                 self.list.change_item(idx)
 
     def reread_dir(self):
         cur = ''
         if self.items:
-            cur = str(self.current_item())
+            cur = unicode(self.current_item())
 
-        self.read_dir(os.getcwd())
+        self.read_dir(getcwd())
 
         if not cur:
             return
 
         for idx, item in enumerate(self.items):
-            if str(item) == cur:
+            if unicode(item) == cur:
                 self.list.change_item(idx)
                 break
 
@@ -681,7 +707,7 @@ class Screen:
         self.result = res
 
     def accept_selection(self):
-        self.set_result([repr(item) for _, item in self.enumerate_selected()])
+        self.set_result([item.result_str() for _, item in self.enumerate_selected()])
 
     next_page  = lambda self: self.list.next_page()
     prev_page  = lambda self: self.list.prev_page()
@@ -711,7 +737,7 @@ class Screen:
         if not cmd:
             return
         self.clear_screen()
-        args = [str(item) for _, item in self.enumerate_selected()]
+        args = [unicode(item) for _, item in self.enumerate_selected()]
         raise InvocationError(cmd + " " + " ".join(map(quote_string, args)), wait_for_keypress)
 
     def query_run_command(self):
@@ -733,10 +759,7 @@ class Screen:
         res = {}
         for binding in self.bindings:
             for key in binding[1]:
-                if isinstance(key, str):
-                    res[ord(key)] = binding[0]
-                else:
-                    res[key] = binding[0]
+                res[key] = binding[0]
         return res
 
     def show_bindings(self):
@@ -747,8 +770,7 @@ class Screen:
 
         lines = (['Current keybindings:', ''] +
                  [binding[0].ljust(width) + binding[1] for binding in bindings] +
-                 ['', 'Please send bug reports and suggestions to Igor.Akhmetov at gmail dot com.', '',
-                  'Press any key to continue'])
+                 ['', 'Press any key to continue'])
 
         self.clear_screen()
         self.scr.attrset(Attrs.DEFAULT)
@@ -775,7 +797,7 @@ class Screen:
         else:
             self._update_list(self.list.idx, self.list.offset)
 
-        self.pattern = ''
+        self.pattern = u''
         lastpress = time.time()
         bindings = self.bindings_map()
 
@@ -800,13 +822,13 @@ class Screen:
                 self.clear_highlighter()
                 self.clear_pattern()
                 bindings[c]()
-            elif curses.ascii.isprint(c):
+            elif is_printable_char(c):
                 self.msg = None
-                self.pattern += chr(c)
+                self.pattern += touni(c)
                 lastpress = time.time()
                 if not self.filter_by_pattern(self.pattern):
                     self.clear_pattern()
-            elif c != -1 or time.time() - lastpress > PATTERN_TIMEOUT:
+            elif c or time.time() - lastpress > PATTERN_TIMEOUT:
                 self.clear_pattern()
 
         self.clear_screen()
@@ -848,11 +870,11 @@ class TTYLocker:
 
 def separator(options):
     if options.null_terminated:
-        return '\x00'
+        return u'\x00'
     elif options.newlines:
-        return '\n'
+        return u'\n'
     else:
-        return options.ofs
+        return touni(options.ofs)
 
 def exec_processor(cmd, replacestr):
     def doexec(args):
@@ -878,7 +900,7 @@ def quoting_processor(func):
     return lambda args: func(map(quote_string, args))
 
 def printing_processor(sep):
-    return lambda args: sys.stdout.write(sep.join(args))
+    return lambda args: sys.stdout.write(fromuni(sep.join(args)))
 
 def create_processor(options, args):
     if args:
@@ -981,7 +1003,7 @@ def main():
     options, proc = process_args()
     options.interactive = os.isatty(0) and not options.argfile
     if options.interactive:
-        matches = listdir_sorted(os.getcwd())
+        matches = listdir_sorted(getcwd())
         factory = filesystem_factory
     else:
         regexps = [re.compile(options.regexp, re.IGNORECASE)]
