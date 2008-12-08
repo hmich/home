@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2008 Igor Akhmetov (Igor.Akhmetov at gmail dot com)
 #
@@ -88,39 +89,39 @@ class Keys:
     @classmethod
     def init(cls):
         key = cls._register_key
-        cls.DOWN = key('KEY_DOWN', 'Down')
-        cls.UP = key('KEY_UP', 'Up')
-        cls.PAGE_DOWN = key('KEY_NPAGE', 'Page Down')
-        cls.HOME = key('KEY_HOME', 'Home')
-        cls.PAGE_UP = key('KEY_PPAGE', 'Page Up')
-        cls.END = key('KEY_END', 'End')
-        cls.DELETE = key('KEY_DC', 'Delete')
-        cls.INSERT = key('KEY_IC', 'Insert')
-        cls.CTRL_H = key('KEY_BACKSPACE', 'Ctrl-H')
-        cls.BACKSPACE = key('\x7f', 'Backspace')
-        cls.CTRL_N = key('\x0e', 'Ctrl-N')
-        cls.CTRL_P = key('\x10', 'Ctrl-P')
-        cls.CTRL_F = key('\x06', 'Ctrl-F')
-        cls.CTRL_B = key('\x02', 'Ctrl-B')
-        cls.CTRL_R = key('\x12', 'Ctrl-R')
-        cls.CTRL_L = key('\x0c', 'Ctrl-L')
-        cls.CTRL_X = key('\x18', 'Ctrl-X')
-        cls.CTRL_D = key('\x04', 'Ctrl-D')
-        cls.ESCAPE = key('\x1b', 'Escape')
-        cls.RETURN = key('\n', 'Return')
-        cls.TAB = key('\t', 'Tab')
-        cls.F1 = key('KEY_F(1)', 'F1')
-        cls.F2 = key('KEY_F(2)', 'F2')
-        cls.F3 = key('KEY_F(3)', 'F3')
-        cls.F4 = key('KEY_F(4)', 'F4')
-        cls.F5 = key('KEY_F(5)', 'F5')
-        cls.F6 = key('KEY_F(6)', 'F6')
-        cls.F7 = key('KEY_F(7)', 'F7')
-        cls.F8 = key('KEY_F(8)', 'F8')
-        cls.F9 = key('KEY_F(9)', 'F9')
-        cls.F10 = key('KEY_F(10)', 'F10')
-        cls.F11 = key('KEY_F(11)', 'F11')
-        cls.F12 = key('KEY_F(12)', 'F12')
+        cls.DOWN = key(u'KEY_DOWN', u'Down')
+        cls.UP = key(u'KEY_UP', u'Up')
+        cls.PAGE_DOWN = key(u'KEY_NPAGE', u'Page Down')
+        cls.HOME = key(u'KEY_HOME', u'Home')
+        cls.PAGE_UP = key(u'KEY_PPAGE', u'Page Up')
+        cls.END = key(u'KEY_END', u'End')
+        cls.DELETE = key(u'KEY_DC', u'Delete')
+        cls.INSERT = key(u'KEY_IC', u'Insert')
+        cls.CTRL_H = key(u'KEY_BACKSPACE', u'Ctrl-H')
+        cls.BACKSPACE = key(u'\x7f', u'Backspace')
+        cls.CTRL_N = key(u'\x0e', u'Ctrl-N')
+        cls.CTRL_P = key(u'\x10', u'Ctrl-P')
+        cls.CTRL_F = key(u'\x06', u'Ctrl-F')
+        cls.CTRL_B = key(u'\x02', u'Ctrl-B')
+        cls.CTRL_R = key(u'\x12', u'Ctrl-R')
+        cls.CTRL_L = key(u'\x0c', u'Ctrl-L')
+        cls.CTRL_X = key(u'\x18', u'Ctrl-X')
+        cls.CTRL_D = key(u'\x04', u'Ctrl-D')
+        cls.ESCAPE = key(u'\x1b', u'Escape')
+        cls.RETURN = key(u'\n', u'Return')
+        cls.TAB = key(u'\t', u'Tab')
+        cls.F1 = key(u'KEY_F(1)', u'F1')
+        cls.F2 = key(u'KEY_F(2)', u'F2')
+        cls.F3 = key(u'KEY_F(3)', u'F3')
+        cls.F4 = key(u'KEY_F(4)', u'F4')
+        cls.F5 = key(u'KEY_F(5)', u'F5')
+        cls.F6 = key(u'KEY_F(6)', u'F6')
+        cls.F7 = key(u'KEY_F(7)', u'F7')
+        cls.F8 = key(u'KEY_F(8)', u'F8')
+        cls.F9 = key(u'KEY_F(9)', u'F9')
+        cls.F10 = key(u'KEY_F(10)', u'F10')
+        cls.F11 = key(u'KEY_F(11)', u'F11')
+        cls.F12 = key(u'KEY_F(12)', u'F12')
 
     _keys = {}
 
@@ -171,7 +172,7 @@ class Item(object):
     def _mark_str(self):
         if not self._owner.has_marked():
             return ''
-        return '[%s] ' % ('x' if self.marked else ' ')
+        return u'[%s] ' % (u'x' if self.marked else u' ')
 
     def screen_str(self):
         return self._mark_str() + unicode(self)
@@ -265,7 +266,7 @@ class Status:
         self.win.refresh()
 
     def query(self, str):
-        str += ' '
+        str += u' '
         self.put(str, Attrs.STATUS)
         win = curses.newwin(1, TermSize.width - len(str), TermSize.height - 1, len(str))
         return curses.textpad.Textbox(win).edit().strip()
@@ -424,39 +425,39 @@ class Screen:
     def create_bindings(self, options):
         Keys.init()
         bindings = [
-            (self.next_item,         [Keys.DOWN, 'J', Keys.CTRL_N], 'next line'),
-            (self.prev_item,         [Keys.UP, Keys.CTRL_P, 'K'], 'prev line'),
-            (self.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, 'H'], 'next page'),
-            (self.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, 'L'], 'prev page'),
-            (self.first_item,        [Keys.HOME, '<'], 'first item'),
-            (self.last_item,         [Keys.END, '>'], 'last item'),
-            (self.remove_marked,     [Keys.DELETE, 'X'], 'remove selected items'),
-            (self.toggle_item,       [Keys.INSERT, ' '], 'toggle item'),
-            (self.invert_selection,  ['~'], 'invert selection'),
-            (self.select_all,        ['*'], 'select all items'),
-            (self.filter_by_mark,    [Keys.TAB], 'show only marked items'),
-            (self.goto_line,         ['G'], 'goto line'),
-            (self.mark_by_regex,     ['%'], 'mark by regexp'),
-            (self.search_by_regex,   ['/'], 'filter by regexp'),
-            (self.restore_items,     [Keys.ESCAPE], 'reset current filter'),
-            (self.redraw,            [Keys.CTRL_L], 'redraw'),
-            (self.show_bindings,     [Keys.F1, '?'], 'show this help'),
-            (lambda: self.set_result([]),            [Keys.CTRL_X, 'Q'], 'exit without accepting selection'),
-            (lambda: self.set_result([getcwd()]), [Keys.CTRL_D, 'D'], 'exit with the name of the current directory as the only result'),
-            (lambda: self.current_item().action(),   [Keys.RETURN], 'perform action on the current item'),
-            (self.query_run_command, ['!'], 'run command on selection'),
-            (self.invoke_shell,      ['$'], 'invoke shell'),
-            (lambda: self.run_command('cygstart', False), [Keys.F2], 'invoke cygstart on the selected items'),
-            (self.invoke_editor,     [Keys.F3, Keys.F4], 'invoke editor on the selected items')]
+            (self.next_item,         [Keys.DOWN, u'J', Keys.CTRL_N], u'next line'),
+            (self.prev_item,         [Keys.UP, Keys.CTRL_P, u'K'], u'prev line'),
+            (self.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, u'H'], u'next page'),
+            (self.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, u'L'], u'prev page'),
+            (self.first_item,        [Keys.HOME, u'<'], u'first item'),
+            (self.last_item,         [Keys.END, u'>'], u'last item'),
+            (self.remove_marked,     [Keys.DELETE, u'X'], u'remove selected items'),
+            (self.toggle_item,       [Keys.INSERT, u' '], u'toggle item'),
+            (self.invert_selection,  [u'~'], u'invert selection'),
+            (self.select_all,        [u'*'], u'select all items'),
+            (self.filter_by_mark,    [Keys.TAB], u'show only marked items'),
+            (self.goto_line,         [u'G'], u'goto line'),
+            (self.mark_by_regex,     [u'%'], u'mark by regexp'),
+            (self.search_by_regex,   [u'/'], u'filter by regexp'),
+            (self.restore_items,     [Keys.ESCAPE], u'reset current filter'),
+            (self.redraw,            [Keys.CTRL_L], u'redraw'),
+            (self.show_bindings,     [Keys.F1, u'?'], u'show this help'),
+            (lambda: self.set_result([]),            [Keys.CTRL_X, u'Q'], u'exit without accepting selection'),
+            (lambda: self.set_result([getcwd()]),    [Keys.CTRL_D, u'D'], u'exit with the name of the current directory as the only result'),
+            (lambda: self.current_item().action(),   [Keys.RETURN], u'perform action on the current item'),
+            (self.query_run_command, [u'!'], u'run command on selection'),
+            (self.invoke_shell,      [u'$'], u'invoke shell'),
+            (lambda: self.run_command(u'cygstart', False), [Keys.F2], u'invoke cygstart on the selected items'),
+            (self.invoke_editor,     [Keys.F3, Keys.F4], u'invoke editor on the selected items')]
 
         if options.interactive:
             bindings += [
-                (self.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, '^'], 'reset current filter if any or go to the parent directory'),
-                (self.reread_dir,        [Keys.CTRL_R, 'R'], 'reread contents of the current directory'),
-                (self.query_chdir,       ['C'], 'change dir')]
+                (self.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current filter if any or go to the parent directory'),
+                (self.reread_dir,        [Keys.CTRL_R, u'R'], u'reread contents of the current directory'),
+                (self.query_chdir,       [u'C'], u'change dir')]
         else:
             bindings += [
-                (self.restore_items, [Keys.BACKSPACE, Keys.CTRL_H, '^'], 'reset current filter if any')]
+                (self.restore_items, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current filter if any')]
 
         return bindings
 
@@ -482,9 +483,9 @@ class Screen:
                 try:
                     res += self.scr.getkey()
                 except:
-                    return res
+                    return touni(res)
         except:
-            return ''
+            return u''
 
     def highlightstr(self, y, x, attr, s):
         idx = 0
@@ -513,7 +514,7 @@ class Screen:
             return
 
         y = idx - self.list.offset
-        line_num = str(idx + 1).rjust(len(str(len(self.items)))) + ' '
+        line_num = str(idx + 1).rjust(len(str(len(self.items)))) + u' '
         item = self.items[idx]
         s = item.screen_str()
 
@@ -569,20 +570,20 @@ class Screen:
             self.status.put(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
     def goto_line(self):
-        linestr = self.status.query('Goto line:')
+        linestr = self.status.query(u'Goto line:')
         try:
             line = int(linestr)
         except ValueError:
-            self.msg = 'Invalid line number!'
+            self.msg = u'Invalid line number!'
             return
         self.list.change_item(line - 1)
 
     def mark_by_regex(self):
-        s = self.status.query('Mark by regex:')
+        s = self.status.query(u'Mark by regex:')
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = 'Invalid regexp: %s' % e
+            self.msg = u'Invalid regexp: %s' % e
             return
 
         for item in self.items:
@@ -592,7 +593,7 @@ class Screen:
     def _filter(self, items):
         if not items:
             self.redraw()
-            self.msg = 'No matches!'
+            self.msg = u'No matches!'
             return False
         if not self._allitems:
             self._allitems = self.items
@@ -615,14 +616,14 @@ class Screen:
         return self._filter(list(self._items_by_pattern(pattern)))
 
     def search_by_regex(self):
-        s = self.status.query("Search by regex:")
+        s = self.status.query(u'Search by regex:')
         if not s:
             return False
 
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = "Invalid regexp: %s" % e
+            self.msg = u'Invalid regexp: %s' % e
             return
 
         self.highlighter = RegexHighlighter(regex)
@@ -656,13 +657,13 @@ class Screen:
             entries = listdir_sorted(dir)
             os.chdir(fromuni(dir))
         except OSError, e:
-            self.msg = 'Can\'t read dir %s: %s' % (dir, e)
+            self.msg = u'Can\'t read dir %s: %s' % (dir, e)
         else:
             self._create_items(entries)
             self._update_list()
 
     def query_chdir(self):
-        dir = self.status.query("Change dir to:")
+        dir = self.status.query(u'Change dir to:')
         dir = os.path.expandvars(os.path.expanduser(dir))
         self.read_dir(dir)
 
@@ -675,7 +676,7 @@ class Screen:
                 self.list.change_item(idx)
 
     def reread_dir(self):
-        cur = ''
+        cur = u''
         if self.items:
             cur = unicode(self.current_item())
 
@@ -738,10 +739,10 @@ class Screen:
             return
         self.clear_screen()
         args = [unicode(item) for _, item in self.enumerate_selected()]
-        raise InvocationError(cmd + " " + " ".join(map(quote_string, args)), wait_for_keypress)
+        raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
 
     def query_run_command(self):
-        self.run_command(self.status.query("Run command on selection:"))
+        self.run_command(self.status.query(u'Run command on selection:'))
 
     def clear_highlighter(self):
         if not self.highlighter:
@@ -752,7 +753,7 @@ class Screen:
     def clear_pattern(self):
         if not self.pattern:
             return
-        self.pattern = ''
+        self.pattern = u''
         self.clear_highlighter()
 
     def bindings_map(self):
@@ -765,19 +766,19 @@ class Screen:
     def show_bindings(self):
         bindings = []
         for binding in self.bindings:
-            bindings.append((", ".join(map(Keys.str, binding[1])), binding[2]))
+            bindings.append((u', '.join(map(Keys.str, binding[1])), binding[2]))
         width = max(len(binding[0]) for binding in bindings) + 1
 
-        lines = (['Current keybindings:', ''] +
+        lines = ([u'Current keybindings:', u''] +
                  [binding[0].ljust(width) + binding[1] for binding in bindings] +
-                 ['', 'Press any key to continue'])
+                 [u'', u'Press any key to continue'])
 
         self.clear_screen()
         self.scr.attrset(Attrs.DEFAULT)
 
         for idx, line in enumerate(lines):
             if idx < TermSize.height:
-                self.scr.addstr(idx, 0, line[:TermSize.width - 1])
+                self.scr.addstr(idx, 0, fromuni(line[:TermSize.width - 1]))
 
         self.scr.refresh()
         self.scr.timeout(-1)
@@ -824,7 +825,7 @@ class Screen:
                 bindings[c]()
             elif is_printable_char(c):
                 self.msg = None
-                self.pattern += touni(c)
+                self.pattern += c
                 lastpress = time.time()
                 if not self.filter_by_pattern(self.pattern):
                     self.clear_pattern()
@@ -892,7 +893,7 @@ def exec_processor(cmd, replacestr):
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
-                sys.stderr.write("Can not invoke program '%s': %s\n" % (c[0], e))
+                sys.stderr.write(u"Can not invoke program '%s': %s\n" % (c[0], e))
 
     return doexec
 
