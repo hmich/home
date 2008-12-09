@@ -52,9 +52,12 @@ import curses.textpad
 import curses.wrapper
 
 VERSION = 0.1
-PATTERN_TIMEOUT = 2
-NOTHING_SELECTED_EXIT_STATUS = 1
-DEFAULT_EDITOR = 'vim'
+PATTERN_TIMEOUT = 2      # time in seconds to wait before resetting of the typed pattern
+DEFAULT_EDITOR = 'vim'   # name of the editor to invoke if the EDITOR environment variable is not set
+
+class ExitStatuses:
+    NOTHING_SELECTED = 1 # nothing has been selected
+    EXEC_ERROR = 2       # exec of the supplied program did not succeed
 
 class Attrs:
     @classmethod
@@ -137,6 +140,7 @@ class Keys:
         else:
             return "'%s'" % code
 
+# os utilities
 def touni(str):
     return unicode(str, locale.getpreferredencoding())
 
@@ -145,6 +149,27 @@ def fromuni(str):
 
 def getcwd():
     return touni(os.getcwd())
+
+def listdir_sorted(dir):
+    # conversion from unicode is needed to allow the program run under cygwin
+    for _, dirs, files in os.walk(fromuni(dir)):
+        return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..'])
+
+def shell_path():
+    return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
+
+def editor_name():
+    return os.getenv('EDITOR') or DEFAULT_EDITOR
+
+# string utilities
+def quote_string(s):
+    return u'"%s"' % s
+
+def is_printable_char(c):
+    try:
+        return unicodedata.category(c)[0] in 'LNPS'
+    except:
+        return False
 
 class Item(object):
     def __init__(self, str, action, attr = None):
@@ -276,14 +301,24 @@ class ScrollingList:
         self.nitems = nitems
         self.lines = lines
         self.owner = owner
-        self.offset = self._bound_offset(offset)
         self.idx = self._bound_idx(idx)
+        self.offset = offset
+        self._fix_offset()
 
     def _bound_idx(self, idx):
         return max(0, min(idx, self.nitems - 1))
 
     def _bound_offset(self, offset):
         return max(0, min(offset, self.nitems - self.lines))
+
+    def _fix_offset(self):
+        if not self.contains_line(self.idx):
+            if self.idx < self.offset:
+                self.offset = self.idx
+            else:
+                self.offset = self.idx - self.lines + 1
+
+        self.offset = self._bound_offset(self.offset)
 
     def __unicode__(self):
         nvisible_items = min(self.nitems - self.offset, self.lines)
@@ -297,20 +332,14 @@ class ScrollingList:
 
     def change_size(self, nitems):
         self.nitems = nitems
-        self.offset = self._bound_offset(self.offset)
         self.idx = self._bound_idx(self.idx)
+        self._fix_offset()
 
     def change_item(self, arg):
         previdx, prevoffset = self.idx, self.offset
 
         self.idx = self._bound_idx(arg)
-        if not self.contains_line(self.idx):
-            if self.idx < self.offset:
-                self.offset = self.idx
-            else:
-                self.offset = self.idx - self.lines + 1
-
-        self.offset = self._bound_offset(self.offset)
+        self._fix_offset()
 
         diff = self.offset - prevoffset
 
@@ -332,13 +361,6 @@ class ScrollingList:
             self.change_item(self.idx - self.lines)
         else:
             self.change_item(self.offset)
-
-def listdir_sorted(dir):
-    for _, dirs, files in os.walk(fromuni(dir)):
-        return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or ['..'])
-
-def quote_string(s):
-    return u'"%s"' % s
 
 def simple_factory(owner, str):
     return Item(str, lambda item: owner.accept_selection())
@@ -397,18 +419,6 @@ class RegexHighlighter:
             return -1, -1
         return start + match.start(), start + match.end()
 
-def shell_path():
-    return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
-
-def editor_name():
-    return os.getenv('EDITOR') or DEFAULT_EDITOR
-
-def is_printable_char(c):
-    try:
-        return unicodedata.category(unicode(c, 'utf8'))[0] in 'LNPS'
-    except:
-        return False
-
 class Screen:
     def __init__(self, factory, matches, options):
         self.factory = factory
@@ -450,11 +460,13 @@ class Screen:
             (self.invoke_editor,     [Keys.F3, Keys.F4], u'invoke editor on the selected items')]
 
         if options.interactive:
+            self.update_list = self.reread_dir
             bindings += [
                 (self.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current filter if any or go to the parent directory'),
                 (self.reread_dir,        [Keys.CTRL_R, u'R'], u'reread contents of the current directory'),
                 (self.query_chdir,       [u'C'], u'change dir')]
         else:
+            self.update_list = lambda: None
             bindings += [
                 (self.restore_items, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current filter if any')]
 
@@ -547,7 +559,7 @@ class Screen:
         self.scr.refresh()
 
     def current_item(self):
-        return self.items[self.list.idx]
+        return self.items[self.list.idx] if self.items else None
 
     def toggle_item(self):
         item = self.current_item()
@@ -692,8 +704,8 @@ class Screen:
     def restore_items(self):
         if not self._allitems:
             return
-        cur = self.current_item() if self.items else  None
-        self._set_items(list(self._allitems))
+        cur = self.current_item()
+        self._set_items(self._allitems)
         self._update_list(self.items.index(cur) if cur else 0)
         self._allitems = None
 
@@ -886,6 +898,7 @@ def exec_processor(cmd, replacestr):
                 os.execlp(c[0], *c)
             except OSError, e:
                 sys.stderr.write(u"Can not invoke program '%s': %s\n" % (c[0], e))
+                sys.exit(ExitStatuses.EXEC_ERROR)
 
     return doexec
 
@@ -986,8 +999,7 @@ def mainloop(scr, wnd, options):
         except InvocationError, e:
             run_command(e)
             scr.clear_screen()
-            if options.interactive:
-                scr.reread_dir()
+            scr.update_list()
 
 def main():
     cgitb.enable(format='text')
@@ -1004,7 +1016,7 @@ def main():
         factory = simple_factory
 
     if not matches:
-        sys.exit(NOTHING_SELECTED_EXIT_STATUS)
+        sys.exit(ExitStatuses.NOTHING_SELECTED)
 
     with TTYLocker():
         TermSize.init()
@@ -1013,7 +1025,7 @@ def main():
         res = curses.wrapper(lambda wnd: mainloop(scr, wnd, options))
 
     if not res:
-        sys.exit(NOTHING_SELECTED_EXIT_STATUS)
+        sys.exit(ExitStatuses.NOTHING_SELECTED)
 
     proc(res)
 
