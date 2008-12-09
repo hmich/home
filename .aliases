@@ -10,8 +10,8 @@ alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
 alias l=ls
 
-alias ..='pushd ..'
-alias ...='pushd ...'
+alias ..='pushd .. && ls'
+alias ...='pushd ... && ls'
 alias cd=pushd
 alias bd=popd
 

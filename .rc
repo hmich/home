@@ -8,6 +8,7 @@ if [ "$(uname)" != "Linux" ]; then
     export R=/cygdrive/c/work/src
     export DATA=$R/Areator/Source/DataProcessing
     export LESSCHARDEF=8bcccbc.18b95.33b.
+    alias ff='sel -a $R/list'
 fi
 
 # make less more friendly for non-text input files, see lesspipe(1)
