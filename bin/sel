@@ -817,6 +817,7 @@ class Screen:
                 c = self.getch()
             except KeyboardInterrupt:
                 self.set_result([])
+                break
 
             if self.resized:
                 self.resized = False
