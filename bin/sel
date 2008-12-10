@@ -47,7 +47,7 @@ import string
 import unicodedata
 import optparse
 import logging
-from ConfigParser import SafeConfigParser
+from ConfigParser import RawConfigParser
 
 import curses
 import curses.ascii
@@ -460,28 +460,29 @@ class Bindings:
 
     def __init__(self, owner, interactive):
         cfg_file = os.path.expanduser(CONFIG_FILE)
-        has_cfg_file = os.path.isfile(cfg_file)
 
-        if not has_cfg_file or not self._load_bindings(cfg_file):
-            bindings = self._keys_map(self._default_bindings(owner))
-            interactive_bindings = self._keys_map(self._interactive_bindings(owner))
+        try:
+            cfg = RawConfigParser()
+            cfg.optionxform = lambda s: s
+            cfg.read(cfg_file)
 
-        if not has_cfg_file:
+            bindings = self._read_bindings(owner, cfg.items(self.BINDINGS_SECTION))
+            interactive_bindings = self._read_bindings(owner, cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+        except Exception, e:
+            bindings = self._default_bindings(owner)
+            interactive_bindings = self._interactive_bindings(owner)
+
+        if not os.path.isfile(cfg_file):
             try:
                 self._save_bindings(cfg_file, bindings, interactive_bindings)
             except:
                 pass
 
-        self._map = bindings
+        self._bindings = defaultdict(list)
+        self._bindings.update(bindings)
         if interactive:
-            self._map.update(interactive_bindings)
-
-    def _keys_map(self, bindings):
-        res = {}
-        for func, keys in bindings.items():
-            for key in keys:
-                res[key] = func
-        return res
+            self._merge_bindings(interactive_bindings)
+        self._map = dict([(key, func) for func, keys in self._bindings.items() for key in keys])
 
     def _default_bindings(self, owner):
         return {
@@ -518,45 +519,46 @@ class Bindings:
             owner.reread_dir:          [Keys.CTRL_R, u'R'],
             owner.query_chdir:         [u'C'],}
 
-    def _load_bindings(self, cfg_file):
-        try:
-            cfg = SafeConfigParser()
-            cfg.optionxform = lambda s: s
-            cfg.read(cfg_file)
-
-            bindings = self._read_bindings(cfg.items(self.BINDINGS_SECTION))
-            interactive_items = self._read_bindings(cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
-
-            return True
-        except Exception, e:
-            return False
-
     def _read_bindings(self, owner, bindings):
         res = {}
-        for key, func in bindings:
+        for func, keys in bindings:
             funcname = func.split()[0]
             argsstr = func[len(funcname):]
             args = eval(argsstr) if argsstr else []
-            res[Keys.code(key)] = Closure(getattr(owner, funcname), args)
+            res[Closure(getattr(owner, funcname), args)] = [Keys.code(key.strip()) for key in keys.split(',')]
         return res
 
     def _save_bindings(self, cfg_file, bindings, interactive_bindings):
-        cfg = SafeConfigParser()
+        cfg = RawConfigParser()
         cfg.optionxform = lambda s: s
         self._dump_bindings(cfg, self.BINDINGS_SECTION, bindings)
         self._dump_bindings(cfg, self.INTERACTIVE_BINDINGS_SECTION, interactive_bindings)
         cfg.write(open(cfg_file, 'w'))
 
+    def _func_name(self, func):
+        if type(func) == types.MethodType:
+            return func.__name__
+        else:
+            # assuming Closure here...
+            return repr(func)
+
     def _dump_bindings(self, cfg, section, bindings):
         cfg.add_section(section)
+        b = [(self._func_name(func), keys) for func, keys in bindings.items()]
 
-        for key, func in bindings.items():
-            if type(func) == types.MethodType:
-                funcname = func.__name__
-            else:
-                # assuming Closure here...
-                funcname = repr(func)
-            cfg.set(section, Keys.str(key), funcname)
+        for func, keys in sorted(b, key=lambda x: x[0]):
+            cfg.set(section, func, ', '.join(map(Keys.str, keys)))
+
+    def _merge_bindings(self, bindings):
+        newkeys = set()
+        for keys in bindings.itervalues():
+            newkeys |= set(keys)
+        for func in self._bindings:
+            self._bindings[func] = set(self._bindings[func]) - newkeys
+        for func, keys in bindings.items():
+            curkeys = set(self._bindings[func])
+            curkeys.update(set(keys))
+            self._bindings[func] = list(curkeys)
 
     def __contains__(self, key):
         return key in self._map
@@ -565,12 +567,8 @@ class Bindings:
         return self._map[key]
 
     def show(self, scr):
-        bindings = defaultdict(list)
-        for key, func in self._map.items():
-            bindings[func].append(key)
-
         lines = []
-        for binding, keys in sorted(bindings.items(), key=lambda key: key[0]._help):
+        for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
             lines.append((u', '.join(map(Keys.str, keys)), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
