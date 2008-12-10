@@ -58,6 +58,7 @@ DEFAULT_EDITOR = 'vim'   # name of the editor to invoke if the EDITOR environmen
 class ExitStatuses:
     NOTHING_SELECTED = 1 # nothing has been selected
     EXEC_ERROR = 2       # exec of the supplied program did not succeed
+    INVALID_REGEXP = 3   # invalid regexp for parsing input stream has been passed on the command line
 
 class Attrs:
     @classmethod
@@ -160,6 +161,9 @@ def shell_path():
 
 def editor_name():
     return os.getenv('EDITOR') or DEFAULT_EDITOR
+
+def program_name():
+    return os.path.basename(sys.argv[0])
 
 # string utilities
 def quote_string(s):
@@ -902,7 +906,7 @@ def exec_processor(cmd, replacestr):
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
-                sys.stderr.write(u"Can not invoke program '%s': %s\n" % (c[0], e))
+                sys.stderr.write(u"%s: can not invoke program '%s': %s\n" % (program_name(), c[0], e))
                 sys.exit(ExitStatuses.EXEC_ERROR)
 
     return doexec
@@ -959,11 +963,10 @@ def create_reader(options):
     else:
         return sys.stdin.xreadlines()
 
-def itermatches(input, regexps):
+def itermatches(input, regexp):
     for line in input:
-        for re in regexps:
-            for match in re.findall(line):
-                yield match
+        for match in re.findall(line):
+            yield match
 
 def run_command(e):
     retcode = None
@@ -1016,8 +1019,12 @@ def main():
         matches = listdir_sorted(getcwd())
         factory = filesystem_factory
     else:
-        regexps = [re.compile(options.regexp, re.IGNORECASE)]
-        matches = list(itermatches(create_reader(options), regexps))
+        try:
+            regexp = re.compile(options.regexp, re.IGNORECASE)
+        except Exception, e:
+            sys.stderr.write("%s: error compiling regex '%s': %s\n" % (program_name(), options.regexp, e))
+            sys.exit(ExitStatuses.INVALID_REGEXP)
+        matches = list(itermatches(create_reader(options), regexp))
         factory = simple_factory
 
     if not matches:
