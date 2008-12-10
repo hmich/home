@@ -57,7 +57,7 @@ import curses.wrapper
 VERSION = 0.1
 PATTERN_TIMEOUT = 2      # time in seconds to wait before resetting of the typed pattern
 DEFAULT_EDITOR = 'vim'   # name of the editor to invoke if the EDITOR environment variable is not set
-CONFIG_FILE = '~/.selrc' # name of the file which stores configuration settings
+CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
 
 class ExitStatuses:
     NOTHING_SELECTED = 1 # nothing has been selected
@@ -460,18 +460,17 @@ class Bindings:
 
     def __init__(self, owner, interactive):
         cfg_file = os.path.expanduser(CONFIG_FILE)
-        if not os.path.isfile(cfg_file):
+        has_cfg_file = os.path.isfile(cfg_file)
+
+        if not has_cfg_file or not self._load_bindings(cfg_file):
             bindings = self._keys_map(self._default_bindings(owner))
             interactive_bindings = self._keys_map(self._interactive_bindings(owner))
 
-            self._save_bindings(cfg_file, bindings, interactive_bindings)
-        else:
-            cfg = SafeConfigParser()
-            cfg.optionxform = lambda s: s
-            cfg.read(cfg_file)
-
-            bindings = self._read_bindings(cfg.items(self.BINDINGS_SECTION))
-            interactive_items = self._read_bindings(cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+        if not has_cfg_file:
+            try:
+                self._save_bindings(cfg_file, bindings, interactive_bindings)
+            except:
+                pass
 
         self._map = bindings
         if interactive:
@@ -494,8 +493,8 @@ class Bindings:
             owner.last_item:           [Keys.END, u'>'],
             owner.remove_marked:       [Keys.DELETE, u'X'],
             owner.toggle_item:         [Keys.INSERT, u' '],
-            owner.invert_selection:    [u'~'],
-            owner.select_all:          [u'*'],
+            owner.invert_marks:        [u'~'],
+            owner.mark_all:            [u'*'],
             owner.filter_by_mark:      [Keys.TAB],
             owner.goto_line:           [u'G'],
             owner.mark_by_regex:       [u'%'],
@@ -519,6 +518,28 @@ class Bindings:
             owner.reread_dir:          [Keys.CTRL_R, u'R'],
             owner.query_chdir:         [u'C'],}
 
+    def _load_bindings(self, cfg_file):
+        try:
+            cfg = SafeConfigParser()
+            cfg.optionxform = lambda s: s
+            cfg.read(cfg_file)
+
+            bindings = self._read_bindings(cfg.items(self.BINDINGS_SECTION))
+            interactive_items = self._read_bindings(cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+
+            return True
+        except Exception, e:
+            return False
+
+    def _read_bindings(self, owner, bindings):
+        res = {}
+        for key, func in bindings:
+            funcname = func.split()[0]
+            argsstr = func[len(funcname):]
+            args = eval(argsstr) if argsstr else []
+            res[Keys.code(key)] = Closure(getattr(owner, funcname), args)
+        return res
+
     def _save_bindings(self, cfg_file, bindings, interactive_bindings):
         cfg = SafeConfigParser()
         cfg.optionxform = lambda s: s
@@ -537,15 +558,6 @@ class Bindings:
                 funcname = repr(func)
             cfg.set(section, Keys.str(key), funcname)
 
-    def _read_bindings(self, owner, bindings):
-        res = {}
-        for key, func in bindings:
-            funcname = func.split()[0]
-            argsstr = func[len(funcname):]
-            args = eval(argsstr) if argsstr else []
-            res[Keys.code(key)] = Closure(getattr(owner, funcname), args)
-        return res
-
     def __contains__(self, key):
         return key in self._map
 
@@ -562,9 +574,10 @@ class Bindings:
             lines.append((u', '.join(map(Keys.str, keys)), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
-        text = ([u'Current keybindings:', u''] +
+        text = ([u'Just start typing to narrow down the list. Other keybindings:', u''] +
                  [line[0].ljust(width) + line[1] for line in lines] +
-                 [u'', u'Press any key to continue'])
+                 [u'', u'Basic customization is available via %s.' % CONFIG_FILE,
+                  u'Press any key to continue...'])
 
         scr.clear()
         scr.attrset(Attrs.DEFAULT)
@@ -700,18 +713,18 @@ class Screen:
     def current_item_action(self):
         return self.current_item().action()
 
-    @help(u'toggle item')
+    @help(u'toggle mark on selected item')
     def toggle_item(self):
         item = self.current_item()
         item.marked = not item.marked
 
-    @help(u'invert selection')
-    def invert_selection(self):
+    @help(u'invert marks')
+    def invert_marks(self):
         for item in self.items:
             item.marked = not item.marked
 
-    @help(u'select all items')
-    def select_all(self):
+    @help(u'mark all items')
+    def mark_all(self):
         for item in self.items:
             item.marked = True
 
@@ -770,7 +783,7 @@ class Screen:
         self.highlighter = StrHighlighter(pattern)
         return self._filter(list(self._items_by_pattern(pattern)))
 
-    @help(u'filter by regexp')
+    @help(u'filter the list by regexp')
     def search_by_regex(self):
         s = self.status.query(u'Search by regex:')
         if not s:
@@ -803,7 +816,7 @@ class Screen:
         else:
             yield (self.list.idx, self.current_item())
 
-    @help(u'remove selected items')
+    @help(u'remove marked items')
     def remove_marked(self):
         if self._allitems:
             self._allitems.remove_items(item for _, item in self.enumerate_selected())
@@ -820,7 +833,7 @@ class Screen:
             self._create_items(entries)
             self._update_list()
 
-    @help(u'change dir')
+    @help(u'change working directory')
     def query_chdir(self):
         dir = self.status.query(u'Change dir to:')
         dir = os.path.expandvars(os.path.expanduser(dir))
@@ -874,30 +887,30 @@ class Screen:
     def accept_selection(self):
         self.set_result([item.result_str() for _, item in self.enumerate_selected()])
 
-    @help(u'exit without accepting selection')
+    @help(u'exit the program without selecting anything')
     def return_none(self):
         return self.set_result([])
 
-    @help(u'exit with the name of the current directory as the only result')
+    @help(u'exit with the name of the current working directory as the only result')
     def return_pwd(self):
         return owner.set_result([getcwd()])
 
-    @help(u'next page')
+    @help(u'scroll one page down')
     def next_page(self): self.list.next_page()
 
-    @help(u'prev page')
+    @help(u'scroll one page up')
     def prev_page(self): self.list.prev_page()
 
-    @help(u'next line')
+    @help(u'goto next line')
     def next_item(self): self.list.change_item(self.list.idx + 1)
 
-    @help(u'prev item')
+    @help(u'goto prev item')
     def prev_item(self): self.list.change_item(self.list.idx - 1)
 
-    @help(u'first item')
+    @help(u'goto first item in the list')
     def first_item(self): self.list.change_item(0)
 
-    @help(u'last item')
+    @help(u'goto last item in the list')
     def last_item(self): self.list.change_item(len(self.items) - 1)
 
     @help(u'show this help')
@@ -917,7 +930,7 @@ class Screen:
         self.clear_screen()
         raise InvocationError(shell_path(), False)
 
-    @help(u'invoke editor on the selected items')
+    @help(u'invoke editor on the marked items')
     def invoke_editor(self):
         self.run_command(editor_name(), False)
 
