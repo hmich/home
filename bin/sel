@@ -35,6 +35,9 @@ import pwd
 import cgitb
 import locale
 
+from collections import defaultdict
+import types
+
 import time
 import struct
 import fcntl
@@ -45,6 +48,7 @@ import string
 import unicodedata
 import optparse
 import logging
+from ConfigParser import SafeConfigParser
 
 import curses
 import curses.ascii
@@ -54,6 +58,7 @@ import curses.wrapper
 VERSION = 0.1
 PATTERN_TIMEOUT = 2      # time in seconds to wait before resetting of the typed pattern
 DEFAULT_EDITOR = 'vim'   # name of the editor to invoke if the EDITOR environment variable is not set
+CONFIG_FILE = '~/.selrc' # name of the file which stores configuration settings
 
 class ExitStatuses:
     NOTHING_SELECTED = 1 # nothing has been selected
@@ -128,10 +133,12 @@ class Keys:
         cls.F12 = key(u'KEY_F(12)', u'F12')
 
     _keys = {}
+    _revkeys = {}
 
     @classmethod
     def _register_key(cls, code, str):
         cls._keys[code] = str
+        cls._revkeys[str] = code
         return code
 
     @classmethod
@@ -140,6 +147,13 @@ class Keys:
             return cls._keys[code]
         else:
             return "'%s'" % code
+
+    @classmethod
+    def code(cls, str):
+        if str[0] == "'":
+            return str[1:-1]
+        else:
+            return cls._revkeys[str]
 
 # os utilities
 def touni(str):
@@ -423,50 +437,113 @@ class RegexHighlighter:
             return -1, -1
         return start + match.start(), start + match.end()
 
-class Bindings:
-    def __init__(self, owner, interactive):
-        self._bindings = [
-            (owner.next_item,         [Keys.DOWN, u'J', Keys.CTRL_N], u'next line'),
-            (owner.prev_item,         [Keys.UP, Keys.CTRL_P, u'K'], u'prev line'),
-            (owner.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, u'H'], u'next page'),
-            (owner.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, u'L'], u'prev page'),
-            (owner.first_item,        [Keys.HOME, u'<'], u'first item'),
-            (owner.last_item,         [Keys.END, u'>'], u'last item'),
-            (owner.remove_marked,     [Keys.DELETE, u'X'], u'remove selected items'),
-            (owner.toggle_item,       [Keys.INSERT, u' '], u'toggle item'),
-            (owner.invert_selection,  [u'~'], u'invert selection'),
-            (owner.select_all,        [u'*'], u'select all items'),
-            (owner.filter_by_mark,    [Keys.TAB], u'show only marked items'),
-            (owner.goto_line,         [u'G'], u'goto line'),
-            (owner.mark_by_regex,     [u'%'], u'mark by regexp'),
-            (owner.search_by_regex,   [u'/'], u'filter by regexp'),
-            (owner.restore_items,     [Keys.ESCAPE], u'reset current filter'),
-            (owner.redraw,            [Keys.CTRL_L], u'redraw'),
-            (owner.show_bindings,     [Keys.F1, u'?'], u'show this help'),
-            (lambda: owner.set_result([]),            [Keys.CTRL_X, u'Q'], u'exit without accepting selection'),
-            (lambda: owner.set_result([getcwd()]),    [Keys.CTRL_D, u'D'], u'exit with the name of the current directory as the only result'),
-            (lambda: owner.current_item().action(),   [Keys.RETURN], u'perform action on the current item'),
-            (owner.query_run_command, [u'!'], u'run command on selection'),
-            (owner.invoke_shell,      [u'$'], u'invoke shell'),
-            (lambda: owner.run_command(u'cygstart', False), [Keys.F2], u'invoke cygstart on the selected items'),
-            (owner.invoke_editor,     [Keys.F3, Keys.F4], u'invoke editor on the selected items')]
+class FuncCall:
+    def __init__(self, func, args):
+        self._func = func
+        self._args = args
+        self._help = u'%s %s' % (func._help, str(args) if args else u'')
 
+    def __call__(self):
+        self._func(**dict(self._args))
+
+    def __eq__(self, other):
+        return self._func == other._func and self._args == other._args
+
+    def __hash__(self):
+        return hash(self._func)
+
+    def __repr__(self):
+        return '%s %s' % (self._func.__name__, repr(self._args))
+
+class Bindings:
+    BINDINGS_SECTION = 'bindings'
+    INTERACTIVE_BINDINGS_SECTION = 'interactive-bindings'
+
+    def __init__(self, owner, interactive):
+        cfg_file = os.path.expanduser(CONFIG_FILE)
+        if not os.path.isfile(cfg_file):
+            self._save_bindings(cfg_file, owner)
+
+        cfg = SafeConfigParser()
+        cfg.optionxform = lambda s: s
+        cfg.read(cfg_file)
+
+        self._bindings = defaultdict(list)
+        self._load_bindings(owner, cfg.items(self.BINDINGS_SECTION))
         if interactive:
-            self._bindings += [
-                (owner.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current pattern or filter if any or go to the parent directory'),
-                (owner.reread_dir,        [Keys.CTRL_R, u'R'], u'reread contents of the current directory'),
-                (owner.query_chdir,       [u'C'], u'change dir')]
-        else:
-            self._bindings += [
-                (owner.restore_items, [Keys.BACKSPACE, Keys.CTRL_H, u'^'], u'reset current pattern or filter')]
+            self._load_bindings(owner, cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
 
         self._map = self._bindings_map()
 
+    def _load_bindings(self, owner, bindings):
+        newkeys = set(Keys.code(key) for key, _ in bindings)
+        for func, keys in self._bindings.items():
+            self._bindings[func] = list(set(keys) - newkeys)
+
+        for key, func in bindings:
+            funcname = func.split()[0]
+            argsstr = func[len(funcname):]
+            args = eval(argsstr) if argsstr else []
+            self._bindings[FuncCall(getattr(owner, funcname), args)].append(Keys.code(key))
+
+    def _save_bindings(self, cfg_file, owner):
+        bindings = [
+            (owner.next_item,         [Keys.DOWN, u'J', Keys.CTRL_N]),
+            (owner.prev_item,         [Keys.UP, Keys.CTRL_P, u'K']),
+            (owner.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, u'H']),
+            (owner.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, u'L']),
+            (owner.first_item,        [Keys.HOME, u'<']),
+            (owner.last_item,         [Keys.END, u'>']),
+            (owner.remove_marked,     [Keys.DELETE, u'X']),
+            (owner.toggle_item,       [Keys.INSERT, u' ']),
+            (owner.invert_selection,  [u'~']),
+            (owner.select_all,        [u'*']),
+            (owner.filter_by_mark,    [Keys.TAB]),
+            (owner.goto_line,         [u'G']),
+            (owner.mark_by_regex,     [u'%']),
+            (owner.search_by_regex,   [u'/']),
+            (owner.restore_items,     [Keys.ESCAPE]),
+            (owner.redraw,            [Keys.CTRL_L]),
+            (owner.show_bindings,     [Keys.F1, u'?', u'H']),
+            (owner.return_none,       [Keys.CTRL_X, u'Q']),
+            (owner.return_pwd,        [Keys.CTRL_D, u'D']),
+            (owner.current_item_action, [Keys.RETURN]),
+            (owner.query_run_command, [u'!']),
+            (owner.invoke_shell,      [u'$']),
+            (owner.restore_items,     [Keys.BACKSPACE, Keys.CTRL_H, u'^']),
+            (FuncCall(owner.run_command, [('cmd', 'cygstart'), ('wait_for_keypress', False)]), [Keys.F2]),
+            (owner.invoke_editor,     [Keys.F3, Keys.F4]),
+            (FuncCall(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]), [Keys.F8])]
+
+        interactive_bindings = [
+            (owner.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, u'^']),
+            (owner.reread_dir,        [Keys.CTRL_R, u'R']),
+            (owner.query_chdir,       [u'C'])]
+
+        cfg = SafeConfigParser()
+        cfg.optionxform = lambda s: s
+        self._dump_bindings(cfg, self.BINDINGS_SECTION, bindings)
+        self._dump_bindings(cfg, self.INTERACTIVE_BINDINGS_SECTION, interactive_bindings)
+        cfg.write(open(cfg_file, 'w'))
+
+    def _dump_bindings(self, cfg, section, bindings):
+        cfg.add_section(section)
+
+        for func, keys in bindings:
+            if type(func) == types.MethodType:
+                funcname = func.__name__
+            else:
+                # assuming FuncCall here...
+                funcname = repr(func)
+
+            for key in keys:
+                cfg.set(section, Keys.str(key), funcname)
+
     def _bindings_map(self):
         res = {}
-        for binding in self._bindings:
-            for key in binding[1]:
-                res[key] = binding[0]
+        for binding, keys in self._bindings.items():
+            for key in keys:
+                res[key] = binding
         return res
 
     def __contains__(self, key):
@@ -477,8 +554,8 @@ class Bindings:
 
     def show(self, scr):
         bindings = []
-        for binding in self._bindings:
-            bindings.append((u', '.join(map(Keys.str, binding[1])), binding[2]))
+        for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
+            bindings.append((u', '.join(map(Keys.str, keys)), binding._help))
         width = max(len(binding[0]) for binding in bindings) + 1
 
         lines = ([u'Current keybindings:', u''] +
@@ -506,6 +583,12 @@ class Timer:
     def elapsed(self):
         return time.time() - self._time
 
+def help(str):
+    def decor(func):
+        func._help = str
+        return func
+    return decor
+
 class Screen:
     def __init__(self, factory, matches, options):
         self.factory = factory
@@ -532,7 +615,7 @@ class Screen:
         self.items.item_changed_event.append(self.draw_item)
         self.items.has_marked_event.append(self.redraw)
 
-    def getch(self):
+    def _getch(self):
         self.scr.timeout(100)
         try:
             res = self.scr.getkey()
@@ -545,7 +628,7 @@ class Screen:
         except:
             return u''
 
-    def highlightstr(self, y, x, attr, s):
+    def _highlightstr(self, y, x, attr, s):
         idx = 0
         ls = s.lower()
         while idx < len(s):
@@ -588,7 +671,7 @@ class Screen:
             attr = item.attr
 
         s = s.ljust(TermSize.width - len(line_num))
-        self.highlightstr(y, len(line_num), attr, s[:TermSize.width - len(line_num)])
+        self._highlightstr(y, len(line_num), attr, s[:TermSize.width - len(line_num)])
 
         if refresh:
             self.scr.refresh()
@@ -597,6 +680,7 @@ class Screen:
         self.scr.move(line, 0)
         self.scr.clrtoeol()
 
+    @help(u'redraw')
     def redraw(self):
         for curidx in self.list.visible_lines():
             if curidx < len(self.items):
@@ -608,14 +692,21 @@ class Screen:
     def current_item(self):
         return self.items[self.list.idx] if self.items else None
 
+    @help(u'perform action on the current item')
+    def current_item_action(self):
+        return self.current_item().action()
+
+    @help(u'toggle item')
     def toggle_item(self):
         item = self.current_item()
         item.marked = not item.marked
 
+    @help(u'invert selection')
     def invert_selection(self):
         for item in self.items:
             item.marked = not item.marked
 
+    @help(u'select all items')
     def select_all(self):
         for item in self.items:
             item.marked = True
@@ -627,6 +718,7 @@ class Screen:
             curdir = getcwd()
             self.status.put(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
+    @help(u'goto line')
     def goto_line(self):
         linestr = self.status.query(u'Goto line:')
         try:
@@ -636,6 +728,7 @@ class Screen:
             return
         self.list.change_item(line - 1)
 
+    @help(u'mark by regexp')
     def mark_by_regex(self):
         s = self.status.query(u'Mark by regex:')
         try:
@@ -673,6 +766,7 @@ class Screen:
         self.highlighter = StrHighlighter(pattern)
         return self._filter(list(self._items_by_pattern(pattern)))
 
+    @help(u'filter by regexp')
     def search_by_regex(self):
         s = self.status.query(u'Search by regex:')
         if not s:
@@ -687,11 +781,12 @@ class Screen:
         self.highlighter = RegexHighlighter(regex)
         return self._filter(list(self._items_by_regex(regex)))
 
+    @help(u'show only marked items')
     def filter_by_mark(self):
         if self._allitems:
             self.restore_items()
         else:
-            self.clear_highlighter()
+            self._clear_highlighter()
             self._filter([item for item in self.items if item.marked])
 
     def enumerate_selected(self):
@@ -704,6 +799,7 @@ class Screen:
         else:
             yield (self.list.idx, self.current_item())
 
+    @help(u'remove selected items')
     def remove_marked(self):
         if self._allitems:
             self._allitems.remove_items(item for _, item in self.enumerate_selected())
@@ -720,6 +816,7 @@ class Screen:
             self._create_items(entries)
             self._update_list()
 
+    @help(u'change dir')
     def query_chdir(self):
         dir = self.status.query(u'Change dir to:')
         dir = os.path.expandvars(os.path.expanduser(dir))
@@ -733,6 +830,7 @@ class Screen:
             if unicode(item) == cur:
                 self.list.change_item(idx)
 
+    @help(u'reread contents of the current directory')
     def reread_dir(self):
         cur = u''
         if self.items:
@@ -748,6 +846,7 @@ class Screen:
                 self.list.change_item(idx)
                 break
 
+    @help(u'reset current filter')
     def restore_items(self):
         if self.pattern:
             return
@@ -758,6 +857,7 @@ class Screen:
         self._update_list(self.items.index(cur) if cur else 0)
         self._allitems = None
 
+    @help(u'reset current pattern or filter if any or go to the parent directory')
     def restore_or_up_dir(self):
         if self._allitems:
             self.restore_items()
@@ -770,13 +870,33 @@ class Screen:
     def accept_selection(self):
         self.set_result([item.result_str() for _, item in self.enumerate_selected()])
 
-    next_page  = lambda self: self.list.next_page()
-    prev_page  = lambda self: self.list.prev_page()
-    next_item  = lambda self: self.list.change_item(self.list.idx + 1)
-    prev_item  = lambda self: self.list.change_item(self.list.idx - 1)
-    first_item = lambda self: self.list.change_item(0)
-    last_item  = lambda self: self.list.change_item(len(self.items) - 1)
+    @help(u'exit without accepting selection')
+    def return_none(self):
+        return self.set_result([])
 
+    @help(u'exit with the name of the current directory as the only result')
+    def return_pwd(self):
+        return owner.set_result([getcwd()])
+
+    @help(u'next page')
+    def next_page(self): self.list.next_page()
+
+    @help(u'prev page')
+    def prev_page(self): self.list.prev_page()
+
+    @help(u'next line')
+    def next_item(self): self.list.change_item(self.list.idx + 1)
+
+    @help(u'prev item')
+    def prev_item(self): self.list.change_item(self.list.idx - 1)
+
+    @help(u'first item')
+    def first_item(self): self.list.change_item(0)
+
+    @help(u'last item')
+    def last_item(self): self.list.change_item(len(self.items) - 1)
+
+    @help(u'show this help')
     def show_bindings(self):
         self.bindings.show(self.scr)
         self.redraw()
@@ -788,36 +908,40 @@ class Screen:
     def resize(self, *args):
         self.resized = True
 
+    @help(u'invoke shell')
     def invoke_shell(self):
         self.clear_screen()
         raise InvocationError(shell_path(), False)
 
+    @help(u'invoke editor on the selected items')
     def invoke_editor(self):
         self.run_command(editor_name(), False)
 
+    @help(u'run command')
     def run_command(self, cmd, wait_for_keypress=True):
         if not cmd:
             return
-        self.clear_highlighter()
-        self.clear_pattern()
+        self._clear_highlighter()
+        self._clear_pattern()
         self.clear_screen()
         args = [unicode(item) for _, item in self.enumerate_selected()]
         raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
 
+    @help(u'run command on selection')
     def query_run_command(self):
         self.run_command(self.status.query(u'Run command on selection:'))
 
-    def clear_highlighter(self):
+    def _clear_highlighter(self):
         if not self.highlighter:
             return
         self.highlighter = None
         self.redraw()
 
-    def clear_pattern(self):
+    def _clear_pattern(self):
         if not self.pattern:
             return
         self.pattern = u''
-        self.clear_highlighter()
+        self._clear_highlighter()
 
     def run(self, stdscr):
         self.status = Status()
@@ -839,7 +963,7 @@ class Screen:
             self.update_status()
 
             try:
-                c = self.getch()
+                c = self._getch()
             except KeyboardInterrupt:
                 self.set_result([])
                 break
@@ -851,16 +975,16 @@ class Screen:
             if c in self.bindings:
                 self.msg = None
                 self.bindings[c]()
-                self.clear_highlighter()
-                self.clear_pattern()
+                self._clear_highlighter()
+                self._clear_pattern()
             elif is_printable_char(c):
                 self.msg = None
                 self.pattern += c
                 lastpress.reset()
                 if not self.filter_by_pattern(self.pattern):
-                    self.clear_pattern()
+                    self._clear_pattern()
             elif c or lastpress.elapsed() > PATTERN_TIMEOUT:
-                self.clear_pattern()
+                self._clear_pattern()
 
         self.clear_screen()
 
@@ -982,7 +1106,7 @@ def create_reader(options):
 
 def itermatches(input, regexp):
     for line in input:
-        for match in re.findall(line):
+        for match in regexp.findall(line):
             yield match
 
 def run_command(e):
