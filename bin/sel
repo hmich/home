@@ -34,9 +34,8 @@ import signal
 import pwd
 import cgitb
 import locale
-
-from collections import defaultdict
 import types
+from collections import defaultdict
 
 import time
 import struct
@@ -437,7 +436,7 @@ class RegexHighlighter:
             return -1, -1
         return start + match.start(), start + match.end()
 
-class FuncCall:
+class Closure:
     def __init__(self, func, args):
         self._func = func
         self._args = args
@@ -462,64 +461,65 @@ class Bindings:
     def __init__(self, owner, interactive):
         cfg_file = os.path.expanduser(CONFIG_FILE)
         if not os.path.isfile(cfg_file):
-            self._save_bindings(cfg_file, owner)
+            bindings = self._keys_map(self._default_bindings(owner))
+            interactive_bindings = self._keys_map(self._interactive_bindings(owner))
 
-        cfg = SafeConfigParser()
-        cfg.optionxform = lambda s: s
-        cfg.read(cfg_file)
+            self._save_bindings(cfg_file, bindings, interactive_bindings)
+        else:
+            cfg = SafeConfigParser()
+            cfg.optionxform = lambda s: s
+            cfg.read(cfg_file)
 
-        self._bindings = defaultdict(list)
-        self._load_bindings(owner, cfg.items(self.BINDINGS_SECTION))
+            bindings = self._read_bindings(cfg.items(self.BINDINGS_SECTION))
+            interactive_items = self._read_bindings(cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+
+        self._map = bindings
         if interactive:
-            self._load_bindings(owner, cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+            self._map.update(interactive_bindings)
 
-        self._map = self._bindings_map()
+    def _keys_map(self, bindings):
+        res = {}
+        for func, keys in bindings.items():
+            for key in keys:
+                res[key] = func
+        return res
 
-    def _load_bindings(self, owner, bindings):
-        newkeys = set(Keys.code(key) for key, _ in bindings)
-        for func, keys in self._bindings.items():
-            self._bindings[func] = list(set(keys) - newkeys)
+    def _default_bindings(self, owner):
+        return {
+            owner.next_item:           [Keys.DOWN, u'J', Keys.CTRL_N],
+            owner.prev_item:           [Keys.UP, Keys.CTRL_P, u'K'],
+            owner.next_page:           [Keys.PAGE_DOWN, Keys.CTRL_F, u'H'],
+            owner.prev_page:           [Keys.PAGE_UP, Keys.CTRL_B, u'L'],
+            owner.first_item:          [Keys.HOME, u'<'],
+            owner.last_item:           [Keys.END, u'>'],
+            owner.remove_marked:       [Keys.DELETE, u'X'],
+            owner.toggle_item:         [Keys.INSERT, u' '],
+            owner.invert_selection:    [u'~'],
+            owner.select_all:          [u'*'],
+            owner.filter_by_mark:      [Keys.TAB],
+            owner.goto_line:           [u'G'],
+            owner.mark_by_regex:       [u'%'],
+            owner.search_by_regex:     [u'/'],
+            owner.restore_items:       [Keys.ESCAPE],
+            owner.redraw:              [Keys.CTRL_L],
+            owner.show_bindings:       [Keys.F1, u'?', u'H'],
+            owner.return_none:         [Keys.CTRL_X, u'Q'],
+            owner.return_pwd:          [Keys.CTRL_D, u'D'],
+            owner.current_item_action: [Keys.RETURN],
+            owner.query_run_command:   [u'!'],
+            owner.invoke_shell:        [u'$'],
+            owner.restore_items:       [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
+            owner.invoke_editor:       [Keys.F3, Keys.F4],
+            Closure(owner.run_command, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
+            Closure(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
 
-        for key, func in bindings:
-            funcname = func.split()[0]
-            argsstr = func[len(funcname):]
-            args = eval(argsstr) if argsstr else []
-            self._bindings[FuncCall(getattr(owner, funcname), args)].append(Keys.code(key))
+    def _interactive_bindings(self, owner):
+        return {
+            owner.restore_or_up_dir:   [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
+            owner.reread_dir:          [Keys.CTRL_R, u'R'],
+            owner.query_chdir:         [u'C'],}
 
-    def _save_bindings(self, cfg_file, owner):
-        bindings = [
-            (owner.next_item,         [Keys.DOWN, u'J', Keys.CTRL_N]),
-            (owner.prev_item,         [Keys.UP, Keys.CTRL_P, u'K']),
-            (owner.next_page,         [Keys.PAGE_DOWN, Keys.CTRL_F, u'H']),
-            (owner.prev_page,         [Keys.PAGE_UP, Keys.CTRL_B, u'L']),
-            (owner.first_item,        [Keys.HOME, u'<']),
-            (owner.last_item,         [Keys.END, u'>']),
-            (owner.remove_marked,     [Keys.DELETE, u'X']),
-            (owner.toggle_item,       [Keys.INSERT, u' ']),
-            (owner.invert_selection,  [u'~']),
-            (owner.select_all,        [u'*']),
-            (owner.filter_by_mark,    [Keys.TAB]),
-            (owner.goto_line,         [u'G']),
-            (owner.mark_by_regex,     [u'%']),
-            (owner.search_by_regex,   [u'/']),
-            (owner.restore_items,     [Keys.ESCAPE]),
-            (owner.redraw,            [Keys.CTRL_L]),
-            (owner.show_bindings,     [Keys.F1, u'?', u'H']),
-            (owner.return_none,       [Keys.CTRL_X, u'Q']),
-            (owner.return_pwd,        [Keys.CTRL_D, u'D']),
-            (owner.current_item_action, [Keys.RETURN]),
-            (owner.query_run_command, [u'!']),
-            (owner.invoke_shell,      [u'$']),
-            (owner.restore_items,     [Keys.BACKSPACE, Keys.CTRL_H, u'^']),
-            (FuncCall(owner.run_command, [('cmd', 'cygstart'), ('wait_for_keypress', False)]), [Keys.F2]),
-            (owner.invoke_editor,     [Keys.F3, Keys.F4]),
-            (FuncCall(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]), [Keys.F8])]
-
-        interactive_bindings = [
-            (owner.restore_or_up_dir, [Keys.BACKSPACE, Keys.CTRL_H, u'^']),
-            (owner.reread_dir,        [Keys.CTRL_R, u'R']),
-            (owner.query_chdir,       [u'C'])]
-
+    def _save_bindings(self, cfg_file, bindings, interactive_bindings):
         cfg = SafeConfigParser()
         cfg.optionxform = lambda s: s
         self._dump_bindings(cfg, self.BINDINGS_SECTION, bindings)
@@ -529,21 +529,21 @@ class Bindings:
     def _dump_bindings(self, cfg, section, bindings):
         cfg.add_section(section)
 
-        for func, keys in bindings:
+        for key, func in bindings.items():
             if type(func) == types.MethodType:
                 funcname = func.__name__
             else:
-                # assuming FuncCall here...
+                # assuming Closure here...
                 funcname = repr(func)
+            cfg.set(section, Keys.str(key), funcname)
 
-            for key in keys:
-                cfg.set(section, Keys.str(key), funcname)
-
-    def _bindings_map(self):
+    def _read_bindings(self, owner, bindings):
         res = {}
-        for binding, keys in self._bindings.items():
-            for key in keys:
-                res[key] = binding
+        for key, func in bindings:
+            funcname = func.split()[0]
+            argsstr = func[len(funcname):]
+            args = eval(argsstr) if argsstr else []
+            res[Keys.code(key)] = Closure(getattr(owner, funcname), args)
         return res
 
     def __contains__(self, key):
@@ -553,19 +553,23 @@ class Bindings:
         return self._map[key]
 
     def show(self, scr):
-        bindings = []
-        for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
-            bindings.append((u', '.join(map(Keys.str, keys)), binding._help))
-        width = max(len(binding[0]) for binding in bindings) + 1
+        bindings = defaultdict(list)
+        for key, func in self._map.items():
+            bindings[func].append(key)
 
-        lines = ([u'Current keybindings:', u''] +
-                 [binding[0].ljust(width) + binding[1] for binding in bindings] +
+        lines = []
+        for binding, keys in sorted(bindings.items(), key=lambda key: key[0]._help):
+            lines.append((u', '.join(map(Keys.str, keys)), binding._help))
+        width = max(len(line[0]) for line in lines) + 1
+
+        text = ([u'Current keybindings:', u''] +
+                 [line[0].ljust(width) + line[1] for line in lines] +
                  [u'', u'Press any key to continue'])
 
         scr.clear()
         scr.attrset(Attrs.DEFAULT)
 
-        for idx, line in enumerate(lines):
+        for idx, line in enumerate(text):
             if idx < TermSize.height:
                 scr.addstr(idx, 0, fromuni(line[:TermSize.width - 1]))
 
