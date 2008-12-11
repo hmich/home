@@ -458,7 +458,7 @@ class Bindings:
     BINDINGS_SECTION = 'bindings'
     INTERACTIVE_BINDINGS_SECTION = 'interactive-bindings'
 
-    def __init__(self, owner, interactive):
+    def __init__(self, owner, is_interactive):
         cfg_file = os.path.expanduser(CONFIG_FILE)
 
         try:
@@ -480,7 +480,7 @@ class Bindings:
 
         self._bindings = defaultdict(list)
         self._bindings.update(bindings)
-        if interactive:
+        if is_interactive:
             self._merge_bindings(interactive_bindings)
         self._map = dict([(key, func) for func, keys in self._bindings.items() for key in keys])
 
@@ -598,14 +598,14 @@ class Timer:
     def elapsed(self):
         return time.time() - self._time
 
-def help(str):
+def helpmsg(str):
     def decor(func):
         func._help = str
         return func
     return decor
 
 class Screen:
-    def __init__(self, factory, matches, options):
+    def __init__(self, factory, matches, is_interactive):
         self.factory = factory
         self.matches = matches
         self.items = None
@@ -614,8 +614,8 @@ class Screen:
         self.result = None
         self.highlighter = None
         self.msg = None
-        self.bindings = Bindings(self, options.interactive)
-        self.update_list = self.reread_dir if options.interactive else lambda: None
+        self.bindings = Bindings(self, is_interactive)
+        self.update_list = self.reread_dir if is_interactive else lambda: None
 
     def _create_items(self, elems):
         self._set_items([self.factory(self, e) for e in elems])
@@ -695,7 +695,7 @@ class Screen:
         self.scr.move(line, 0)
         self.scr.clrtoeol()
 
-    @help(u'redraw')
+    @helpmsg(u'redraw')
     def redraw(self):
         for curidx in self.list.visible_lines():
             if curidx < len(self.items):
@@ -707,21 +707,21 @@ class Screen:
     def current_item(self):
         return self.items[self.list.idx] if self.items else None
 
-    @help(u'perform action on the current item')
+    @helpmsg(u'perform action on the current item')
     def current_item_action(self):
         return self.current_item().action()
 
-    @help(u'toggle mark on selected item')
+    @helpmsg(u'toggle mark on selected item')
     def toggle_item(self):
         item = self.current_item()
         item.marked = not item.marked
 
-    @help(u'invert marks')
+    @helpmsg(u'invert marks')
     def invert_marks(self):
         for item in self.items:
             item.marked = not item.marked
 
-    @help(u'mark all items')
+    @helpmsg(u'mark all items')
     def mark_all(self):
         for item in self.items:
             item.marked = True
@@ -733,7 +733,7 @@ class Screen:
             curdir = getcwd()
             self.status.put(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
 
-    @help(u'goto line')
+    @helpmsg(u'goto line')
     def goto_line(self):
         linestr = self.status.query(u'Goto line:')
         try:
@@ -743,7 +743,7 @@ class Screen:
             return
         self.list.change_item(line - 1)
 
-    @help(u'mark by regexp')
+    @helpmsg(u'mark by regexp')
     def mark_by_regex(self):
         s = self.status.query(u'Mark by regex:')
         try:
@@ -781,7 +781,7 @@ class Screen:
         self.highlighter = StrHighlighter(pattern)
         return self._filter(list(self._items_by_pattern(pattern)))
 
-    @help(u'filter the list by regexp')
+    @helpmsg(u'filter the list by regexp')
     def search_by_regex(self):
         s = self.status.query(u'Search by regex:')
         if not s:
@@ -796,7 +796,7 @@ class Screen:
         self.highlighter = RegexHighlighter(regex)
         return self._filter(list(self._items_by_regex(regex)))
 
-    @help(u'show only marked items')
+    @helpmsg(u'show only marked items')
     def filter_by_mark(self):
         if self._allitems:
             self.restore_items()
@@ -814,7 +814,7 @@ class Screen:
         else:
             yield (self.list.idx, self.current_item())
 
-    @help(u'remove marked items')
+    @helpmsg(u'remove marked items')
     def remove_marked(self):
         if self._allitems:
             self._allitems.remove_items(item for _, item in self.enumerate_selected())
@@ -831,7 +831,7 @@ class Screen:
             self._create_items(entries)
             self._update_list()
 
-    @help(u'change working directory')
+    @helpmsg(u'change working directory')
     def query_chdir(self):
         dir = self.status.query(u'Change dir to:')
         dir = os.path.expandvars(os.path.expanduser(dir))
@@ -845,7 +845,7 @@ class Screen:
             if unicode(item) == cur:
                 self.list.change_item(idx)
 
-    @help(u'reread contents of the current directory')
+    @helpmsg(u'reread contents of the current directory')
     def reread_dir(self):
         cur = u''
         if self.items:
@@ -861,7 +861,7 @@ class Screen:
                 self.list.change_item(idx)
                 break
 
-    @help(u'reset current filter')
+    @helpmsg(u'reset current filter')
     def restore_items(self):
         if self.pattern:
             return
@@ -872,7 +872,7 @@ class Screen:
         self._update_list(self.items.index(cur) if cur else 0)
         self._allitems = None
 
-    @help(u'reset current pattern or filter if any or go to the parent directory')
+    @helpmsg(u'reset current pattern or filter if any or go to the parent directory')
     def restore_or_up_dir(self):
         if self._allitems:
             self.restore_items()
@@ -885,33 +885,33 @@ class Screen:
     def accept_selection(self):
         self.set_result([item.result_str() for _, item in self.enumerate_selected()])
 
-    @help(u'exit the program without selecting anything')
+    @helpmsg(u'exit the program without selecting anything')
     def return_none(self):
         return self.set_result([])
 
-    @help(u'exit with the name of the current working directory as the only result')
+    @helpmsg(u'exit with the name of the current working directory as the only result')
     def return_pwd(self):
         return owner.set_result([getcwd()])
 
-    @help(u'scroll one page down')
+    @helpmsg(u'scroll one page down')
     def next_page(self): self.list.next_page()
 
-    @help(u'scroll one page up')
+    @helpmsg(u'scroll one page up')
     def prev_page(self): self.list.prev_page()
 
-    @help(u'goto next line')
+    @helpmsg(u'goto next line')
     def next_item(self): self.list.change_item(self.list.idx + 1)
 
-    @help(u'goto prev item')
+    @helpmsg(u'goto prev item')
     def prev_item(self): self.list.change_item(self.list.idx - 1)
 
-    @help(u'goto first item in the list')
+    @helpmsg(u'goto first item in the list')
     def first_item(self): self.list.change_item(0)
 
-    @help(u'goto last item in the list')
+    @helpmsg(u'goto last item in the list')
     def last_item(self): self.list.change_item(len(self.items) - 1)
 
-    @help(u'show this help')
+    @helpmsg(u'show this help')
     def show_bindings(self):
         self.bindings.show(self.scr)
         self.redraw()
@@ -923,16 +923,16 @@ class Screen:
     def resize(self, *args):
         self.resized = True
 
-    @help(u'invoke shell')
+    @helpmsg(u'invoke shell')
     def invoke_shell(self):
         self.clear_screen()
         raise InvocationError(shell_path(), False)
 
-    @help(u'invoke editor on the marked items')
+    @helpmsg(u'invoke editor on the marked items')
     def invoke_editor(self):
         self.run_command(editor_name(), False)
 
-    @help(u'run command')
+    @helpmsg(u'run command')
     def run_command(self, cmd, wait_for_keypress=True):
         if not cmd:
             return
@@ -942,7 +942,7 @@ class Screen:
         args = [unicode(item) for _, item in self.enumerate_selected()]
         raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
 
-    @help(u'run command on selection')
+    @helpmsg(u'run command on selection')
     def query_run_command(self):
         self.run_command(self.status.query(u'Run command on selection:'))
 
@@ -1144,7 +1144,7 @@ def run_command(e):
 
     curses.reset_prog_mode()
 
-def mainloop(scr, wnd, options):
+def mainloop(scr, wnd):
     # sometimes raises an exception in cygwin
     try:
         curses.curs_set(0)
@@ -1170,8 +1170,8 @@ def main():
     locale.setlocale(locale.LC_ALL, '')
 
     options, proc = process_args()
-    options.interactive = os.isatty(0) and not options.argfile
-    if options.interactive:
+    is_interactive = os.isatty(0) and not options.argfile
+    if is_interactive:
         matches = listdir_sorted(getcwd())
         factory = filesystem_factory
     else:
@@ -1189,9 +1189,9 @@ def main():
     with TTYLocker():
         TermSize.init()
         Keys.init()
-        scr = Screen(factory, matches, options)
+        scr = Screen(factory, matches, is_interactive)
         signal.signal(signal.SIGWINCH, scr.resize)
-        res = curses.wrapper(lambda wnd: mainloop(scr, wnd, options))
+        res = curses.wrapper(lambda wnd: mainloop(scr, wnd))
 
     if not res:
         sys.exit(ExitStatuses.NOTHING_SELECTED)
