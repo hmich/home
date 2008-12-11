@@ -420,10 +420,11 @@ def filesystem_factory(owner, path):
             item.marked = not item.marked
 
     def diraction(item):
-        if unicode(item) == touni(os.pardir):
+        dir = unicode(item)
+        if dir == touni(os.pardir):
             owner.up_dir()
         else:
-            owner.read_dir(path)
+            owner.read_dir(dir)
 
     if os.path.isdir(fromuni(path)):
         if os.path.islink(fromuni(path)):
@@ -537,7 +538,7 @@ class Bindings:
             owner.show_marked:         [Keys.TAB],
             owner.goto_line:           [u'G'],
             owner.mark_by_regex:       [u'%'],
-            owner.search_by_regex:     [u'/'],
+            owner.filter_by_regex:     [u'/'],
             owner.restore_items:       [Keys.ESCAPE],
             owner.redraw:              [Keys.CTRL_L],
             owner.show_bindings:       [Keys.F1, u'?', u'H'],
@@ -549,6 +550,8 @@ class Bindings:
             owner.restore_items:       [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
             owner.invoke_editor:       [Keys.F3, Keys.F4],
             Closure(owner.run_command, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
+            Closure(owner.run_command, [('cmd', 'ls -la')]): [Keys.F5],
+            Closure(owner.run_command, [('cmd', 'du -chs')]): [Keys.F6],
             Closure(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
 
     def _interactive_bindings(self, owner):
@@ -611,7 +614,7 @@ class Bindings:
     def show(self, scr):
         lines = []
         for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
-            lines.append((u', '.join(map(Keys.str, keys)), binding._help))
+            lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
         text = ([u'Just start typing to narrow down the list. Other keybindings:', u''] +
@@ -843,7 +846,7 @@ class Screen:
         return self._filter(list(self._items_by_pattern(pattern)))
 
     @helpmsg(u'filter the list by regexp')
-    def search_by_regex(self):
+    def filter_by_regex(self):
         s = self.status.query(u'Search by regex:')
         if not s:
             return False
@@ -946,14 +949,14 @@ class Screen:
     def set_result(self, res):
         self.result = res
 
-    @helpmsg(u'exit from the program and return currently selected items')
+    @helpmsg(u'exit from the program and return marked items')
     def accept_selection(self):
         if self.has_marked():
             self.set_result([item.result_str() for item in self._marked_items])
         else:
             self.set_result([self.current_item().result_str()])
 
-    @helpmsg(u'exit the program without selecting anything')
+    @helpmsg(u'exit the program not returning anything')
     def return_none(self):
         return self.set_result([])
 
@@ -996,18 +999,23 @@ class Screen:
         self.clear_screen()
         raise InvocationError(shell_path(), False)
 
-    @helpmsg(u'invoke editor on the marked items')
+    @helpmsg(u'invoke editor on the current item')
     def invoke_editor(self):
-        self.run_command(editor_name(), False)
+        self.run_command_on_items(editor_name(), [self.current_item()], False)
 
     @helpmsg(u'run command')
     def run_command(self, cmd, wait_for_keypress=True):
+        self.clear_screen()
+        items = self._marked_items or [self.current_item()]
+        self.run_command_on_items(cmd, items, wait_for_keypress)
+
+    def run_command_on_items(self, cmd, items, wait_for_keypress=True):
         if not cmd:
             return
         self._clear_highlighter()
         self._clear_pattern()
         self.clear_screen()
-        args = [unicode(item) for item in self._marked_items]
+        args = map(unicode, items)
         raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
 
     @helpmsg(u'run command on selection')
@@ -1057,9 +1065,9 @@ class Screen:
 
             if c in self.bindings:
                 self.msg = None
-                self.bindings[c]()
                 self._clear_highlighter()
                 self._clear_pattern()
+                self.bindings[c]()
             elif is_printable_char(c):
                 self.msg = None
                 self.pattern += c
