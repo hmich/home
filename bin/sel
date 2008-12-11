@@ -549,7 +549,7 @@ class Bindings:
             owner.invoke_shell:        [u'$'],
             owner.restore_items:       [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
             owner.invoke_editor:       [Keys.F3, Keys.F4],
-            Closure(owner.run_command, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
+            Closure(owner.run_command_on_current_item, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
             Closure(owner.run_command, [('cmd', 'ls -la')]): [Keys.F5],
             Closure(owner.run_command, [('cmd', 'du -chs')]): [Keys.F6],
             Closure(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
@@ -707,6 +707,8 @@ class Screen:
             start = -1
             if self.highlighter:
                 start, end = self.highlighter(s, idx)
+            if start != -1:
+                self.logging.error(str((start, end)))
             if start == -1:
                 self.scr.attrset(attr)
                 self.scr.addstr(y, x + idx, fromuni(s[idx:]))
@@ -1005,9 +1007,12 @@ class Screen:
 
     @helpmsg(u'run command')
     def run_command(self, cmd, wait_for_keypress=True):
-        self.clear_screen()
         items = self._marked_items or [self.current_item()]
         self.run_command_on_items(cmd, items, wait_for_keypress)
+
+    @helpmsg(u'run command on the current item')
+    def run_command_on_current_item(self, cmd, wait_for_keypress=True):
+        self.run_command_on_items(cmd, [self.current_item()], wait_for_keypress)
 
     def run_command_on_items(self, cmd, items, wait_for_keypress=True):
         if not cmd:
