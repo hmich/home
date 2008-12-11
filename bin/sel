@@ -33,8 +33,9 @@ import subprocess
 import signal
 import pwd
 import cgitb
-import locale
+
 import types
+import operator
 from collections import defaultdict
 
 import time
@@ -44,25 +45,25 @@ import termios
 
 import re
 import string
+import locale
 import unicodedata
 import optparse
 import logging
 from ConfigParser import RawConfigParser
 
 import curses
-import curses.ascii
 import curses.textpad
 import curses.wrapper
 
-VERSION = 0.1
-PATTERN_TIMEOUT = 2      # time in seconds to wait before resetting of the typed pattern
-DEFAULT_EDITOR = 'vim'   # name of the editor to invoke if the EDITOR environment variable is not set
+VERSION = '0.1'
+PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting of the typed pattern
+DEFAULT_EDITOR = 'vim'    # name of the editor to invoke if the EDITOR environment variable is not set
 CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
 
 class ExitStatuses:
-    NOTHING_SELECTED = 1 # nothing has been selected
-    EXEC_ERROR = 2       # exec of the supplied program did not succeed
-    INVALID_REGEXP = 3   # invalid regexp for parsing input stream has been passed on the command line
+    NOTHING_SELECTED = 1  # nothing has been selected
+    EXEC_ERROR = 2        # exec of the supplied program did not succeed
+    INVALID_REGEXP = 3    # invalid regexp for parsing input stream has been passed on the command line
 
 class Attrs:
     @classmethod
@@ -154,6 +155,10 @@ class Keys:
         else:
             return cls._revkeys[str]
 
+# helpers
+fst = operator.itemgetter(0)
+snd = operator.itemgetter(1)
+
 # os utilities
 def touni(str):
     return unicode(str, locale.getpreferredencoding())
@@ -195,6 +200,12 @@ class Item(object):
         self._action = action
         self.attr = attr or Attrs.DEFAULT
 
+    def __eq__(self, other):
+        return self._str == other._str if other else False
+
+    def __hash__(self):
+        return hash(self._str)
+
     def action(self):
         self._action(self)
 
@@ -226,23 +237,36 @@ class FileItem(Item):
     def __init__(self, str, action, attr, suffix):
         Item.__init__(self, str, action, attr)
         self._suffix = suffix
+        self._dirname = getcwd()
+
+    def __eq__(self, other):
+        if not other:
+            return False
+        return (self._str == other._str and
+                self._dirname == other._dirname)
+
+    def __hash__(self):
+        return hash(self._str) + hash(self._dirname)
+
+    def __unicode__(self):
+        if getcwd() == self._dirname:
+            return self._str
+        else:
+            return os.path.join(self._dirname, self._str)
 
     def screen_str(self):
         return Item.screen_str(self) + self._suffix
 
     def result_str(self):
-        return os.path.join(getcwd(), unicode(self))
+        return os.path.join(self._dirname, self._str)
 
-class Link(Item):
+class Link(FileItem):
     def __init__(self, str, action):
         Item.__init__(self, str, action, Attrs.LINK)
         self._to = os.readlink(self.result_str())
 
     def screen_str(self):
         return u'%s@ -> %s' % (Item.screen_str(self), self._to)
-
-    def result_str(self):
-        return os.path.join(getcwd(), unicode(self))
 
 class Items:
     def __init__(self, items):
@@ -251,7 +275,7 @@ class Items:
         self.has_marked_event = []
 
     def has_marked(self):
-        return self._nmarked > 0
+        return self._nmarked != 0
 
     def index(self, val):
         return self._items.index(val)
@@ -380,31 +404,38 @@ class ScrollingList:
             self.change_item(self.offset)
 
 def simple_factory(owner, str):
-    return Item(str, lambda item: owner.accept_selection())
+    def defaction(item):
+        if not owner.has_marked():
+            owner.accept_selection()
+        else:
+            item.marked = not item.marked
+
+    return Item(str, defaction)
 
 def filesystem_factory(owner, path):
-    accept = lambda item: owner.accept_selection()
-
-    def read_dir(item):
-        if not owner.items.has_marked():
-            if unicode(item) == touni(os.pardir):
-                owner.up_dir()
-            else:
-                owner.read_dir(path)
-        else:
+    def defaction(item):
+        if not owner.has_marked():
             owner.accept_selection()
+        else:
+            item.marked = not item.marked
+
+    def diraction(item):
+        if unicode(item) == touni(os.pardir):
+            owner.up_dir()
+        else:
+            owner.read_dir(path)
 
     if os.path.isdir(fromuni(path)):
         if os.path.islink(fromuni(path)):
-            return Link(path, read_dir)
+            return Link(path, diraction)
         else:
-            return FileItem(path, read_dir, Attrs.DIR, u'/')
+            return FileItem(path, diraction, Attrs.DIR, u'/')
     elif os.access(fromuni(path), os.X_OK):
-        return FileItem(path, accept, Attrs.EXEC, u'*')
+        return FileItem(path, defaction, Attrs.EXEC, u'*')
     elif os.path.islink(fromuni(path)):
-        return Link(path, accept)
+        return Link(path, defaction)
     else:
-        return FileItem(path, accept, Attrs.DEFAULT, u'')
+        return FileItem(path, defaction, Attrs.DEFAULT, u'')
 
 class ResizeError(Exception):
     def __init__(self):
@@ -462,8 +493,7 @@ class Bindings:
         cfg_file = os.path.expanduser(CONFIG_FILE)
 
         try:
-            cfg = RawConfigParser()
-            cfg.optionxform = lambda s: s
+            cfg = self._create_parser()
             cfg.read(cfg_file)
 
             bindings = self._read_bindings(owner, cfg.items(self.BINDINGS_SECTION))
@@ -484,6 +514,11 @@ class Bindings:
             self._merge_bindings(interactive_bindings)
         self._map = dict([(key, func) for func, keys in self._bindings.items() for key in keys])
 
+    def _create_parser(self):
+        parser = RawConfigParser()
+        parser.optionxform = lambda s: s
+        return parser
+
     def _default_bindings(self, owner):
         return {
             owner.next_item:           [Keys.DOWN, u'J', Keys.CTRL_N],
@@ -496,7 +531,7 @@ class Bindings:
             owner.toggle_item:         [Keys.INSERT, u' '],
             owner.invert_marks:        [u'~'],
             owner.mark_all:            [u'*'],
-            owner.filter_by_mark:      [Keys.TAB],
+            owner.show_marked:         [Keys.TAB],
             owner.goto_line:           [u'G'],
             owner.mark_by_regex:       [u'%'],
             owner.search_by_regex:     [u'/'],
@@ -504,7 +539,7 @@ class Bindings:
             owner.redraw:              [Keys.CTRL_L],
             owner.show_bindings:       [Keys.F1, u'?', u'H'],
             owner.return_none:         [Keys.CTRL_X, u'Q'],
-            owner.return_pwd:          [Keys.CTRL_D, u'D'],
+            owner.accept_selection:    [Keys.CTRL_D, u'D'],
             owner.current_item_action: [Keys.RETURN],
             owner.query_run_command:   [u'!'],
             owner.invoke_shell:        [u'$'],
@@ -529,8 +564,7 @@ class Bindings:
         return res
 
     def _save_bindings(self, cfg_file, bindings, interactive_bindings):
-        cfg = RawConfigParser()
-        cfg.optionxform = lambda s: s
+        cfg = self._create_parser()
         self._dump_bindings(cfg, self.BINDINGS_SECTION, bindings)
         self._dump_bindings(cfg, self.INTERACTIVE_BINDINGS_SECTION, interactive_bindings)
         cfg.write(open(cfg_file, 'w'))
@@ -546,15 +580,20 @@ class Bindings:
         cfg.add_section(section)
         b = [(self._func_name(func), keys) for func, keys in bindings.items()]
 
-        for func, keys in sorted(b, key=lambda x: x[0]):
+        for func, keys in sorted(b, key=fst):
             cfg.set(section, func, ', '.join(map(Keys.str, keys)))
 
     def _merge_bindings(self, bindings):
         newkeys = set()
         for keys in bindings.itervalues():
             newkeys |= set(keys)
+
         for func in self._bindings:
-            self._bindings[func] = set(self._bindings[func]) - newkeys
+            keys = set(self._bindings[func]) - newkeys
+            self._bindings[func] = keys
+
+        self._bindings = defaultdict(list, filter(lambda x: x[1], self._bindings.items()))
+
         for func, keys in bindings.items():
             curkeys = set(self._bindings[func])
             curkeys.update(set(keys))
@@ -609,6 +648,7 @@ class Screen:
         self.factory = factory
         self.matches = matches
         self.items = None
+        self._marked_items = []
         self.resized = False
         self.list = None
         self.result = None
@@ -618,16 +658,27 @@ class Screen:
         self.update_list = self.reread_dir if is_interactive else lambda: None
 
     def _create_items(self, elems):
-        self._set_items([self.factory(self, e) for e in elems])
+        newitems = [self.factory(self, e) for e in elems]
+        marked = self._marked_items
+
+        for idx, item in enumerate(newitems):
+            if item in marked:
+                newitems[idx] = marked[marked.index(item)]
+
+        self._set_items(newitems)
         self._allitems = None
 
     def _update_list(self, idx = 0, offset = 0):
         self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
         self.redraw()
 
+    def has_marked(self):
+        return bool(self._marked_items)
+
     def _set_items(self, items):
         self.items = Items(items)
         self.items.item_changed_event.append(self.draw_item)
+        self.items.item_changed_event.append(self.update_marked_items_list)
         self.items.has_marked_event.append(self.redraw)
 
     def _getch(self):
@@ -690,6 +741,13 @@ class Screen:
 
         if refresh:
             self.scr.refresh()
+
+    def update_marked_items_list(self, idx):
+        item = self.items[idx]
+        if item.marked:
+            self._marked_items.append(item)
+        else:
+            self._marked_items.remove(item)
 
     def clear_line(self, line):
         self.scr.move(line, 0)
@@ -797,12 +855,12 @@ class Screen:
         return self._filter(list(self._items_by_regex(regex)))
 
     @helpmsg(u'show only marked items')
-    def filter_by_mark(self):
+    def show_marked(self):
         if self._allitems:
             self.restore_items()
         else:
             self._clear_highlighter()
-            self._filter([item for item in self.items if item.marked])
+            self._filter(self._marked_items)
 
     def enumerate_selected(self):
         if not self.items:
@@ -816,8 +874,11 @@ class Screen:
 
     @helpmsg(u'remove marked items')
     def remove_marked(self):
+        toremove = set(item for _, item in self.enumerate_selected())
         if self._allitems:
-            self._allitems.remove_items(item for _, item in self.enumerate_selected())
+            self._allitems.remove_items(toremove)
+
+        self._marked_items = filter(lambda item: not item in toremove, self._marked_items)
         self.items.remove(idx for idx, _ in self.enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
@@ -869,7 +930,7 @@ class Screen:
             return
         cur = self.current_item()
         self._set_items(self._allitems)
-        self._update_list(self.items.index(cur) if cur else 0)
+        self._update_list(self.items.index(cur) if cur in self.items else 0)
         self._allitems = None
 
     @helpmsg(u'reset current pattern or filter if any or go to the parent directory')
@@ -882,16 +943,20 @@ class Screen:
     def set_result(self, res):
         self.result = res
 
+    @helpmsg(u'exit from the program and return currently selected items')
     def accept_selection(self):
-        self.set_result([item.result_str() for _, item in self.enumerate_selected()])
+        if self.has_marked():
+            self.set_result([item.result_str() for item in self._marked_items])
+        else:
+            self.set_result([self.current_item().result_str()])
 
     @helpmsg(u'exit the program without selecting anything')
     def return_none(self):
         return self.set_result([])
 
-    @helpmsg(u'exit with the name of the current working directory as the only result')
-    def return_pwd(self):
-        return owner.set_result([getcwd()])
+    # @helpmsg(u'exit with the name of the current working directory as the only result')
+    # def return_pwd(self):
+    #     return self.set_result([getcwd()])
 
     @helpmsg(u'scroll one page down')
     def next_page(self): self.list.next_page()
@@ -939,7 +1004,7 @@ class Screen:
         self._clear_highlighter()
         self._clear_pattern()
         self.clear_screen()
-        args = [unicode(item) for _, item in self.enumerate_selected()]
+        args = [unicode(item) for item in self._marked_items]
         raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
 
     @helpmsg(u'run command on selection')
