@@ -483,7 +483,7 @@ class Closure:
         return hash(self._func)
 
     def __repr__(self):
-        return '%s %s' % (self._func.__name__, repr(self._args))
+        return repr([self._func.__name__] + self._args)[1:-1]
 
 class Bindings:
     BINDINGS_SECTION = 'bindings'
@@ -493,6 +493,8 @@ class Bindings:
         cfg_file = os.path.expanduser(CONFIG_FILE)
 
         try:
+            if not os.path.isfile(cfg_file):
+                raise Exception(u'file is not found')
             cfg = self._create_parser()
             cfg.read(cfg_file)
 
@@ -501,12 +503,13 @@ class Bindings:
         except Exception, e:
             bindings = self._default_bindings(owner)
             interactive_bindings = self._interactive_bindings(owner)
+            owner.msg = u'Can not load configuration file %s: %s' % (cfg_file, e)
 
         if not os.path.isfile(cfg_file):
             try:
                 self._save_bindings(cfg_file, bindings, interactive_bindings)
-            except:
-                pass
+            except Exception, e:
+                owner.msg = u'Can not save settings to %s: %s' % (cfg_file, e )
 
         self._bindings = defaultdict(list)
         self._bindings.update(bindings)
@@ -557,10 +560,10 @@ class Bindings:
     def _read_bindings(self, owner, bindings):
         res = {}
         for func, keys in bindings:
-            funcname = func.split()[0]
-            argsstr = func[len(funcname):]
-            args = eval(argsstr) if argsstr else []
-            res[Closure(getattr(owner, funcname), args)] = [Keys.code(key.strip()) for key in keys.split(',')]
+            args = eval(func)
+            if type(args) != tuple:
+                args = (args,)
+            res[Closure(getattr(owner, args[0]), args[1:])] = [Keys.code(key.strip()) for key in keys.split(',')]
         return res
 
     def _save_bindings(self, cfg_file, bindings, interactive_bindings):
@@ -571,7 +574,7 @@ class Bindings:
 
     def _func_name(self, func):
         if type(func) == types.MethodType:
-            return func.__name__
+            return repr(func.__name__)
         else:
             # assuming Closure here...
             return repr(func)
