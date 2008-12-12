@@ -56,7 +56,7 @@ import curses.textpad
 import curses.wrapper
 
 VERSION = '0.1'           # current program version
-PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting of the typed pattern
+PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting the typed pattern
 DEFAULT_EDITOR = 'vim'    # name of the editor to invoke if the EDITOR environment variable is not set
 CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
 
@@ -410,7 +410,7 @@ class ScrollingList:
             self.owner.scr.scroll(diff)
             self.owner.draw_item(previdx)
             self.owner.draw_item(self.idx)
-        elsea:
+        else:
             self.owner.redraw()
 
     def next_page(self):
@@ -675,16 +675,14 @@ def helpmsg(str):
 class Screen:
     def __init__(self, factory, matches, browser_mode):
         self._factory = factory
-        self._matches = matches
         self._marked_items = []
         self._resized = False
-        self._result = None
         self._highlighter = None
-        self.items = None
         self.list = None
         self.status = Status()
         self.bindings = Bindings(self, browser_mode)
         self.update_list = self.reread_dir if browser_mode else lambda: None
+        self._create_items(matches)
 
     def _create_items(self, elems):
         newitems = [self._factory(self, e) for e in elems]
@@ -1049,21 +1047,20 @@ class Screen:
     def _clear_highlighter(self):
         if not self._highlighter:
             return
+
         self._highlighter = None
         self.redraw()
 
     def _clear_pattern(self):
         if not self.pattern:
             return
+
         self.pattern = u''
         self._clear_highlighter()
 
     def run(self, stdscr):
         self.scr = stdscr
         self.scr.scrollok(1)
-
-        if not self.items:
-            self._create_items(self._matches)
 
         if not self.list:
             self._update_list()
@@ -1073,6 +1070,7 @@ class Screen:
         self.pattern = u''
         lastpress = Timer()
 
+        self._result = None
         while self._result is None:
             self.update_status()
 
@@ -1247,7 +1245,7 @@ def run_command(e):
 
     curses.reset_prog_mode()
 
-def mainloop(scr, wnd):
+def init_curses():
     # sometimes raises an exception in cygwin
     try:
         curses.curs_set(0)
@@ -1257,6 +1255,14 @@ def mainloop(scr, wnd):
     curses.use_default_colors()
     Attrs.init()
     ColorsManager.init()
+    TermSize.init()
+    Keys.init()
+
+def mainloop(factory, matches, browser_mode, wnd):
+    init_curses()
+
+    scr = Screen(factory, matches, browser_mode)
+    signal.signal(signal.SIGWINCH, scr.resize)
 
     while True:
         try:
@@ -1290,11 +1296,7 @@ def main():
         sys.exit(ExitStatuses.NOTHING_SELECTED)
 
     with TTYLocker():
-        TermSize.init()
-        Keys.init()
-        scr = Screen(factory, matches, browser_mode)
-        signal.signal(signal.SIGWINCH, scr.resize)
-        res = curses.wrapper(lambda wnd: mainloop(scr, wnd))
+        res = curses.wrapper(lambda wnd: mainloop(factory, matches, browser_mode, wnd))
 
     if not res:
         sys.exit(ExitStatuses.NOTHING_SELECTED)
