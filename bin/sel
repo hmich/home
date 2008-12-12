@@ -682,12 +682,13 @@ class Bindings:
             lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
-        text = ([u'Just start typing to narrow down the list. Other keybindings:', u''] +
-                 [line[0].ljust(width) + line[1] for line in lines] +
-                 [u'', u'Basic customization is available via %s.' % CONFIG_FILE,
-                  u'Press any key to continue...'])
+        raise PagerError('''
+Just start typing to narrow down the list. Other keybindings:
 
-        raise PagerError(u'\n'.join(text))
+%s
+
+Basic customization is available via %s (currently not very human-friendly, sorry).
+Press any key to continue...''' % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
 
 class Timer:
     def __init__(self):
