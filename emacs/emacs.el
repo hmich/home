@@ -19,11 +19,13 @@
       (setq haskell-program-name "C:/Development/haskell/ghc-6.8.3/bin/ghci.exe")
       (setq common-lisp-hyperspec-root "file:c:/Development/Lisp/HyperSpec/")
 
-      ;; (setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
-      (setq font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      ;(setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
+      ;(setq font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      (setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
-      ;; (set-frame-font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
-      ;; (set-frame-font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      ;(set-frame-font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
+      ;(set-frame-font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      ;(set-frame-font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
       ;; Localization
       ;; (prefer-coding-system 'cp1251)
@@ -597,6 +599,9 @@
           (lambda ()
             (define-key python-mode-map [backspace] 'python-backspace)))
 
+(require 'pymacs)
+(pymacs-load "ropemacs" "rope-")
+
 ;; Lua settings
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
 (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
@@ -942,6 +947,8 @@ directory, select directory. Lastly the file is opened."
 (require 'git)
 (autoload 'git-blame-mode "git-blame" "Minor mode for incremental blame for Git." t)
 (autoload 'gitsum "gitsum" "Incremental git commit." t)
+
+(require 'magit)
 
 ;; psvn
 (setq svn-status-prefix-key '[(super n)])
