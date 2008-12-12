@@ -547,7 +547,6 @@ class Bindings:
             owner.goto_line:           [u'G'],
             owner.mark_by_regex:       [u'%'],
             owner.filter_by_regex:     [u'/'],
-            owner.restore_items:       [Keys.ESCAPE],
             owner.redraw:              [Keys.CTRL_L],
             owner.show_bindings:       [Keys.F1, u'?', u'H'],
             owner.return_none:         [Keys.CTRL_X, u'Q'],
@@ -555,7 +554,7 @@ class Bindings:
             owner.current_item_action: [Keys.RETURN],
             owner.query_run_command:   [u'!'],
             owner.invoke_shell:        [u'$'],
-            owner.restore_items:       [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
+            owner.restore_items:       [Keys.ESCAPE, Keys.BACKSPACE, Keys.CTRL_H, u'^'],
             owner.invoke_editor:       [Keys.F3, Keys.F4],
             Closure(owner.run_command_on_current_item, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
             Closure(owner.run_command, [('cmd', 'ls -la')]): [Keys.F5],
@@ -659,20 +658,20 @@ def helpmsg(str):
 
 class Screen:
     def __init__(self, factory, matches, browser_mode):
-        self.factory = factory
-        self.matches = matches
-        self.items = None
+        self._factory = factory
+        self._matches = matches
         self._marked_items = []
-        self.resized = False
+        self._resized = False
+        self._result = None
+        self._highlighter = None
+        self.items = None
         self.list = None
-        self.result = None
-        self.highlighter = None
         self.msg = None
         self.bindings = Bindings(self, browser_mode)
         self.update_list = self.reread_dir if browser_mode else lambda: None
 
     def _create_items(self, elems):
-        newitems = [self.factory(self, e) for e in elems]
+        newitems = [self._factory(self, e) for e in elems]
         marked = self._marked_items
 
         for idx, item in enumerate(newitems):
@@ -692,7 +691,7 @@ class Screen:
     def _set_items(self, items):
         self.items = Items(items)
         self.items.item_changed_event.append(self.draw_item)
-        self.items.item_changed_event.append(self.update_marked_items_list)
+        self.items.item_changed_event.append(self._update_marked_items_list)
         self.items.has_marked_event.append(self.redraw)
 
     def _getch(self):
@@ -713,8 +712,8 @@ class Screen:
         ls = s.lower()
         while idx < len(s):
             start = -1
-            if self.highlighter:
-                start, end = self.highlighter(s, idx)
+            if self._highlighter:
+                start, end = self._highlighter(s, idx)
             if start == -1:
                 self.scr.attrset(attr)
                 self.scr.addstr(y, x + idx, fromuni(s[idx:]))
@@ -756,7 +755,7 @@ class Screen:
         if refresh:
             self.scr.refresh()
 
-    def update_marked_items_list(self, idx):
+    def _update_marked_items_list(self, idx):
         item = self.items[idx]
         if item.marked:
             self._marked_items.append(item)
@@ -850,7 +849,7 @@ class Screen:
                 yield item
 
     def filter_by_pattern(self, pattern):
-        self.highlighter = StrHighlighter(pattern)
+        self._highlighter = StrHighlighter(pattern)
         return self._filter(list(self._items_by_pattern(pattern)))
 
     @helpmsg(u'filter the list by regexp')
@@ -865,7 +864,7 @@ class Screen:
             self.msg = u'Invalid regexp: %s' % e
             return
 
-        self.highlighter = RegexHighlighter(regex)
+        self._highlighter = RegexHighlighter(regex)
         return self._filter(list(self._items_by_regex(regex)))
 
     @helpmsg(u'show only marked items')
@@ -876,7 +875,7 @@ class Screen:
             self._clear_highlighter()
             self._filter(self._marked_items)
 
-    def enumerate_selected(self):
+    def _enumerate_selected(self):
         if not self.items:
             return
         if self.items.has_marked():
@@ -888,12 +887,12 @@ class Screen:
 
     @helpmsg(u'remove marked items')
     def remove_marked(self):
-        toremove = set(item for _, item in self.enumerate_selected())
+        toremove = set(item for _, item in self._enumerate_selected())
         if self._allitems:
             self._allitems.remove_items(toremove)
 
         self._marked_items = filter(lambda item: not item in toremove, self._marked_items)
-        self.items.remove(idx for idx, _ in self.enumerate_selected())
+        self.items.remove(idx for idx, _ in self._enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
     def read_dir(self, dir):
@@ -954,23 +953,23 @@ class Screen:
         else:
             self.up_dir()
 
-    def set_result(self, res):
-        self.result = res
+    def _set_result(self, res):
+        self._result = res
 
     @helpmsg(u'exit from the program and return marked items')
     def accept_selection(self):
         if self.has_marked():
-            self.set_result([item.result_str() for item in self._marked_items])
+            self._set_result([item.result_str() for item in self._marked_items])
         else:
-            self.set_result([self.current_item().result_str()])
+            self._set_result([self.current_item().result_str()])
 
     @helpmsg(u'exit the program not returning anything')
     def return_none(self):
-        return self.set_result([])
+        return self._set_result([])
 
     # @helpmsg(u'exit with the name of the current working directory as the only result')
     # def return_pwd(self):
-    #     return self.set_result([getcwd()])
+    #     return self._set_result([getcwd()])
 
     @helpmsg(u'scroll one page down')
     def next_page(self): self.list.next_page()
@@ -1034,9 +1033,9 @@ class Screen:
         self.run_command(self.status.query(u'Run command on selection:'))
 
     def _clear_highlighter(self):
-        if not self.highlighter:
+        if not self._highlighter:
             return
-        self.highlighter = None
+        self._highlighter = None
         self.redraw()
 
     def _clear_pattern(self):
@@ -1051,7 +1050,7 @@ class Screen:
         self.scr.scrollok(1)
 
         if not self.items:
-            self._create_items(self.matches)
+            self._create_items(self._matches)
 
         if not self.list:
             self._update_list()
@@ -1061,7 +1060,7 @@ class Screen:
         self.pattern = u''
         lastpress = Timer()
 
-        while self.result is None:
+        while self._result is None:
             self.update_status()
 
             try:
@@ -1076,9 +1075,13 @@ class Screen:
 
             if c in self.bindings:
                 self.msg = None
+
+                # TODO: the order of the function calls is significant here
+                # because of filter_by_pattern and restore_items methods.
+                # Some other solution should be devised.
                 self._clear_highlighter()
-                self._clear_pattern()
                 self.bindings[c]()
+                self._clear_pattern()
             elif is_printable_char(c):
                 self.msg = None
                 self.pattern += c
@@ -1090,7 +1093,7 @@ class Screen:
 
         self.clear_screen()
 
-        return self.result
+        return self._result
 
 class TTYStdinLocker:
     def __enter__(self):
