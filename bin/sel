@@ -190,15 +190,28 @@ def listdir_sorted(dir):
         return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or [os.pardir])
 
 def shell_path():
-    """Path to the user shell executable."""
+    """Path to the user shell executable.
+
+    >>> os.access(os.popen('which ' + shell_path()).read().strip(), os.X_OK)
+    True
+    """
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 def editor_name():
-    """Name of the preferred editor."""
+    """Name of the preferred editor.
+
+    >>> os.access(os.popen('which ' + editor_name()).read().strip(), os.X_OK)
+    True
+    """
+
     return os.getenv('EDITOR') or DEFAULT_EDITOR
 
 def pager_name():
-    """Name of the preferred pager program."""
+    """Name of the preferred pager program.
+
+    >>> os.access(os.popen('which ' + pager_name()).read().strip(), os.X_OK)
+    True
+    """
     return os.getenv('PAGER') or DEFAULT_PAGER
 
 def program_name():
@@ -207,11 +220,21 @@ def program_name():
 
 # string utilities
 def shell_quote(str):
-    """Quotes the string so it can be used as an argument to a shell command."""
+    """Quotes the string so it can be used as an argument to a shell command.
+
+    >>> s = "a'b\\"c"; os.popen("echo " + shell_quote(s)).read().strip() == s
+    True
+    """
     return "'%s'" % (str.replace("'", "'\"'\"'"))
 
 def is_printable_char(c):
-    """Tests if wide character is printable."""
+    """Tests if a wide character is printable.
+
+    >>> is_printable_char(unicode('а', 'utf-8'))
+    True
+    >>> is_printable_char(unicode('\x09'))
+    False
+    """
     try:
         return unicodedata.category(c)[0] in 'LNPS'
     except:
@@ -1244,6 +1267,8 @@ and suggestions to Igor.Akhmetov at gmail dot com.''')
                       help='parse input data using given regular expression')
     parser.add_option('-q', '--quote', action='store_true', dest='quote', default=False,
                       help='quote output fields')
+    parser.add_option('-t', '--run-tests', action='store_true', dest='run_tests', default=False,
+                      help='run doctests, for development purposes only')
 
     parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
@@ -1327,6 +1352,11 @@ def main():
     locale.setlocale(locale.LC_ALL, '')
 
     options, proc = process_args()
+    if options.run_tests:
+        import doctest
+        doctest.testmod(verbose=True, exclude_empty=True)
+        return
+
     browser_mode = os.isatty(0) and not options.argfile
     if browser_mode:
         matches = listdir_sorted(getcwd())
