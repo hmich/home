@@ -57,8 +57,9 @@ import curses.wrapper
 
 VERSION = '0.1'           # current program version
 PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting the typed pattern
-DEFAULT_EDITOR = 'vim'    # name of the editor to invoke if the EDITOR environment variable is not set
 CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
+DEFAULT_EDITOR = 'vim'    # editor to invoke if the EDITOR environment variable is not set
+DEFAULT_PAGER = 'less'    # pager to invoke if the PAGER environment variable is not set
 
 class ExitStatuses:
     NOTHING_SELECTED = 1  # nothing has been selected
@@ -188,8 +189,12 @@ def shell_path():
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 def editor_name():
-    """Path to the preferred editor."""
+    """Name of the preferred editor."""
     return os.getenv('EDITOR') or DEFAULT_EDITOR
+
+def pager_name():
+    """Name of the preferred pager."""
+    return os.getenv('PAGER') or DEFAULT_PAGER
 
 def program_name():
     return os.path.basename(sys.argv[0])
@@ -571,7 +576,8 @@ class Bindings:
             owner.query_run_command:   [u'!'],
             owner.invoke_shell:        [u'$'],
             owner.restore_items:       [Keys.ESCAPE, Keys.BACKSPACE, Keys.CTRL_H, u'^'],
-            owner.invoke_editor:       [Keys.F3, Keys.F4],
+            owner.invoke_pager:        [Keys.F3],
+            owner.invoke_editor:       [Keys.F4],
             Closure(owner.run_command_on_current_item, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
             Closure(owner.run_command, [('cmd', 'ls -la')]): [Keys.F5],
             Closure(owner.run_command, [('cmd', 'du -chs')]): [Keys.F6],
@@ -1023,6 +1029,10 @@ class Screen:
     def invoke_shell(self):
         self.clear_screen()
         raise InvocationError(shell_path(), False)
+
+    @helpmsg(u'invoke pager on the current item')
+    def invoke_pager(self):
+        self.run_command_on_items(pager_name(), [self.current_item()], False)
 
     @helpmsg(u'invoke editor on the current item')
     def invoke_editor(self):
