@@ -571,7 +571,7 @@ class Bindings:
             owner.redraw:              [Keys.CTRL_L],
             owner.show_bindings:       [Keys.F1, u'?', u'H'],
             owner.return_none:         [Keys.CTRL_X, u'Q'],
-            owner.accept_selection:    [Keys.CTRL_D, u'D'],
+            owner.accept_selection:    [Keys.F10, Keys.CTRL_D, u'D'],
             owner.current_item_action: [Keys.RETURN],
             owner.query_run_command:   [u'!'],
             owner.invoke_shell:        [u'$'],
