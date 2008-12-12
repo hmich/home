@@ -34,9 +34,10 @@ import signal
 import pwd
 import cgitb
 
+import itertools
+from collections import defaultdict
 import types
 import operator
-from collections import defaultdict
 
 import time
 import struct
@@ -89,11 +90,13 @@ class ColorsManager(object):
 
     @classmethod
     def init(cls):
+        """Initializes curses color pairs."""
         for idx, (fg, bg) in enumerate(cls._colors):
             curses.init_pair(idx, fg, bg)
 
     @classmethod
     def color(cls, fg, bg):
+        """Register new color pair with fg and bg as the foreground and background colors."""
         c = (fg, bg)
         if c in cls._colors:
             return cls._colors.index(c)
@@ -177,9 +180,11 @@ def fromuni(str):
     return str.encode(locale.getpreferredencoding())
 
 def getcwd():
+    """Unicode name of the current working directory."""
     return touni(os.getcwd())
 
 def listdir_sorted(dir):
+    """Lists directory contents sorted in case-insensitive order. Groups directories before files."""
     # conversion from unicode is needed to allow the program run under cygwin
     for _, dirs, files in os.walk(fromuni(dir)):
         return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or [os.pardir])
@@ -193,10 +198,11 @@ def editor_name():
     return os.getenv('EDITOR') or DEFAULT_EDITOR
 
 def pager_name():
-    """Name of the preferred pager."""
+    """Name of the preferred pager program."""
     return os.getenv('PAGER') or DEFAULT_PAGER
 
 def program_name():
+    """Returns program name."""
     return os.path.basename(sys.argv[0])
 
 # string utilities
@@ -205,6 +211,7 @@ def shell_quote(str):
     return "'%s'" % (str.replace("'", "'\"'\"'"))
 
 def is_printable_char(c):
+    """Tests if wide character is printable."""
     try:
         return unicodedata.category(c)[0] in 'LNPS'
     except:
@@ -472,14 +479,14 @@ class ResizeError(Exception):
         Exception.__init__(self)
 
 class InvocationError(Exception):
-    """Is raised when the user requests to run an external program"""
+    """Is raised when the user requests to run an external program."""
     def __init__(self, cmd, wait_for_keypress):
         Exception.__init__(self)
         self.cmd = cmd
         self.wait_for_keypress = wait_for_keypress
 
 class PagerError(Exception):
-    """Is raised when the user requests to run the pager"""
+    """Is raised when the user requests to run the pager program."""
     def __init__(self, str):
         Exception.__init__(self, str)
 
@@ -670,10 +677,12 @@ class Timer:
         return time.time() - self._time
 
 def helpmsg(str):
-    def decor(func):
+    """Decorator which adds a help message to the function for display
+    on the help screen with the bindings list."""
+    def decorator(func):
         func._help = str
         return func
-    return decor
+    return decorator
 
 class Screen:
     def __init__(self, scr, factory, matches, browser_mode):
@@ -1122,6 +1131,7 @@ class Screen:
 
 # some helper context manager for work with curses and terminal
 class TTYStdinLock:
+    """Context manager that connects stdin to the terminal."""
     def __enter__(self):
         self._saved_stdin = os.dup(0)
         os.close(0)
@@ -1132,6 +1142,7 @@ class TTYStdinLock:
         os.dup(self._saved_stdin)
 
 class TTYStdoutLock:
+    """Context manager that connects stdout to the terminal."""
     def __enter__(self):
         self._saved_stdout = os.dup(1)
         os.close(1)
@@ -1142,6 +1153,7 @@ class TTYStdoutLock:
         os.dup(self._saved_stdout)
 
 class TTYLock:
+    """Contents manager that connects both stdin and stdout to the terminal."""
     def __init__(self):
         self.inlocker = TTYStdinLock()
         self.outlocker = TTYStdoutLock()
@@ -1155,6 +1167,7 @@ class TTYLock:
         self.outlocker.__exit__(*args)
 
 class ShellModeLock:
+    """Context manager for resetting curses to shell mode."""
     def __enter__(self):
         curses.reset_shell_mode()
 
@@ -1213,7 +1226,8 @@ simple directory browser, which can be used to pick a number of files,
 or allows you to select from a set of options, obtained by parsing
 input data using the specified regular expression. If cmd is given,
 then it is run with the selected items as arguments, otherwise these
-items are just printed to the standard output. Please send bug reports
+items are just printed to the standard output. Press '?' for keyboard
+bindings and basic help on interactive usage. Please send bug reports
 and suggestions to Igor.Akhmetov at gmail dot com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False,
@@ -1243,16 +1257,17 @@ def create_reader(options):
         return sys.stdin.xreadlines()
 
 def itermatches(input, regexp):
-    for line in input:
-        for match in regexp.findall(line):
-            yield match
+    """Iterates over all matches of the regexp regular expression over the elements of input."""
+    return itertools.chain(*itertools.imap(regexp.findall, input))
 
-def run_command(e):
-    retcode = None
-
+def run_command(cmd, wait_for_keypress):
+    """Runs program cmd. If wait_for_keypress is true, waits for user
+    to press return afterwards."""
     with ShellModeLock():
+        retcode = None
+
         try:
-            retcode = subprocess.call(e.cmd, shell=True)
+            retcode = subprocess.call(cmd, shell=True)
 
             if retcode < 0:
                 sys.stderr.write('\nChild was terminated by signal %s' % -retcode)
@@ -1261,10 +1276,11 @@ def run_command(e):
         except OSError, e:
             sys.stderr.write('\nExecution failed: %s' % e)
 
-        if retcode != None and (retcode != 0 or e.wait_for_keypress):
+        if retcode != None and (retcode != 0 or wait_for_keypress):
             raw_input('\nPress ENTER to continue')
 
 def run_pager(text):
+    """Starts pager program to display given text."""
     with ShellModeLock():
         try:
             pager = subprocess.Popen(pager_name(), stdin=subprocess.PIPE)
@@ -1276,6 +1292,7 @@ def run_pager(text):
             raw_input('\nPress ENTER to continue')
 
 def init_curses():
+    """Performs initialization of the curses library."""
     # sometimes raises an exception in cygwin
     try:
         curses.curs_set(0)
@@ -1298,7 +1315,7 @@ def mainloop(factory, matches, browser_mode, wnd):
             TermSize.init()
             return scr.run()
         except InvocationError, e:
-            run_command(e)
+            run_command(e.cmd, e.wait_for_keypress)
             scr.update_list()
         except PagerError, e:
             run_pager(unicode(e))
