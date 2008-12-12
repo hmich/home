@@ -353,7 +353,7 @@ class Status:
 
     def query(self, str):
         str += u' '
-        self.put(str, Attrs.STATUS)
+        self._put(str, Attrs.STATUS)
         win = curses.newwin(1, TermSize.width - len(str), TermSize.height - 1, len(str))
         return curses.textpad.Textbox(win).edit().strip()
 
@@ -880,11 +880,9 @@ class Screen:
 
     @helpmsg(u'show only marked items')
     def show_marked(self):
-        if self._allitems:
-            self.restore_items()
-        else:
-            self._clear_highlighter()
-            self._filter(self._marked_items)
+        self.restore_items()
+        self._clear_highlighter()
+        self._filter(self._marked_items)
 
     def _enumerate_selected(self):
         if not self.items:
