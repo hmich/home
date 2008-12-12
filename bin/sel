@@ -984,22 +984,28 @@ class Screen:
     #     return self._set_result([getcwd()])
 
     @helpmsg(u'scroll one page down')
-    def next_page(self): self.list.next_page()
+    def next_page(self):
+        self.list.next_page()
 
     @helpmsg(u'scroll one page up')
-    def prev_page(self): self.list.prev_page()
+    def prev_page(self):
+        self.list.prev_page()
 
     @helpmsg(u'goto next line')
-    def next_item(self): self.list.change_item(self.list.idx + 1)
+    def next_item(self):
+        self.list.change_item(self.list.idx + 1)
 
     @helpmsg(u'goto prev item')
-    def prev_item(self): self.list.change_item(self.list.idx - 1)
+    def prev_item(self):
+        self.list.change_item(self.list.idx - 1)
 
     @helpmsg(u'goto first item in the list')
-    def first_item(self): self.list.change_item(0)
+    def first_item(self):
+        self.list.change_item(0)
 
     @helpmsg(u'goto last item in the list')
-    def last_item(self): self.list.change_item(len(self.items) - 1)
+    def last_item(self):
+        self.list.change_item(len(self.items) - 1)
 
     @helpmsg(u'show this help')
     def show_bindings(self):
@@ -1106,7 +1112,8 @@ class Screen:
 
         return self._result
 
-class TTYStdinLocker:
+# some helper context manager for work with curses and terminal
+class TTYStdinLock:
     def __enter__(self):
         self._saved_stdin = os.dup(0)
         os.close(0)
@@ -1116,7 +1123,7 @@ class TTYStdinLocker:
         os.close(0)
         os.dup(self._saved_stdin)
 
-class TTYStdoutLocker:
+class TTYStdoutLock:
     def __enter__(self):
         self._saved_stdout = os.dup(1)
         os.close(1)
@@ -1126,10 +1133,10 @@ class TTYStdoutLocker:
         os.close(1)
         os.dup(self._saved_stdout)
 
-class TTYLocker:
+class TTYLock:
     def __init__(self):
-        self.inlocker = TTYStdinLocker()
-        self.outlocker = TTYStdoutLocker()
+        self.inlocker = TTYStdinLock()
+        self.outlocker = TTYStdoutLock()
 
     def __enter__(self):
         self.inlocker.__enter__()
@@ -1138,6 +1145,13 @@ class TTYLocker:
     def __exit__(self, *args):
         self.inlocker.__exit__(*args)
         self.outlocker.__exit__(*args)
+
+class ShellModeLock:
+    def __enter__(self):
+        curses.reset_shell_mode()
+
+    def __exit__(self, *args):
+        curses.reset_prog_mode()
 
 def separator(options):
     if options.null_terminated:
@@ -1159,7 +1173,7 @@ def exec_processor(cmd, replacestr):
         else:
             c = cmd + args
 
-        with TTYStdinLocker():
+        with TTYStdinLock():
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
@@ -1228,22 +1242,19 @@ def itermatches(input, regexp):
 def run_command(e):
     retcode = None
 
-    curses.reset_shell_mode()
+    with ShellModeLock():
+        try:
+            retcode = subprocess.call(e.cmd, shell=True)
 
-    try:
-        retcode = subprocess.call(e.cmd, shell=True)
+            if retcode < 0:
+                sys.stderr.write('\nChild was terminated by signal %s' % -retcode)
+            elif retcode:
+                sys.stderr.write('\nChild returned %s' % retcode)
+        except OSError, e:
+            sys.stderr.write('\nExecution failed: %s' % e)
 
-        if retcode < 0:
-            sys.stderr.write('\nChild was terminated by signal %s' % -retcode)
-        elif retcode:
-            sys.stderr.write('\nChild returned %s' % retcode)
-    except OSError, e:
-        sys.stderr.write('\nExecution failed: %s' % e)
-
-    if retcode != None and (retcode != 0 or e.wait_for_keypress):
-        raw_input('\nPress ENTER to continue')
-
-    curses.reset_prog_mode()
+        if retcode != None and (retcode != 0 or e.wait_for_keypress):
+            raw_input('\nPress ENTER to continue')
 
 def init_curses():
     # sometimes raises an exception in cygwin
@@ -1295,7 +1306,7 @@ def main():
     if not matches:
         sys.exit(ExitStatuses.NOTHING_SELECTED)
 
-    with TTYLocker():
+    with TTYLock():
         res = curses.wrapper(lambda wnd: mainloop(factory, matches, browser_mode, wnd))
 
     if not res:
