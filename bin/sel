@@ -1177,7 +1177,7 @@ class TTYStdoutLock:
         os.dup(self._saved_stdout)
 
 class TTYLock:
-    """Contents manager that connects both stdin and stdout to the terminal."""
+    """Context manager that connects both stdin and stdout to the terminal."""
     def __init__(self):
         self.inlocker = TTYStdinLock()
         self.outlocker = TTYStdoutLock()
