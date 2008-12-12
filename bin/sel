@@ -69,13 +69,17 @@ class Attrs:
     @classmethod
     def init(cls):
         color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
-        cls.DEFAULT = cls.STATUS = cls.LINENUM = color(curses.COLOR_WHITE, -1)
-        cls.MARKED = cls.DEFAULT | curses.A_BOLD
-        cls.SELECTED = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
+
+        cls.DEFAULT   = color(curses.COLOR_WHITE, -1)
+        cls.STATUS    = cls.DEFAULT
+        cls.LINENUM   = cls.DEFAULT
+        cls.MARKED    = cls.DEFAULT | curses.A_BOLD
+        cls.SELECTED  = color(curses.COLOR_WHITE, curses.COLOR_BLUE) | curses.A_BOLD
         cls.HIGHLIGHT = color(curses.COLOR_WHITE, curses.COLOR_RED) | curses.A_BOLD
-        cls.DIR = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
-        cls.EXEC = color(curses.COLOR_GREEN, -1 ) | curses.A_BOLD
-        cls.LINK = color(curses.COLOR_CYAN, -1 ) | curses.A_BOLD
+        cls.MESSAGE   = cls.HIGHLIGHT
+        cls.DIR       = color(curses.COLOR_BLUE, -1) | curses.A_BOLD
+        cls.EXEC      = color(curses.COLOR_GREEN, -1 ) | curses.A_BOLD
+        cls.LINK      = color(curses.COLOR_CYAN, -1 ) | curses.A_BOLD
 
 class ColorsManager(object):
     _colors = []
@@ -98,39 +102,40 @@ class Keys:
     @classmethod
     def init(cls):
         key = cls._register_key
-        cls.DOWN = key(u'KEY_DOWN', u'Down')
-        cls.UP = key(u'KEY_UP', u'Up')
+
+        cls.DOWN      = key(u'KEY_DOWN', u'Down')
+        cls.UP        = key(u'KEY_UP', u'Up')
         cls.PAGE_DOWN = key(u'KEY_NPAGE', u'Page Down')
-        cls.HOME = key(u'KEY_HOME', u'Home')
-        cls.PAGE_UP = key(u'KEY_PPAGE', u'Page Up')
-        cls.END = key(u'KEY_END', u'End')
-        cls.DELETE = key(u'KEY_DC', u'Delete')
-        cls.INSERT = key(u'KEY_IC', u'Insert')
-        cls.CTRL_H = key(u'KEY_BACKSPACE', u'Ctrl-H')
+        cls.HOME      = key(u'KEY_HOME', u'Home')
+        cls.PAGE_UP   = key(u'KEY_PPAGE', u'Page Up')
+        cls.END       = key(u'KEY_END', u'End')
+        cls.DELETE    = key(u'KEY_DC', u'Delete')
+        cls.INSERT    = key(u'KEY_IC', u'Insert')
+        cls.CTRL_H    = key(u'KEY_BACKSPACE', u'Ctrl-H')
         cls.BACKSPACE = key(u'\x7f', u'Backspace')
-        cls.CTRL_N = key(u'\x0e', u'Ctrl-N')
-        cls.CTRL_P = key(u'\x10', u'Ctrl-P')
-        cls.CTRL_F = key(u'\x06', u'Ctrl-F')
-        cls.CTRL_B = key(u'\x02', u'Ctrl-B')
-        cls.CTRL_R = key(u'\x12', u'Ctrl-R')
-        cls.CTRL_L = key(u'\x0c', u'Ctrl-L')
-        cls.CTRL_X = key(u'\x18', u'Ctrl-X')
-        cls.CTRL_D = key(u'\x04', u'Ctrl-D')
-        cls.ESCAPE = key(u'\x1b', u'Escape')
-        cls.RETURN = key(u'\n', u'Return')
-        cls.TAB = key(u'\t', u'Tab')
-        cls.F1 = key(u'KEY_F(1)', u'F1')
-        cls.F2 = key(u'KEY_F(2)', u'F2')
-        cls.F3 = key(u'KEY_F(3)', u'F3')
-        cls.F4 = key(u'KEY_F(4)', u'F4')
-        cls.F5 = key(u'KEY_F(5)', u'F5')
-        cls.F6 = key(u'KEY_F(6)', u'F6')
-        cls.F7 = key(u'KEY_F(7)', u'F7')
-        cls.F8 = key(u'KEY_F(8)', u'F8')
-        cls.F9 = key(u'KEY_F(9)', u'F9')
-        cls.F10 = key(u'KEY_F(10)', u'F10')
-        cls.F11 = key(u'KEY_F(11)', u'F11')
-        cls.F12 = key(u'KEY_F(12)', u'F12')
+        cls.CTRL_N    = key(u'\x0e', u'Ctrl-N')
+        cls.CTRL_P    = key(u'\x10', u'Ctrl-P')
+        cls.CTRL_F    = key(u'\x06', u'Ctrl-F')
+        cls.CTRL_B    = key(u'\x02', u'Ctrl-B')
+        cls.CTRL_R    = key(u'\x12', u'Ctrl-R')
+        cls.CTRL_L    = key(u'\x0c', u'Ctrl-L')
+        cls.CTRL_X    = key(u'\x18', u'Ctrl-X')
+        cls.CTRL_D    = key(u'\x04', u'Ctrl-D')
+        cls.ESCAPE    = key(u'\x1b', u'Escape')
+        cls.RETURN    = key(u'\n', u'Return')
+        cls.TAB       = key(u'\t', u'Tab')
+        cls.F1        = key(u'KEY_F(1)', u'F1')
+        cls.F2        = key(u'KEY_F(2)', u'F2')
+        cls.F3        = key(u'KEY_F(3)', u'F3')
+        cls.F4        = key(u'KEY_F(4)', u'F4')
+        cls.F5        = key(u'KEY_F(5)', u'F5')
+        cls.F6        = key(u'KEY_F(6)', u'F6')
+        cls.F7        = key(u'KEY_F(7)', u'F7')
+        cls.F8        = key(u'KEY_F(8)', u'F8')
+        cls.F9        = key(u'KEY_F(9)', u'F9')
+        cls.F10       = key(u'KEY_F(10)', u'F10')
+        cls.F11       = key(u'KEY_F(11)', u'F11')
+        cls.F12       = key(u'KEY_F(12)', u'F12')
 
     _keys = {}
     _revkeys = {}
@@ -328,14 +333,23 @@ class TermSize:
 
 class Status:
     def __init__(self):
-        self.win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
+        self.msg = None
+        self._win = None
 
-    def put(self, str, attr):
-        self.win.move(0, 0)
-        self.win.clrtoeol()
-        self.win.attrset(attr)
-        self.win.addstr(fromuni(str[:TermSize.width - 1]))
-        self.win.refresh()
+    def _put(self, str, attr):
+        if not self._win:
+            self._win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
+        self._win.move(0, 0)
+        self._win.clrtoeol()
+        self._win.attrset(attr)
+        self._win.addstr(fromuni(str[:TermSize.width - 1]))
+        self._win.refresh()
+
+    def update(self, str):
+        if self.msg:
+            self._put(self.msg, Attrs.MESSAGE)
+        else:
+            self._put(str, Attrs.STATUS)
 
     def query(self, str):
         str += u' '
@@ -512,13 +526,13 @@ class Bindings:
         except Exception, e:
             bindings = self._default_bindings(owner)
             browser_bindings = self._browser_bindings(owner)
-            owner.msg = u'Can not load configuration file %s: %s' % (cfg_file, e)
+            owner.status.msg = u'Can not load configuration file %s: %s' % (cfg_file, e)
 
         if not os.path.isfile(cfg_file):
             try:
                 self._save_bindings(cfg_file, bindings, browser_bindings)
             except Exception, e:
-                owner.msg = u'Can not save settings to %s: %s' % (cfg_file, e )
+                owner.status.msg = u'Can not save settings to %s: %s' % (cfg_file, e )
 
         self._bindings = defaultdict(list)
         self._bindings.update(bindings)
@@ -666,7 +680,7 @@ class Screen:
         self._highlighter = None
         self.items = None
         self.list = None
-        self.msg = None
+        self.status = Status()
         self.bindings = Bindings(self, browser_mode)
         self.update_list = self.reread_dir if browser_mode else lambda: None
 
@@ -798,11 +812,8 @@ class Screen:
             item.marked = True
 
     def update_status(self):
-        if self.msg:
-            self.status.put(self.msg, Attrs.HIGHLIGHT)
-        else:
-            curdir = getcwd()
-            self.status.put(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1), Attrs.STATUS)
+        curdir = getcwd()
+        self.status.update(curdir + unicode(self.list).rjust(TermSize.width - len(curdir) - 1))
 
     @helpmsg(u'goto line')
     def goto_line(self):
@@ -810,7 +821,7 @@ class Screen:
         try:
             line = int(linestr)
         except ValueError:
-            self.msg = u'Invalid line number!'
+            self.status.msg = u'Invalid line number!'
             return
         self.list.change_item(line - 1)
 
@@ -820,7 +831,7 @@ class Screen:
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = u'Invalid regexp: %s' % e
+            self.status.msg = u'Invalid regexp: %s' % e
             return
 
         for item in self.items:
@@ -830,7 +841,7 @@ class Screen:
     def _filter(self, items):
         if not items:
             self.redraw()
-            self.msg = u'No matches!'
+            self.status.msg = u'No matches!'
             return False
         if not self._allitems:
             self._allitems = self.items
@@ -861,7 +872,7 @@ class Screen:
         try:
             regex = re.compile(s.strip(), re.IGNORECASE)
         except Exception, e:
-            self.msg = u'Invalid regexp: %s' % e
+            self.status.msg = u'Invalid regexp: %s' % e
             return
 
         self._highlighter = RegexHighlighter(regex)
@@ -900,7 +911,7 @@ class Screen:
             entries = listdir_sorted(dir)
             os.chdir(fromuni(dir))
         except OSError, e:
-            self.msg = u'Can\'t read dir %s: %s' % (dir, e)
+            self.status.msg = u'Can\'t read dir %s: %s' % (dir, e)
         else:
             self._create_items(entries)
             self._update_list()
@@ -1045,7 +1056,6 @@ class Screen:
         self._clear_highlighter()
 
     def run(self, stdscr):
-        self.status = Status()
         self.scr = stdscr
         self.scr.scrollok(1)
 
@@ -1074,7 +1084,7 @@ class Screen:
                 raise ResizeError()
 
             if c in self.bindings:
-                self.msg = None
+                self.status.msg = None
 
                 # TODO: the order of the function calls is significant here
                 # because of filter_by_pattern and restore_items methods.
@@ -1083,7 +1093,7 @@ class Screen:
                 self.bindings[c]()
                 self._clear_pattern()
             elif is_printable_char(c):
-                self.msg = None
+                self.status.msg = None
                 self.pattern += c
                 lastpress.reset()
                 if not self.filter_by_pattern(self.pattern):
