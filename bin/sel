@@ -161,9 +161,11 @@ snd = operator.itemgetter(1)
 
 # os utilities
 def touni(str):
+    """Converts a string from the local encoding to the unicode representation."""
     return unicode(str, locale.getpreferredencoding())
 
 def fromuni(str):
+    """Converts a string from the unicode representation to the local encoding."""
     return str.encode(locale.getpreferredencoding())
 
 def getcwd():
@@ -175,9 +177,11 @@ def listdir_sorted(dir):
         return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or [os.pardir])
 
 def shell_path():
+    """Path to the user shell executable."""
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
 
 def editor_name():
+    """Path to the preferred editor."""
     return os.getenv('EDITOR') or DEFAULT_EDITOR
 
 def program_name():
@@ -316,8 +320,10 @@ class Items:
         return self._items[idx]
 
 class TermSize:
+    """Holds the size of the terminal window and recalculates it on a request."""
     @classmethod
     def init(cls):
+        """Recalculates the size of the terminal window."""
         cls.height, cls.width = struct.unpack("hhhh", fcntl.ioctl(sys.__stdout__, termios.TIOCGWINSZ, "\000"*8))[0:2]
 
 class Status:
@@ -439,10 +445,12 @@ def filesystem_factory(owner, path):
         return FileItem(path, defaction, Attrs.DEFAULT, u'')
 
 class ResizeError(Exception):
+    """Is raised when the terminal has been resized."""
     def __init__(self):
         Exception.__init__(self)
 
 class InvocationError(Exception):
+    """Is raised when the user requests to run an external program"""
     def __init__(self, cmd, wait_for_keypress):
         Exception.__init__(self)
         self.cmd = cmd
@@ -992,7 +1000,7 @@ class Screen:
         self.scr.refresh()
 
     def resize(self, *args):
-        self.resized = True
+        self._resized = True
 
     @helpmsg(u'invoke shell')
     def invoke_shell(self):
@@ -1059,11 +1067,11 @@ class Screen:
             try:
                 c = self._getch()
             except KeyboardInterrupt:
-                self.set_result([])
+                self.return_none()
                 break
 
-            if self.resized:
-                self.resized = False
+            if self._resized:
+                self._resized = False
                 raise ResizeError()
 
             if c in self.bindings:
@@ -1164,13 +1172,13 @@ def create_processor(options, args):
 def process_args():
     parser = optparse.OptionParser(usage='usage: %prog [options] [cmd]...',
                                    version='%prog ' + str(VERSION), description=
-'''Depending on whether the input is from a terminal or not,
-simulates a simple directory browser, which can be used to select a
-number of files, or allows you to select from a number of options,
-obtained by parsing input data using the specified regular expression.
-If cmd is given, then it is run with the selected items as arguments,
-otherwise these items are just printed to the standard output. Please
-send bug reports and suggestions to Igor.Akhmetov at gmail dot com.''')
+'''Depending on whether the input is from a terminal or not, acts as a
+simple directory browser, which can be used to pick a number of files,
+or allows you to select from a set of options, obtained by parsing
+input data using the specified regular expression. If cmd is given,
+then it is run with the selected items as arguments, otherwise these
+items are just printed to the standard output. Please send bug reports
+and suggestions to Igor.Akhmetov at gmail dot com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False,
                       help='separate output fields with null character')
