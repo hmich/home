@@ -200,8 +200,9 @@ def program_name():
     return os.path.basename(sys.argv[0])
 
 # string utilities
-def quote_string(s):
-    return u'"%s"' % s
+def shell_quote(str):
+    """Quotes the string so it can be used as an argument to a shell command."""
+    return "'%s'" % (str.replace("'", "'\"'\"'"))
 
 def is_printable_char(c):
     try:
@@ -1052,7 +1053,7 @@ class Screen:
         self._clear_pattern()
         self.clear_screen()
         args = map(unicode, items)
-        raise InvocationError(cmd + u' ' + u' '.join(map(quote_string, args)), wait_for_keypress)
+        raise InvocationError(cmd + u' ' + u' '.join(map(shell_quote, args)), wait_for_keypress)
 
     @helpmsg(u'run command on selection')
     def query_run_command(self):
@@ -1190,7 +1191,7 @@ def exec_processor(cmd, replacestr):
     return doexec
 
 def quoting_processor(func):
-    return lambda args: func(map(quote_string, args))
+    return lambda args: func(map(shell_quote, args))
 
 def printing_processor(sep):
     return lambda args: sys.stdout.write(fromuni(sep.join(args)))
