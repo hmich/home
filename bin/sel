@@ -477,6 +477,11 @@ class InvocationError(Exception):
         self.cmd = cmd
         self.wait_for_keypress = wait_for_keypress
 
+class PagerError(Exception):
+    """Is raised when the user requests to run the pager"""
+    def __init__(self, str):
+        Exception.__init__(self, str)
+
 class StrHighlighter:
     def __init__(self, str):
         self.str = str
@@ -524,7 +529,7 @@ class Bindings:
 
         try:
             if not os.path.isfile(cfg_file):
-                raise Exception(u'file is not found')
+                raise Exception(u'file not found')
             cfg = self._create_parser()
             cfg.read(cfg_file)
 
@@ -640,7 +645,7 @@ class Bindings:
     def __getitem__(self, key):
         return self._map[key]
 
-    def show(self, scr):
+    def show(self):
         lines = []
         for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
             lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
@@ -651,16 +656,7 @@ class Bindings:
                  [u'', u'Basic customization is available via %s.' % CONFIG_FILE,
                   u'Press any key to continue...'])
 
-        scr.clear()
-        scr.attrset(Attrs.DEFAULT)
-
-        for idx, line in enumerate(text):
-            if idx < TermSize.height:
-                scr.addstr(idx, 0, fromuni(line[:TermSize.width - 1]))
-
-        scr.refresh()
-        scr.timeout(-1)
-        scr.getch()
+        raise PagerError(u'\n'.join(text))
 
 class Timer:
     def __init__(self):
@@ -679,7 +675,9 @@ def helpmsg(str):
     return decor
 
 class Screen:
-    def __init__(self, factory, matches, browser_mode):
+    def __init__(self, scr, factory, matches, browser_mode):
+        self.scr = scr
+        self.scr.scrollok(1)
         self._factory = factory
         self._marked_items = []
         self._resized = False
@@ -750,7 +748,7 @@ class Screen:
         self.scr.attrset(attr)
 
     def draw_item(self, idx, refresh = True):
-        if idx >= len(self.items) or not self.list.contains_line(idx):
+        if self._resized or idx >= len(self.items) or not self.list.contains_line(idx):
             return
 
         y = idx - self.list.offset
@@ -1015,8 +1013,8 @@ class Screen:
 
     @helpmsg(u'show this help')
     def show_bindings(self):
-        self.bindings.show(self.scr)
-        self.redraw()
+        self.clear_screen()
+        self.bindings.show()
 
     def clear_screen(self):
         self.scr.clear()
@@ -1074,9 +1072,8 @@ class Screen:
         self.pattern = u''
         self._clear_highlighter()
 
-    def run(self, stdscr):
-        self.scr = stdscr
-        self.scr.scrollok(1)
+    def run(self):
+        self.clear_screen()
 
         if not self.list:
             self._update_list()
@@ -1266,6 +1263,17 @@ def run_command(e):
         if retcode != None and (retcode != 0 or e.wait_for_keypress):
             raw_input('\nPress ENTER to continue')
 
+def run_pager(text):
+    with ShellModeLock():
+        try:
+            pager = subprocess.Popen(pager_name(), stdin=subprocess.PIPE)
+            pager.stdin.write(fromuni(text))
+            pager.stdin.close()
+            pager.wait()
+        except OSError, e:
+            sys.stderr.write("Pager '%s' failed: %s" % (pager_name(), e))
+            raw_input('\nPress ENTER to continue')
+
 def init_curses():
     # sometimes raises an exception in cygwin
     try:
@@ -1276,24 +1284,25 @@ def init_curses():
     curses.use_default_colors()
     Attrs.init()
     ColorsManager.init()
-    TermSize.init()
     Keys.init()
 
 def mainloop(factory, matches, browser_mode, wnd):
     init_curses()
 
-    scr = Screen(factory, matches, browser_mode)
+    scr = Screen(wnd, factory, matches, browser_mode)
     signal.signal(signal.SIGWINCH, scr.resize)
 
     while True:
         try:
-            return scr.run(wnd)
-        except ResizeError:
             TermSize.init()
+            return scr.run()
         except InvocationError, e:
             run_command(e)
-            scr.clear_screen()
             scr.update_list()
+        except PagerError, e:
+            run_pager(unicode(e))
+        except ResizeError:
+            pass
 
 def main():
     cgitb.enable(format='text')
