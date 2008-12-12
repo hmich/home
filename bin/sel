@@ -55,7 +55,7 @@ import curses
 import curses.textpad
 import curses.wrapper
 
-VERSION = '0.1'
+VERSION = '0.1'           # current program version
 PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting of the typed pattern
 DEFAULT_EDITOR = 'vim'    # name of the editor to invoke if the EDITOR environment variable is not set
 CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
@@ -66,8 +66,10 @@ class ExitStatuses:
     INVALID_REGEXP = 3    # invalid regexp for parsing input stream has been passed on the command line
 
 class Attrs:
+    """Holds all curses attributes, used in the program."""
     @classmethod
     def init(cls):
+        """Initializes the attributes. Modify this method if you want to change the appearance."""
         color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
 
         cls.DEFAULT   = color(curses.COLOR_WHITE, -1)
@@ -160,7 +162,7 @@ class Keys:
         else:
             return cls._revkeys[str]
 
-# helpers
+# convenience helpers
 fst = operator.itemgetter(0)
 snd = operator.itemgetter(1)
 
@@ -325,7 +327,7 @@ class Items:
         return self._items[idx]
 
 class TermSize:
-    """Holds the size of the terminal window and recalculates it on a request."""
+    """Holds the size of the terminal window."""
     @classmethod
     def init(cls):
         """Recalculates the size of the terminal window."""
@@ -408,7 +410,7 @@ class ScrollingList:
             self.owner.scr.scroll(diff)
             self.owner.draw_item(previdx)
             self.owner.draw_item(self.idx)
-        else:
+        elsea:
             self.owner.redraw()
 
     def next_page(self):
@@ -930,9 +932,10 @@ class Screen:
 
     @helpmsg(u'reread contents of the current directory')
     def reread_dir(self):
-        cur = u''
+        cur = None
         if self.items:
             cur = unicode(self.current_item())
+            curidx = self.list.idx
 
         self.read_dir(getcwd())
 
@@ -943,6 +946,8 @@ class Screen:
             if unicode(item) == cur:
                 self.list.change_item(idx)
                 break
+
+        self.list.change_item(curidx)
 
     @helpmsg(u'reset current filter')
     def restore_items(self):
