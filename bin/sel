@@ -488,9 +488,9 @@ class Closure:
 
 class Bindings:
     BINDINGS_SECTION = 'bindings'
-    INTERACTIVE_BINDINGS_SECTION = 'interactive-bindings'
+    BROWSER_BINDINGS_SECTION = 'browser-bindings'
 
-    def __init__(self, owner, is_interactive):
+    def __init__(self, owner, browser_mode):
         cfg_file = os.path.expanduser(CONFIG_FILE)
 
         try:
@@ -500,22 +500,22 @@ class Bindings:
             cfg.read(cfg_file)
 
             bindings = self._read_bindings(owner, cfg.items(self.BINDINGS_SECTION))
-            interactive_bindings = self._read_bindings(owner, cfg.items(self.INTERACTIVE_BINDINGS_SECTION))
+            browser_bindings = self._read_bindings(owner, cfg.items(self.BROWSER_BINDINGS_SECTION))
         except Exception, e:
             bindings = self._default_bindings(owner)
-            interactive_bindings = self._interactive_bindings(owner)
+            browser_bindings = self._browser_bindings(owner)
             owner.msg = u'Can not load configuration file %s: %s' % (cfg_file, e)
 
         if not os.path.isfile(cfg_file):
             try:
-                self._save_bindings(cfg_file, bindings, interactive_bindings)
+                self._save_bindings(cfg_file, bindings, browser_bindings)
             except Exception, e:
                 owner.msg = u'Can not save settings to %s: %s' % (cfg_file, e )
 
         self._bindings = defaultdict(list)
         self._bindings.update(bindings)
-        if is_interactive:
-            self._merge_bindings(interactive_bindings)
+        if browser_mode:
+            self._merge_bindings(browser_bindings)
         self._map = dict([(key, func) for func, keys in self._bindings.items() for key in keys])
 
     def _create_parser(self):
@@ -554,7 +554,7 @@ class Bindings:
             Closure(owner.run_command, [('cmd', 'du -chs')]): [Keys.F6],
             Closure(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
 
-    def _interactive_bindings(self, owner):
+    def _browser_bindings(self, owner):
         return {
             owner.restore_or_up_dir:   [Keys.BACKSPACE, Keys.CTRL_H, u'^'],
             owner.reread_dir:          [Keys.CTRL_R, u'R'],
@@ -569,10 +569,10 @@ class Bindings:
             res[Closure(getattr(owner, args[0]), args[1:])] = [Keys.code(key.strip()) for key in keys.split(',')]
         return res
 
-    def _save_bindings(self, cfg_file, bindings, interactive_bindings):
+    def _save_bindings(self, cfg_file, bindings, browser_bindings):
         cfg = self._create_parser()
         self._dump_bindings(cfg, self.BINDINGS_SECTION, bindings)
-        self._dump_bindings(cfg, self.INTERACTIVE_BINDINGS_SECTION, interactive_bindings)
+        self._dump_bindings(cfg, self.BROWSER_BINDINGS_SECTION, browser_bindings)
         cfg.write(open(cfg_file, 'w'))
 
     def _func_name(self, func):
@@ -650,7 +650,7 @@ def helpmsg(str):
     return decor
 
 class Screen:
-    def __init__(self, factory, matches, is_interactive):
+    def __init__(self, factory, matches, browser_mode):
         self.factory = factory
         self.matches = matches
         self.items = None
@@ -660,8 +660,8 @@ class Screen:
         self.result = None
         self.highlighter = None
         self.msg = None
-        self.bindings = Bindings(self, is_interactive)
-        self.update_list = self.reread_dir if is_interactive else lambda: None
+        self.bindings = Bindings(self, browser_mode)
+        self.update_list = self.reread_dir if browser_mode else lambda: None
 
     def _create_items(self, elems):
         newitems = [self.factory(self, e) for e in elems]
@@ -707,8 +707,6 @@ class Screen:
             start = -1
             if self.highlighter:
                 start, end = self.highlighter(s, idx)
-            if start != -1:
-                self.logging.error(str((start, end)))
             if start == -1:
                 self.scr.attrset(attr)
                 self.scr.addstr(y, x + idx, fromuni(s[idx:]))
@@ -1251,8 +1249,8 @@ def main():
     locale.setlocale(locale.LC_ALL, '')
 
     options, proc = process_args()
-    is_interactive = os.isatty(0) and not options.argfile
-    if is_interactive:
+    browser_mode = os.isatty(0) and not options.argfile
+    if browser_mode:
         matches = listdir_sorted(getcwd())
         factory = filesystem_factory
     else:
@@ -1270,7 +1268,7 @@ def main():
     with TTYLocker():
         TermSize.init()
         Keys.init()
-        scr = Screen(factory, matches, is_interactive)
+        scr = Screen(factory, matches, browser_mode)
         signal.signal(signal.SIGWINCH, scr.resize)
         res = curses.wrapper(lambda wnd: mainloop(scr, wnd))
 
