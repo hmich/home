@@ -59,8 +59,8 @@ import curses.wrapper
 VERSION = '0.1'           # current program version
 PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting the typed pattern
 CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
-DEFAULT_EDITOR = 'vim'    # editor to invoke if the EDITOR environment variable is not set
-DEFAULT_PAGER = 'less'    # pager to invoke if the PAGER environment variable is not set
+DEFAULT_EDITOR = u'vim'    # editor to invoke if the EDITOR environment variable is not set
+DEFAULT_PAGER = u'less'    # pager to invoke if the PAGER environment variable is not set
 
 class ExitStatuses:
     NOTHING_SELECTED = 1  # nothing has been selected
@@ -173,6 +173,8 @@ snd = operator.itemgetter(1)
 # os utilities
 def touni(str):
     """Converts a string from the local encoding to the unicode representation."""
+    if str is None:
+        return None
     return unicode(str, locale.getpreferredencoding())
 
 def fromuni(str):
@@ -203,8 +205,7 @@ def editor_name():
     >>> os.access(os.popen('which ' + editor_name()).read().strip(), os.X_OK)
     True
     """
-
-    return os.getenv('EDITOR') or DEFAULT_EDITOR
+    return touni(os.getenv('EDITOR')) or DEFAULT_EDITOR
 
 def pager_name():
     """Name of the preferred pager program.
@@ -212,11 +213,11 @@ def pager_name():
     >>> os.access(os.popen('which ' + pager_name()).read().strip(), os.X_OK)
     True
     """
-    return os.getenv('PAGER') or DEFAULT_PAGER
+    return touni(os.getenv('PAGER')) or DEFAULT_PAGER
 
 def program_name():
     """Returns program name."""
-    return os.path.basename(sys.argv[0])
+    return touni(os.path.basename(sys.argv[0]))
 
 # string utilities
 def shell_quote(str):
@@ -309,11 +310,11 @@ class FileItem(Item):
 
 class Link(FileItem):
     def __init__(self, str, action):
-        Item.__init__(self, str, action, Attrs.LINK)
+        FileItem.__init__(self, str, action, Attrs.LINK, u'@')
         self._to = os.readlink(self.result_str())
 
     def screen_str(self):
-        return u'%s@ -> %s' % (Item.screen_str(self), self._to)
+        return u'%s -> %s' % (FileItem.screen_str(self), self._to)
 
 class Items:
     def __init__(self, items):
@@ -1207,6 +1208,9 @@ def separator(options):
         return touni(options.ofs)
 
 def exec_processor(cmd, replacestr):
+    cmd = map(touni, cmd)
+    replacestr = touni(replacestr)
+
     def doexec(args):
         if replacestr:
             c = []
@@ -1222,7 +1226,7 @@ def exec_processor(cmd, replacestr):
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
-                sys.stderr.write(u"%s: can not invoke program '%s': %s\n" % (program_name(), c[0], e))
+                sys.stderr.write(fromuni(u"%s: can not invoke program '%s': %s\n" % (program_name(), c[0], touni(str(e)))))
                 sys.exit(ExitStatuses.EXEC_ERROR)
 
     return doexec
@@ -1271,6 +1275,7 @@ and suggestions to Igor.Akhmetov at gmail dot com.''')
     parser.add_option('-t', '--run-tests', action='store_true', dest='run_tests', default=False,
                       help='run doctests, for development purposes only')
 
+
     parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
 
@@ -1283,11 +1288,12 @@ def create_reader(options):
         return sys.stdin.xreadlines()
 
 def itermatches(input, regexp):
-    """Iterates over all matches of the regexp regular expression over the elements of input."""
+    """Iterates over all matches of the 'regexp' regular expression
+    over the elements of 'input'."""
     return itertools.chain(*itertools.imap(regexp.findall, input))
 
 def run_command(cmd, wait_for_keypress):
-    """Runs program cmd. If wait_for_keypress is true, waits for user
+    """Runs program 'cmd'. If 'wait_for_keypress' is true, waits for user
     to press return afterwards."""
     with ShellModeLock():
         retcode = None
@@ -1306,7 +1312,7 @@ def run_command(cmd, wait_for_keypress):
             raw_input('\nPress ENTER to continue')
 
 def run_pager(text):
-    """Starts pager program to display given text."""
+    """Starts pager program to display given 'text'."""
     with ShellModeLock():
         try:
             pager = subprocess.Popen(pager_name(), stdin=subprocess.PIPE)
@@ -1314,7 +1320,7 @@ def run_pager(text):
             pager.stdin.close()
             pager.wait()
         except OSError, e:
-            sys.stderr.write("Pager '%s' failed: %s" % (pager_name(), e))
+            sys.stderr.write(fromuni(u"Pager '%s' failed: %s" % (pager_name(), touni(str(e)))))
             raw_input('\nPress ENTER to continue')
 
 def init_curses():
@@ -1366,7 +1372,7 @@ def main():
         try:
             regexp = re.compile(options.regexp, re.IGNORECASE)
         except Exception, e:
-            sys.stderr.write("%s: error compiling regex '%s': %s\n" % (program_name(), options.regexp, e))
+            sys.stderr.write(fromuni(u"%s: error compiling regex '%s': %s\n" % (program_name(), options.regexp, e)))
             sys.exit(ExitStatuses.INVALID_REGEXP)
         matches = list(itermatches(create_reader(options), regexp))
         factory = simple_factory
