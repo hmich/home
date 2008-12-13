@@ -405,6 +405,9 @@ class Status:
         return curses.textpad.Textbox(win).edit().strip()
 
 class ScrollingList:
+    """Represents a view over a scrolling list, including current item,
+    offset from the list start and a frame size."""
+
     def __init__(self, owner, nitems, lines, idx, offset):
         self.nitems = nitems
         self.lines = lines
@@ -702,13 +705,25 @@ class Bindings:
             lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
-        raise PagerError('''
-Just start typing to narrow down the list. Other keybindings:
+        raise PagerError("""
+Just start typing to narrow down the list or 'Backspace' to restore
+it. Press 'Space' or 'Insert' to mark the current item. If no item is
+marked, then 'Return' causes the program to terminate with selection
+consisting only of the current item (unless it is a directory and the
+program is in a browser mode, in which case the current working
+directory will be set to it). Otherwise, 'Return' just toggles the
+mark, and pressing 'Ctrl-D' or just 'D' results in selection of all
+the marked items. After that, depending on the command line arguments,
+the program will either dump the selected items to the standard
+output, or use them to build and execute a command line like xargs.
+Other keybindings:
 
 %s
 
-Basic customization is available via %s (currently not very human-friendly, sorry).
-Press any key to continue...''' % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
+Basic customization of keybindings is available via %s (currently
+not very human-friendly, sorry).
+
+Press any key to continue...""" % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
 
 class Timer:
     def __init__(self):
@@ -1092,7 +1107,7 @@ class Screen:
     def invoke_editor(self):
         self.run_command_on_items(editor_name(), [self.current_item()], False)
 
-    @helpmsg(u'run command')
+    @helpmsg(u'run command on marked items')
     def run_command(self, cmd, wait_for_keypress=True):
         items = self._marked_items or [self.current_item()]
         self.run_command_on_items(cmd, items, wait_for_keypress)
@@ -1110,9 +1125,9 @@ class Screen:
         args = map(unicode, items)
         raise InvocationError(cmd + u' ' + u' '.join(map(shell_quote, args)), wait_for_keypress)
 
-    @helpmsg(u'run command on selection')
+    @helpmsg(u'query for a command to be run on marked items')
     def query_run_command(self):
-        self.run_command(self.status.query(u'Run command on selection:'))
+        self.run_command(self.status.query(u'Run command on marked items:'))
 
     def _clear_highlighter(self):
         if not self._highlighter:
