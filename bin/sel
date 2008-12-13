@@ -319,7 +319,10 @@ class FileItem(Item):
 class Link(FileItem):
     def __init__(self, str, action):
         FileItem.__init__(self, str, action, Attrs.LINK, u'@')
-        self._to = os.readlink(self.result_str())
+        try:
+            self._to = os.readlink(self.result_str())
+        except OSError, e:
+            self._to = u'??? (permission denied)'
 
     def screen_str(self):
         return u'%s -> %s' % (FileItem.screen_str(self), self._to)
@@ -768,9 +771,10 @@ class Screen:
         self._set_items(newitems)
         self._allitems = None
 
-    def _update_list(self, idx = 0, offset = 0):
+    def _update_list(self, idx = 0, offset = 0, redraw=True):
         self.list = ScrollingList(self, len(self.items), TermSize.height - 1, idx, offset)
-        self.redraw()
+        if redraw:
+            self.redraw()
 
     def has_marked(self):
         return bool(self._marked_items)
@@ -977,7 +981,7 @@ class Screen:
         self.items.remove(idx for idx, _ in self._enumerate_selected())
         self._update_list(self.list.idx, self.list.offset)
 
-    def read_dir(self, dir):
+    def read_dir(self, dir, redraw=True):
         try:
             entries = listdir_sorted(dir)
             os.chdir(fromuni(dir))
@@ -985,7 +989,7 @@ class Screen:
             self.status.msg = u'Can\'t read dir %s: %s' % (dir, touni(str(e)))
         else:
             self._create_items(entries)
-            self._update_list()
+            self._update_list(redraw=redraw)
 
     @helpmsg(u'change working directory')
     def query_chdir(self):
@@ -995,11 +999,13 @@ class Screen:
 
     def up_dir(self):
         (parent, cur) = os.path.split(getcwd())
-        self.read_dir(parent)
+        self.read_dir(parent, redraw=False)
 
         for idx, item in enumerate(self.items):
             if unicode(item) == cur:
                 self.list.change_item(idx)
+
+        self.redraw()
 
     @helpmsg(u'reread contents of the current directory')
     def reread_dir(self):
@@ -1008,17 +1014,17 @@ class Screen:
             cur = unicode(self.current_item())
             curidx = self.list.idx
 
-        self.read_dir(getcwd())
+        self.read_dir(getcwd(), redraw=False)
 
         if not cur:
             return
 
         for idx, item in enumerate(self.items):
             if unicode(item) == cur:
-                self.list.change_item(idx)
-                break
+                curidx = idx
 
         self.list.change_item(curidx)
+        self.redraw()
 
     @helpmsg(u'reset current filter')
     def restore_items(self):
@@ -1142,8 +1148,6 @@ class Screen:
         self._clear_highlighter()
 
     def run(self):
-        self.clear_screen()
-
         if not self.list:
             self._update_list()
         else:
@@ -1385,9 +1389,11 @@ def cursesloop(factory, matches, browser_mode, wnd):
             return scr.run()
         except InvocationError, e:
             run_command(e.cmd, e.wait_for_keypress)
+            scr.clear_screen()
             scr.update_list()
         except PagerError, e:
             run_pager(unicode(e))
+            scr.clear_screen()
         except ResizeError:
             pass
 
