@@ -117,6 +117,7 @@ class Keys:
         cls.END       = key(u'KEY_END', u'End')
         cls.DELETE    = key(u'KEY_DC', u'Delete')
         cls.INSERT    = key(u'KEY_IC', u'Insert')
+        cls.SPACE     = key(u' ', u'Space')
         cls.CTRL_H    = key(u'KEY_BACKSPACE', u'Ctrl-H')
         cls.BACKSPACE = key(u'\x7f', u'Backspace')
         cls.CTRL_N    = key(u'\x0e', u'Ctrl-N')
@@ -616,7 +617,7 @@ class Bindings:
             owner.first_item:          [Keys.HOME, u'<'],
             owner.last_item:           [Keys.END, u'>'],
             owner.remove_marked:       [Keys.DELETE, u'X'],
-            owner.toggle_item:         [Keys.INSERT, u' '],
+            owner.toggle_item:         [Keys.INSERT, Keys.SPACE],
             owner.invert_marks:        [u'~'],
             owner.mark_all:            [u'*'],
             owner.show_marked:         [Keys.TAB],
@@ -855,7 +856,7 @@ class Screen:
     def current_item_action(self):
         return self.current_item().action()
 
-    @helpmsg(u'toggle mark on selected item')
+    @helpmsg(u'toggle mark on the current item')
     def toggle_item(self):
         item = self.current_item()
         item.marked = not item.marked
@@ -1027,7 +1028,7 @@ class Screen:
     def _set_result(self, res):
         self._result = res
 
-    @helpmsg(u'exit from the program and return marked items')
+    @helpmsg(u'exit the program and return marked items')
     def accept_selection(self):
         if self.has_marked():
             self._set_result([item.result_str() for item in self._marked_items])
@@ -1054,7 +1055,7 @@ class Screen:
     def next_item(self):
         self.list.change_item(self.list.idx + 1)
 
-    @helpmsg(u'goto prev item')
+    @helpmsg(u'goto previous item')
     def prev_item(self):
         self.list.change_item(self.list.idx - 1)
 
@@ -1174,7 +1175,7 @@ class Screen:
 
         return self._result
 
-# some helper context manager for work with curses and terminal
+# some helper context managers for work with curses and terminal
 class TTYStdinLock:
     """Context manager that connects stdin to the terminal."""
     def __enter__(self):
@@ -1220,6 +1221,7 @@ class ShellModeLock:
         curses.reset_prog_mode()
 
 def separator(options):
+    """Returnes string with which output items will be separated."""
     if options.null_terminated:
         return u'\x00'
     elif options.newlines:
@@ -1358,7 +1360,7 @@ def init_curses():
     ColorsManager.init()
     Keys.init()
 
-def mainloop(factory, matches, browser_mode, wnd):
+def cursesloop(factory, matches, browser_mode, wnd):
     init_curses()
 
     scr = Screen(wnd, factory, matches, browser_mode)
@@ -1404,7 +1406,7 @@ def main():
             sys.exit(ExitStatuses.NOTHING_SELECTED)
 
         with TTYLock():
-            res = curses.wrapper(lambda wnd: mainloop(factory, matches, browser_mode, wnd))
+            res = curses.wrapper(lambda wnd: cursesloop(factory, matches, browser_mode, wnd))
 
         if not res:
             sys.exit(ExitStatuses.NOTHING_SELECTED)
