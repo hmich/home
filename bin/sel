@@ -56,16 +56,16 @@ import curses
 import curses.textpad
 import curses.wrapper
 
-VERSION = '0.1'           # current program version
-PATTERN_TIMEOUT = 2       # time in seconds to wait before resetting the typed pattern
-CONFIG_FILE = u'~/.selrc' # name of the file which stores configuration settings
+VERSION = '0.1'            # current program version
+PATTERN_TIMEOUT = 2        # time in seconds to wait before resetting the typed pattern
+CONFIG_FILE = u'~/.selrc'  # name of the file which stores configuration settings
 DEFAULT_EDITOR = u'vim'    # editor to invoke if the EDITOR environment variable is not set
 DEFAULT_PAGER = u'less'    # pager to invoke if the PAGER environment variable is not set
 
 class ExitStatuses:
-    NOTHING_SELECTED = 1  # nothing has been selected
-    EXEC_ERROR = 2        # exec of the supplied program did not succeed
-    INVALID_REGEXP = 3    # invalid regexp for parsing input stream has been passed on the command line
+    NOTHING_SELECTED = 1   # nothing has been selected
+    EXEC_ERROR = 2         # exec of the supplied program did not succeed
+    INVALID_REGEXP = 3     # invalid regexp for parsing input stream has been passed on the command line
 
 class Attrs:
     """Holds all curses attributes, used in the program."""
@@ -191,10 +191,17 @@ def listdir_sorted(dir):
     for _, dirs, files in os.walk(fromuni(dir)):
         return map(touni, sorted(dirs, key=string.lower) + sorted(files, key=string.lower) or [os.pardir])
 
+def is_executable(cmd):
+    """Checks if 'cmd' is in the PATH and is executable."""
+    for dir in os.getenv('PATH').split(os.pathsep):
+        if os.access(os.path.join(dir, cmd), os.X_OK):
+            return True
+    return False
+
 def shell_path():
     """Path to the user shell executable.
 
-    >>> os.access(os.popen('which ' + shell_path()).read().strip(), os.X_OK)
+    >>> is_executable(shell_path())
     True
     """
     return os.getenv('SHELL') or pwd.getpwuid(os.geteuid())[6]
@@ -202,7 +209,7 @@ def shell_path():
 def editor_name():
     """Name of the preferred editor.
 
-    >>> os.access(os.popen('which ' + editor_name()).read().strip(), os.X_OK)
+    >>> is_executable(editor_name())
     True
     """
     return touni(os.getenv('EDITOR')) or DEFAULT_EDITOR
@@ -210,7 +217,7 @@ def editor_name():
 def pager_name():
     """Name of the preferred pager program.
 
-    >>> os.access(os.popen('which ' + pager_name()).read().strip(), os.X_OK)
+    >>> is_executable(pager_name())
     True
     """
     return touni(os.getenv('PAGER')) or DEFAULT_PAGER
@@ -514,6 +521,15 @@ class PagerError(Exception):
     def __init__(self, str):
         Exception.__init__(self, str)
 
+class FatalError(Exception):
+    """Is raised then a fatal error has occurred."""
+    def __init__(self, exit_status, msg):
+        self._msg = msg
+        self.exit_status = exit_status
+
+    def __unicode__(self):
+        return self._msg
+
 class StrHighlighter:
     def __init__(self, str):
         self.str = str
@@ -553,6 +569,8 @@ class Closure:
         return repr([self._func.__name__] + self._args)[1:-1]
 
 class Bindings:
+    """Keybindings manager and serializer/deserializer."""
+
     BINDINGS_SECTION = 'bindings'
     BROWSER_BINDINGS_SECTION = 'browser-bindings'
 
@@ -702,14 +720,16 @@ class Timer:
         return time.time() - self._time
 
 def helpmsg(str):
-    """Decorator which adds a help message to the function for display
-    on the help screen with the bindings list."""
+    """Decorator which adds a description to the function, which is
+    then used in the bindings list."""
     def decorator(func):
         func._help = str
         return func
     return decorator
 
 class Screen:
+    """Main application class."""
+
     def __init__(self, scr, factory, matches, browser_mode):
         self.scr = scr
         self.scr.scrollok(1)
@@ -1208,6 +1228,9 @@ def separator(options):
         return touni(options.ofs)
 
 def exec_processor(cmd, replacestr):
+    if not is_executable(cmd[0]):
+        raise FatalError(ExitStatuses.EXEC_ERROR, u"can not find executable program '%s' in the PATH" % touni(cmd[0]))
+
     cmd = map(touni, cmd)
     replacestr = touni(replacestr)
 
@@ -1226,8 +1249,7 @@ def exec_processor(cmd, replacestr):
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
-                sys.stderr.write(fromuni(u"%s: can not invoke program '%s': %s\n" % (program_name(), c[0], touni(str(e)))))
-                sys.exit(ExitStatuses.EXEC_ERROR)
+                raise FatalError(ExitStatuses.EXEC_ERROR, u"can not invoke program '%s': %s\n" % (c[0], touni(str(e))))
 
     return doexec
 
@@ -1355,38 +1377,42 @@ def mainloop(factory, matches, browser_mode, wnd):
             pass
 
 def main():
-    cgitb.enable(format='text')
-    locale.setlocale(locale.LC_ALL, '')
+    try:
+        cgitb.enable(format='text')
+        locale.setlocale(locale.LC_ALL, '')
 
-    options, proc = process_args()
-    if options.run_tests:
-        import doctest
-        doctest.testmod(verbose=True, exclude_empty=True)
-        return
+        options, proc = process_args()
+        if options.run_tests:
+            import doctest
+            doctest.testmod(verbose=True, exclude_empty=True)
+            return
 
-    browser_mode = os.isatty(0) and not options.argfile
-    if browser_mode:
-        matches = listdir_sorted(getcwd())
-        factory = filesystem_factory
-    else:
-        try:
-            regexp = re.compile(options.regexp, re.IGNORECASE)
-        except Exception, e:
-            sys.stderr.write(fromuni(u"%s: error compiling regex '%s': %s\n" % (program_name(), options.regexp, e)))
-            sys.exit(ExitStatuses.INVALID_REGEXP)
-        matches = list(itermatches(create_reader(options), regexp))
-        factory = simple_factory
+        browser_mode = os.isatty(0) and not options.argfile
+        if browser_mode:
+            matches = listdir_sorted(getcwd())
+            factory = filesystem_factory
+        else:
+            try:
+                regexp = re.compile(options.regexp, re.IGNORECASE)
+            except Exception, e:
+                raise FatalError(ExitStatuses.INVALID_REGEXP, u"error compiling regex '%s': %s" % (touni(options.regexp), e))
 
-    if not matches:
-        sys.exit(ExitStatuses.NOTHING_SELECTED)
+            matches = list(itermatches(create_reader(options), regexp))
+            factory = simple_factory
 
-    with TTYLock():
-        res = curses.wrapper(lambda wnd: mainloop(factory, matches, browser_mode, wnd))
+        if not matches:
+            sys.exit(ExitStatuses.NOTHING_SELECTED)
 
-    if not res:
-        sys.exit(ExitStatuses.NOTHING_SELECTED)
+        with TTYLock():
+            res = curses.wrapper(lambda wnd: mainloop(factory, matches, browser_mode, wnd))
 
-    proc(res)
+        if not res:
+            sys.exit(ExitStatuses.NOTHING_SELECTED)
+
+        proc(res)
+    except FatalError, e:
+        sys.stderr.write(fromuni(u'%s: %s\n' % (program_name(), unicode(e))))
+        sys.exit(e.exit_status)
 
 if __name__ == '__main__':
     main()
