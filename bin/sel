@@ -592,13 +592,13 @@ class Bindings:
         except Exception, e:
             bindings = self._default_bindings(owner)
             browser_bindings = self._browser_bindings(owner)
-            owner.status.msg = u'Can not load configuration file %s: %s' % (cfg_file, e)
+            owner.status.msg = u'Can not load configuration file %s: %s' % (cfg_file, touni(str(e)))
 
         if not os.path.isfile(cfg_file):
             try:
                 self._save_bindings(cfg_file, bindings, browser_bindings)
             except Exception, e:
-                owner.status.msg = u'Can not save settings to %s: %s' % (cfg_file, e )
+                owner.status.msg = u'Can not save settings to %s: %s' % (cfg_file, touni(str(e)))
 
         self._bindings = defaultdict(list)
         self._bindings.update(bindings)
@@ -716,14 +716,12 @@ mark, and pressing 'Ctrl-D' or just 'D' results in selection of all
 the marked items. After that, depending on the command line arguments,
 the program will either dump the selected items to the standard
 output, or use them to build and execute a command line like xargs.
-Other keybindings:
+Full list of keybindings:
 
 %s
 
 Basic customization of keybindings is available via %s (currently
-not very human-friendly, sorry).
-
-Press any key to continue...""" % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
+not very human-friendly, sorry).""" % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
 
 class Timer:
     def __init__(self):
@@ -984,7 +982,7 @@ class Screen:
             entries = listdir_sorted(dir)
             os.chdir(fromuni(dir))
         except OSError, e:
-            self.status.msg = u'Can\'t read dir %s: %s' % (dir, e)
+            self.status.msg = u'Can\'t read dir %s: %s' % (dir, touni(str(e)))
         else:
             self._create_items(entries)
             self._update_list()
