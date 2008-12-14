@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""Console curses utility which tries to be an interactive xargs
+replacement."""
+
 # Copyright (c) 2008 Igor Akhmetov (Igor.Akhmetov at gmail dot com)
 #
 # Permission is hereby granted, free of charge, to any person
@@ -68,10 +71,11 @@ class ExitStatuses:
     INVALID_REGEXP = 3     # invalid regexp for parsing input stream has been passed on the command line
 
 class Attrs:
-    """Holds all curses attributes, used in the program."""
+    """Holds all curses text attributes, used in the program."""
+
     @classmethod
     def init(cls):
-        """Initializes the attributes. Modify this method if you want to change the appearance."""
+        """Initialize the attributes. Modify this method if you want to change the appearance."""
         color = lambda fg, bg: curses.color_pair(ColorsManager.color(fg, bg))
 
         cls.DEFAULT   = color(curses.COLOR_WHITE, -1)
@@ -90,7 +94,7 @@ class ColorsManager(object):
 
     @classmethod
     def init(cls):
-        """Initializes curses color pairs."""
+        """Initialize curses color pairs."""
         for idx, (fg, bg) in enumerate(cls._colors):
             curses.init_pair(idx, fg, bg)
 
@@ -173,14 +177,14 @@ snd = operator.itemgetter(1)
 
 # os utilities
 def touni(str):
-    """Converts a string from the local encoding to the unicode representation."""
+    """Convert a string from the local encoding to the unicode representation."""
     if str is None:
         return None
-    return unicode(str, locale.getpreferredencoding())
+    return unicode(str, locale.getpreferredencoding(), 'replace')
 
 def fromuni(str):
-    """Converts a string from the unicode representation to the local encoding."""
-    return str.encode(locale.getpreferredencoding())
+    """Convert a string from the unicode representation to the local encoding."""
+    return str.encode(locale.getpreferredencoding(), 'replace')
 
 def getcwd():
     """Unicode name of the current working directory."""
@@ -224,12 +228,12 @@ def pager_name():
     return touni(os.getenv('PAGER')) or DEFAULT_PAGER
 
 def program_name():
-    """Returns program name."""
+    """Return program name."""
     return touni(os.path.basename(sys.argv[0]))
 
 # string utilities
 def shell_quote(str):
-    """Quotes the string so it can be used as an argument to a shell command.
+    """Quote the string so it can be used as an argument to a shell command.
 
     >>> s = "a'b\\"c"; os.popen("echo " + shell_quote(s)).read().strip() == s
     True
@@ -237,7 +241,7 @@ def shell_quote(str):
     return "'%s'" % (str.replace("'", "'\"'\"'"))
 
 def is_printable_char(c):
-    """Tests if a wide character is printable.
+    """Test if a wide character is printable.
 
     >>> is_printable_char(unicode('а', 'utf-8'))
     True
@@ -376,9 +380,10 @@ class Items:
 
 class TermSize:
     """Holds the size of the terminal window."""
+
     @classmethod
     def init(cls):
-        """Recalculates the size of the terminal window."""
+        """Recalculate the size of the terminal window."""
         cls.height, cls.width = struct.unpack("hhhh", fcntl.ioctl(sys.__stdout__, termios.TIOCGWINSZ, "\000"*8))[0:2]
 
 class Status:
@@ -1196,7 +1201,7 @@ class Screen:
 
         return self._result
 
-# some helper context managers for work with curses and terminal
+# some helper context managers to facilitate work with curses and terminal
 class TTYStdinLock:
     """Context manager that connects stdin to the terminal."""
     def __enter__(self):
@@ -1252,7 +1257,8 @@ def separator(options):
 
 def exec_processor(cmd, replacestr):
     if not is_executable(cmd[0]):
-        raise FatalError(ExitStatuses.EXEC_ERROR, u"can not find executable program '%s' in the PATH" % touni(cmd[0]))
+        raise FatalError(ExitStatuses.EXEC_ERROR,
+                         u"can not find executable program '%s' in the PATH" % touni(cmd[0]))
 
     cmd = map(touni, cmd)
     replacestr = touni(replacestr)
@@ -1272,7 +1278,8 @@ def exec_processor(cmd, replacestr):
             try:
                 os.execlp(c[0], *c)
             except OSError, e:
-                raise FatalError(ExitStatuses.EXEC_ERROR, u"can not invoke program '%s': %s\n" % (c[0], touni(str(e))))
+                raise FatalError(ExitStatuses.EXEC_ERROR,
+                                 u"can not invoke program '%s': %s\n" % (c[0], touni(str(e))))
 
     return doexec
 
@@ -1320,7 +1327,6 @@ reports and suggestions to Igor.Akhmetov at gmail dot com.''')
     parser.add_option('-t', '--run-tests', action='store_true', dest='run_tests', default=False,
                       help='run doctests, for development purposes only')
 
-
     parser.disable_interspersed_args()
     (options, args) = parser.parse_args()
 
@@ -1333,12 +1339,12 @@ def create_reader(options):
         return sys.stdin.xreadlines()
 
 def itermatches(input, regexp):
-    """Iterates over all matches of the 'regexp' regular expression
+    """Iterate over all matches of the 'regexp' regular expression
     over the elements of 'input'."""
     return filter(bool, itertools.chain(*itertools.imap(regexp.findall, input)))
 
 def run_command(cmd, wait_for_keypress):
-    """Runs program 'cmd'. If 'wait_for_keypress' is true, waits for user
+    """Run program 'cmd'. If 'wait_for_keypress' is true, wait for user
     to press return afterwards."""
     with ShellModeLock():
         retcode = None
@@ -1357,7 +1363,7 @@ def run_command(cmd, wait_for_keypress):
             raw_input('\nPress ENTER to continue')
 
 def run_pager(text):
-    """Starts pager program to display given 'text'."""
+    """Start pager program and pipe 'text' to it."""
     with ShellModeLock():
         try:
             pager = subprocess.Popen(pager_name(), stdin=subprocess.PIPE)
@@ -1369,7 +1375,7 @@ def run_pager(text):
             raw_input('\nPress ENTER to continue')
 
 def init_curses():
-    """Performs initialization of the curses library."""
+    """Perform initialization of the curses library."""
     # sometimes raises an exception in cygwin
     try:
         curses.curs_set(0)
@@ -1420,7 +1426,8 @@ def main():
             try:
                 regexp = re.compile(options.regexp, re.IGNORECASE)
             except Exception, e:
-                raise FatalError(ExitStatuses.INVALID_REGEXP, u"error compiling regex '%s': %s" % (touni(options.regexp), e))
+                raise FatalError(ExitStatuses.INVALID_REGEXP,
+                                 u"error compiling regex '%s': %s" % (touni(options.regexp), e))
 
             matches = map(touni, itermatches(create_reader(options), regexp))
             factory = simple_factory
