@@ -465,7 +465,7 @@ class ScrollingList:
 
         if -1 <= diff <= 1:
             self.owner.scr.scroll(diff)
-            self.owner.draw_item(previdx)
+            self.owner.draw_item(previdx, refresh=False)
             self.owner.draw_item(self.idx)
         else:
             self.owner.redraw()
@@ -594,6 +594,7 @@ class Bindings:
         try:
             if not os.path.isfile(cfg_file):
                 raise Exception(u'file not found')
+
             cfg = self._create_parser()
             cfg.read(cfg_file)
 
@@ -604,7 +605,7 @@ class Bindings:
             browser_bindings = self._browser_bindings(owner)
             owner.status.msg = u'Can not load configuration file %s: %s' % (cfg_file, touni(str(e)))
 
-        if not os.path.isfile(cfg_file):
+        if not os.path.lexists(cfg_file):
             try:
                 self._save_bindings(cfg_file, bindings, browser_bindings)
             except Exception, e:
@@ -614,6 +615,7 @@ class Bindings:
         self._bindings.update(bindings)
         if browser_mode:
             self._merge_bindings(browser_bindings)
+
         self._map = dict([(key, func) for func, keys in self._bindings.items() for key in keys])
 
     def _create_parser(self):
