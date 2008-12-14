@@ -389,6 +389,7 @@ class Status:
     def _put(self, str, attr):
         if not self._win:
             self._win = curses.newwin(1, TermSize.width, TermSize.height - 1, 0)
+
         self._win.move(0, 0)
         self._win.clrtoeol()
         self._win.attrset(attr)
@@ -561,7 +562,8 @@ class Closure:
     def __init__(self, func, args):
         self._func = func
         self._args = args
-        self._help = u'%s %s' % (func._help, str(args) if args else u'')
+        args = u', '.join(u'%s=%s' % (key, repr(val)) for key, val in args)
+        self._help = u'%s %s' % (func._help, args)
 
     def __call__(self):
         self._func(**dict(self._args))
@@ -635,15 +637,15 @@ class Bindings:
             owner.return_none:         [Keys.CTRL_X, u'Q'],
             owner.accept_selection:    [Keys.F10, Keys.CTRL_D, u'D'],
             owner.current_item_action: [Keys.RETURN],
-            owner.query_run_command:   [u'!'],
+            owner.query_run_cmd:       [u'!'],
             owner.invoke_shell:        [u'$'],
             owner.restore_items:       [Keys.ESCAPE, Keys.BACKSPACE, Keys.CTRL_H, u'^'],
             owner.invoke_pager:        [Keys.F3],
             owner.invoke_editor:       [Keys.F4],
-            Closure(owner.run_command_on_current_item, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
-            Closure(owner.run_command, [('cmd', 'ls -la')]): [Keys.F5],
-            Closure(owner.run_command, [('cmd', 'du -chs')]): [Keys.F6],
-            Closure(owner.run_command, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
+            Closure(owner.run_cmd_on_current_item, [('cmd', 'cygstart'), ('wait_for_keypress', False)]): [Keys.F2],
+            Closure(owner.run_cmd_on_marked_items, [('cmd', 'ls -la')]): [Keys.F5],
+            Closure(owner.run_cmd_on_marked_items, [('cmd', 'du -chs')]): [Keys.F6],
+            Closure(owner.run_cmd_on_marked_items, [('cmd', 'rm -fr'), ('wait_for_keypress', False)]): [Keys.F8],}
 
     def _browser_bindings(self, owner):
         return {
@@ -1107,22 +1109,22 @@ class Screen:
 
     @helpmsg(u'invoke pager on the current item')
     def invoke_pager(self):
-        self.run_command_on_items(pager_name(), [self.current_item()], False)
+        self.run_cmd_on_items(pager_name(), [self.current_item()], False)
 
     @helpmsg(u'invoke editor on the current item')
     def invoke_editor(self):
-        self.run_command_on_items(editor_name(), [self.current_item()], False)
+        self.run_cmd_on_items(editor_name(), [self.current_item()], False)
 
     @helpmsg(u'run command on marked items')
-    def run_command(self, cmd, wait_for_keypress=True):
+    def run_cmd_on_marked_items(self, cmd, wait_for_keypress=True):
         items = self._marked_items or [self.current_item()]
-        self.run_command_on_items(cmd, items, wait_for_keypress)
+        self.run_cmd_on_items(cmd, items, wait_for_keypress)
 
     @helpmsg(u'run command on the current item')
-    def run_command_on_current_item(self, cmd, wait_for_keypress=True):
-        self.run_command_on_items(cmd, [self.current_item()], wait_for_keypress)
+    def run_cmd_on_current_item(self, cmd, wait_for_keypress=True):
+        self.run_cmd_on_items(cmd, [self.current_item()], wait_for_keypress)
 
-    def run_command_on_items(self, cmd, items, wait_for_keypress=True):
+    def run_cmd_on_items(self, cmd, items, wait_for_keypress=True):
         if not cmd:
             return
         self._clear_highlighter()
@@ -1132,8 +1134,8 @@ class Screen:
         raise InvocationError(cmd + u' ' + u' '.join(map(shell_quote, args)), wait_for_keypress)
 
     @helpmsg(u'query for a command to be run on marked items')
-    def query_run_command(self):
-        self.run_command(self.status.query(u'Run command on marked items:'))
+    def query_run_cmd(self):
+        self.run_cmd_on_marked_items(self.status.query(u'Run command on marked items:'))
 
     def _clear_highlighter(self):
         if not self._highlighter:
