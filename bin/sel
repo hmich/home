@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Console curses utility which tries to be an interactive xargs
+"""Console curses-based utility which aims to be an interactive xargs
 replacement."""
 
 # Copyright (c) 2008 Igor Akhmetov (Igor.Akhmetov at gmail dot com)
@@ -100,7 +100,7 @@ class ColorsManager(object):
 
     @classmethod
     def color(cls, fg, bg):
-        """Register new color pair with fg and bg as the foreground and background colors."""
+        """Register a new color pair with fg and bg as the foreground and background colors."""
         c = (fg, bg)
         if c in cls._colors:
             return cls._colors.index(c)
@@ -713,7 +713,9 @@ class Bindings:
         lines = []
         for binding, keys in sorted(self._bindings.items(), key=lambda key: key[0]._help):
             lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
+
         width = max(len(line[0]) for line in lines) + 1
+        bindings = u'\n'.join(line[0].ljust(width) + line[1] for line in lines)
 
         raise PagerError(
 """Just start typing to narrow down the list or hit 'Backspace' to
@@ -731,7 +733,7 @@ command line like xargs. Full list of keybindings:
 %s
 
 Basic customization of keybindings is available via %s (currently
-not very human-friendly, sorry).""" % (u'\n'.join(line[0].ljust(width) + line[1] for line in lines), CONFIG_FILE))
+not very human-friendly, sorry).""" % (bindings, CONFIG_FILE))
 
 class Timer:
     def __init__(self):
@@ -1169,11 +1171,7 @@ class Screen:
         while self._result is None:
             self.update_status()
 
-            try:
-                c = self._getch()
-            except KeyboardInterrupt:
-                self.return_none()
-                break
+            c = self._getch()
 
             if self._resized:
                 self._resized = False
@@ -1197,7 +1195,7 @@ class Screen:
             elif c or lastpress.elapsed() > PATTERN_TIMEOUT:
                 self._clear_pattern()
 
-        self.clear_screen()
+        sys.stdout.write('\n')
 
         return self._result
 
@@ -1347,24 +1345,31 @@ def run_command(cmd, wait_for_keypress):
     """Run program 'cmd'. If 'wait_for_keypress' is true, wait for user
     to press return afterwards."""
     with ShellModeLock():
-        retcode = None
+        proc = None
 
         try:
-            retcode = subprocess.call(cmd, shell=True)
+            proc = subprocess.Popen(cmd, shell=True)
+            proc.wait()
 
-            if retcode < 0:
-                sys.stderr.write('\nChild was terminated by signal %s' % -retcode)
-            elif retcode:
-                sys.stderr.write('\nChild returned %s' % retcode)
+            if proc.returncode < 0:
+                sys.stderr.write('\nChild was terminated by signal %s' % -proc.returncode)
+            elif proc.returncode:
+                sys.stderr.write('\nChild returned %s' % proc.returncode)
         except OSError, e:
             sys.stderr.write('\nExecution failed: %s' % e)
+        except KeyboardInterrupt:
+            if proc:
+                os.kill(proc.pid, signal.SIGKILL)
+                proc.wait()
+            sys.stderr.write('\nCommand was interrupted')
 
-        if retcode != None and (retcode != 0 or wait_for_keypress):
+        if proc is None or (proc.returncode != 0 or wait_for_keypress):
             raw_input('\nPress ENTER to continue')
 
 def run_pager(text):
     """Start pager program and pipe 'text' to it."""
     with ShellModeLock():
+        pager = None
         try:
             pager = subprocess.Popen(pager_name(), stdin=subprocess.PIPE)
             pager.stdin.write(fromuni(text))
@@ -1373,6 +1378,10 @@ def run_pager(text):
         except OSError, e:
             sys.stderr.write(fromuni(u"Pager '%s' failed: %s" % (pager_name(), touni(str(e)))))
             raw_input('\nPress ENTER to continue')
+        except KeyboardInterrupt:
+            if pager:
+                os.kill(pager.pid, signal.SIGKILL)
+                pager.wait()
 
 def init_curses():
     """Perform initialization of the curses library."""
@@ -1445,6 +1454,9 @@ def main():
     except FatalError, e:
         sys.stderr.write(fromuni(u'%s: %s\n' % (program_name(), unicode(e))))
         sys.exit(e.exit_status)
+    except KeyboardInterrupt, e:
+        sys.stderr.write('Keyboard interrupt\n')
+        sys.exit(ExitStatuses.NOTHING_SELECTED)
 
 if __name__ == '__main__':
     main()
