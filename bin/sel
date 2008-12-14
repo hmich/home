@@ -329,7 +329,7 @@ class Link(FileItem):
 
 class Items:
     def __init__(self, items):
-        self._set_items(items)
+        self._set_items(list(items))
         self.item_changed_event = []
         self.has_marked_event = []
 
@@ -631,7 +631,7 @@ class Bindings:
             owner.mark_by_regex:       [u'%'],
             owner.filter_by_regex:     [u'/'],
             owner.redraw:              [Keys.CTRL_L],
-            owner.show_bindings:       [Keys.F1, u'?', u'H'],
+            owner.show_bindings:       [Keys.F1, u'?'],
             owner.return_none:         [Keys.CTRL_X, u'Q'],
             owner.accept_selection:    [Keys.F10, Keys.CTRL_D, u'D'],
             owner.current_item_action: [Keys.RETURN],
@@ -708,18 +708,18 @@ class Bindings:
             lines.append((u', '.join(sorted(map(Keys.str, keys))), binding._help))
         width = max(len(line[0]) for line in lines) + 1
 
-        raise PagerError("""
-Just start typing to narrow down the list or 'Backspace' to restore
-it. Press 'Space' or 'Insert' to mark the current item. If no item is
-marked, then 'Return' causes the program to terminate with selection
-consisting only of the current item (unless it is a directory and the
-program is in a browser mode, in which case the current working
-directory will be set to it). Otherwise, 'Return' just toggles the
-mark, and pressing 'Ctrl-D' or just 'D' results in selection of all
-the marked items. After that, depending on the command line arguments,
-the program will either dump the selected items to the standard
-output, or use them to build and execute a command line like xargs.
-Full list of keybindings:
+        raise PagerError(
+"""Just start typing to narrow down the list or hit 'Backspace' to
+restore it. Press 'Space' or 'Insert' to mark the current item. If no
+item is marked, then 'Return' causes the program to terminate with
+selection consisting only of the current item (unless it is a
+directory and the program is in a browser mode, in which case the
+current working directory will be set to it). Otherwise, 'Return' just
+toggles the mark, and pressing 'Ctrl-D' or just 'D' results in
+selection of all the marked items. After that, depending on the
+command line arguments, the program will either dump the selected
+items to the standard output, or use them to build and execute a
+command line like xargs. Full list of keybindings:
 
 %s
 
@@ -957,9 +957,11 @@ class Screen:
 
     @helpmsg(u'show only marked items')
     def show_marked(self):
-        self.restore_items()
-        self._clear_highlighter()
-        self._filter(self._marked_items)
+        if self._allitems:
+            self.restore_items()
+        else:
+            self._clear_highlighter()
+            self._filter(self._marked_items)
 
     def _enumerate_selected(self):
         if not self.items:
@@ -1292,12 +1294,12 @@ def process_args():
                                    version='%prog ' + str(VERSION), description=
 '''Depending on whether the input is from a terminal or not, acts as a
 simple directory browser, which can be used to pick a number of files,
-or allows you to select from a set of options, obtained by parsing
-input data using the specified regular expression. If cmd is given,
-then it is run with the selected items as arguments, otherwise these
-items are just printed to the standard output. Press '?' for keyboard
-bindings and basic help on interactive usage. Please send bug reports
-and suggestions to Igor.Akhmetov at gmail dot com.''')
+or allows you to select from a set of options, obtained by parsing the
+input line-by-line using the specified regular expression. If cmd is
+given, then it is run with the selected items as arguments, otherwise
+these items are just printed to the standard output. Press '?' for
+keyboard bindings and basic help on interactive usage. Please send bug
+reports and suggestions to Igor.Akhmetov at gmail dot com.''')
 
     parser.add_option('-0', '--print0', action='store_true', dest='null_terminated', default=False,
                       help='separate output fields with null character')
@@ -1331,7 +1333,7 @@ def create_reader(options):
 def itermatches(input, regexp):
     """Iterates over all matches of the 'regexp' regular expression
     over the elements of 'input'."""
-    return itertools.chain(*itertools.imap(regexp.findall, input))
+    return filter(bool, itertools.chain(*itertools.imap(regexp.findall, input)))
 
 def run_command(cmd, wait_for_keypress):
     """Runs program 'cmd'. If 'wait_for_keypress' is true, waits for user
@@ -1418,7 +1420,7 @@ def main():
             except Exception, e:
                 raise FatalError(ExitStatuses.INVALID_REGEXP, u"error compiling regex '%s': %s" % (touni(options.regexp), e))
 
-            matches = list(itermatches(create_reader(options), regexp))
+            matches = map(touni, itermatches(create_reader(options), regexp))
             factory = simple_factory
 
         if not matches:
