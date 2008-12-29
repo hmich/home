@@ -1,6 +1,8 @@
 ;; Enter the debugger each time an error is found
 (setq debug-on-error t)
 
+(setq emacs-path "c:/dev/emacs-22.3/")
+
 (setq load-path
       (append  '("~/emacs/org-6.04c/lisp" "~/emacs/w3m" "~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32"
                  "~/emacs/nxml-mode-20041004" "~/emacs/auctex" "~/emacs/remember-2.0")
@@ -21,11 +23,17 @@
 
       ;(setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(setq font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      ;(setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
+
+      (setq font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
       (setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
+
+      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
+      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
+      ;; (set-frame-font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
       ;(set-frame-font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(set-frame-font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
-      ;(set-frame-font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
       ;; Localization
       ;; (prefer-coding-system 'cp1251)
@@ -71,31 +79,23 @@
             w32-apps-modifier 'hyper
             w32-downcase-file-names t)
 
-      (setq preview-gs-command "gswin32c")
-
-      ;; Frame maximization functions
-      (defun w32-maximize-frame (frame)
-        "Maximize given frame"
-        (let ((current-frame (selected-frame)))
-          (select-frame frame)
-          (w32-send-sys-command 61488)
-          (select-frame current-frame)))
-
-      (defun w32-maximize-current-frame ()
-        "Maximize the current frame"
-        (interactive)
-        (w32-maximize-frame (selected-frame))))
-
-      ;; (add-hook 'after-make-frame-functions 'w32-maximize-frame)
-      ;; (add-hook 'window-setup-hook 'w32-maximize-frame t))
-  ;; (add-hook 'term-setup-hook 'w32-maximize-current-frame))
+      (setq preview-gs-command "gswin32c"))
   (progn
     (setq inferior-lisp-program "sbcl")
     (setq haskell-program-name "ghci")
     (setq font "-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1")))
 
 (require 'maxframe)
-(add-hook 'window-setup-hook 'maximize-frame t)
+
+(defun with-frame (frame, func)
+  (let ((current-frame (selected-frame)))
+    (select-frame frame)
+    (funcall func)
+    (select-frame current-frame)))
+
+(add-hook 'window-setup-hook 'maximize-frame)
+(add-hook 'after-make-frame-functions
+          (lambda (frame) (with-frame frame 'maximize-frame)))
 
 (setq viper-mode t)
 (setq viper-want-ctl-h-help t)
@@ -121,14 +121,6 @@
 ;;(define-key viper-vi-global-user-map (kШжbd ")рр'viper-append)
 ;;(define-key viper-vi-global-user-map [332868] 'viper-Append)
 
-(require 'rect-mark)
-(define-key ctl-x-map "r\C-@" 'rm-set-mark)
-(define-key ctl-x-map [?r ?\C-\ ] 'rm-set-mark)
-(define-key ctl-x-map "r\C-x" 'rm-exchange-point-and-mark)
-(define-key ctl-x-map "r\C-w" 'rm-kill-region)
-(define-key ctl-x-map "r\M-w" 'rm-kill-ring-save)
-(add-hook 'picture-mode-hook 'rm-example-picture-mode-bindings)
-
 (setq woman-use-own-frame nil)     ; don't create new frame for manpages
 (setq woman-use-topic-at-point t)  ; don't prompt upon K key (manpage display)
 
@@ -136,9 +128,6 @@
 (require 'color-theme)
 (color-theme-initialize)
 (color-theme-dark-laptop)
-;; (color-theme-arjen)
-;; (color-theme-hober)
-;; (color-theme-billw)
 
 ;; Fonts
 (add-to-list 'default-frame-alist (append '(font) font))
@@ -164,6 +153,7 @@
 (mouse-wheel-mode t)
 (setq visible-bell t)
 (setq mouse-yank-at-point t)
+(set-fringe-mode 4)
 (if window-system
     (progn
       (mouse-avoidance-mode 'animate)
@@ -178,7 +168,7 @@
 (setq display-time-interval 1)
 (display-time)
 (size-indication-mode)
-(timeclock-modeline-display)
+;(timeclock-modeline-display)
 
 ;; Cursor settings
 (when (fboundp 'blink-cursor-mode) (blink-cursor-mode -1))
@@ -214,21 +204,7 @@
 ;; (setq scroll-margin 0)
 (require 'smooth-scrolling)
 
-;; Mouse wheel smooth scrolling
-(mouse-wheel-mode nil)
-
-(defun smooth-scroll (number-lines increment)
-  (if (= 0 number-lines)
-      t
-    (progn
-      (sit-for 0.02)
-      (scroll-up increment)
-      (smooth-scroll (- number-lines 1) increment))))
-
-(global-set-key [(wheel-down)] '(lambda () (interactive) (smooth-scroll 6 1)))
-(global-set-key [(wheel-up)] '(lambda () (interactive) (smooth-scroll 6 -1)))
-
-(setq mouse-wheel-scroll-amount '(1))
+(require 'generic-x)
 
 ;; Reindent after yank
 (defadvice yank (after indent-region activate)
@@ -238,9 +214,14 @@
 (pc-selection-mode)
 (transient-mark-mode 1)
 (global-font-lock-mode t)
-(show-paren-mode t)
 (setq bookmark-save-flag 1)
 (setq desktop-load-locked-desktop t)
+
+;; Show matching parens
+(show-paren-mode t)
+(setq show-paren-style 'expression)
+(set-face-foreground 'show-paren-match-face nil)
+(set-face-background 'show-paren-match-face "gray22")
 
 ;; Window configurations settings
 (windmove-default-keybindings 'meta)
@@ -253,15 +234,12 @@
 (winring-new-configuration)
 (winring-prev-configuration)
 
-(global-set-key [(ctrl left)] 'winring-prev-configuration)
-(global-set-key [(ctrl right)] 'winring-next-configuration)
-
 (winner-mode t)
 
 ;; Abbreviations
-(read-abbrev-file abbrev-file-name t)
 (setq-default abbrev-mode t)
 (setq save-abbrevs t)
+(if (file-exists-p  abbrev-file-name) (quietly-read-abbrev-file abbrev-file-name))
 
 (require 'saveplace)
 (setq-default save-place t)
@@ -276,6 +254,12 @@
 (setq backup-by-copying-when-mismatch t)
 (add-hook 'write-file-hooks 'time-stamp)
 
+;; Automatically make missing directories
+(add-hook 'before-save-hook
+          '(lambda ()
+             (or (file-exists-p (file-name-directory buffer-file-name))
+                 (make-directory (file-name-directory buffer-file-name) t))))
+
 (defun fc-eval-and-replace ()
   "Replace the preceding sexp with its value."
   (interactive)
@@ -286,7 +270,7 @@
     (error (message "Invalid expression")
            (insert (current-kill 0)))))
 
-(global-set-key (kbd "C-c C-e") 'fc-eval-and-replace)
+(global-set-key (kbd "C-c C-e") 'eval-print-last-sexp)
 
 ;; (require 'whitespace)
 ;; (global-whitespace-mode)
@@ -366,7 +350,10 @@
 ;; (add-hook 'c-mode-common-hook 'flyspell-prog-mode)
 
 ;; Makefiles
-(add-hook 'makefile-mode-hook (lambda () (setq indent-tabs-mode t)))
+(add-hook 'makefile-mode-hook
+          (lambda ()
+            (setq indent-tabs-mode t)
+            (setq show-trailing-whitespace t)))
 
 ;; Highlight current line
 (global-hl-line-mode)
@@ -417,6 +404,10 @@
 (setq calendar-week-start-day 1)
 (setq mark-holidays-in-calendar t)
 
+;; Customization settings
+(setq custom-file "~/emacs/custom.el")
+(load custom-file 'noerror)
+
 ;; EDiff
 (setq ediff-custom-diff-options "-u")
 (setq ediff-window-setup-function 'ediff-setup-windows-plain)
@@ -435,19 +426,23 @@
 (global-set-key [prior]           'pager-page-up)
 (global-set-key [(control prior)] 'beginning-of-buffer)
 (global-set-key [(meta v)]        'pager-page-up)
-;; (global-set-key [M-up]            'pager-row-up)
-;; (global-set-key [M-down]          'pager-row-down)
 
-;; (require 'hideshow)
+;; Hideshow mode
+(require 'hideshow)
 
-;; (defun maybe-turn-on-hs-mode ()
-;;   (if (and (boundp 'comment-start)
-;;            (boundp 'comment-end)
-;;            comment-start comment-end
-;;            (not (eq major-mode 'text-mode)))
-;;       (hs-minor-mode)))
+(global-set-key (kbd "s-<right>") 'hs-show-block)
+(global-set-key (kbd "s-<left>")  'hs-hide-block)
+(global-set-key (kbd "s-<up>")    'hs-hide-all)
+(global-set-key (kbd "s-<down>")  'hs-show-all)
 
-;; (add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
+(defun maybe-turn-on-hs-mode ()
+  (if (and (boundp 'comment-start)
+           (boundp 'comment-end)
+           comment-start comment-end
+           (not (eq major-mode 'text-mode)))
+      (hs-minor-mode)))
+
+(add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
 
 (defun move-line (&optional n)
   "Move current line N (1) lines up/down leaving point in place."
@@ -470,9 +465,6 @@
   "Moves current line N (1) lines down leaving point in place."
   (interactive "p")
   (move-line (if (null n) 1 n)))
-
-(global-set-key [(control up)] 'move-line-up)
-(global-set-key [(control down)] 'move-line-down)
 
 (defadvice kill-ring-save (before slickcopy activate compile)
   "When called interactively with no active region, copy a single line instead."
@@ -503,8 +495,6 @@
 
 (define-key isearch-mode-map [(backspace)] 'isearch-del-char)
 (define-key query-replace-map [return] 'act)
-;;(global-set-key [(control s)] 'isearch-forward-regexp)
-;;(global-set-key [(control r)] 'isearch-backward-regexp)
 
 ;; Wrap region
 ;; (require 'wrap-region)
@@ -535,24 +525,28 @@
 (add-hook 'find-file-hooks 'dot-mode-on)
 (dot-mode t)
 
+;; Line numbers
+(require 'linum)
+
+(type-break-mode)
+
 ;; Open recently visited files
 (require 'recentf)
 (recentf-mode t)
 (setq recentf-max-saved-items 500)
 
-;; Linum
-;; (require 'linum)
-
-;; (defun linum-on ()
-;;   (unless (or (minibufferp)
-;;               (ecb-buffer-is-ecb-buffer-of-current-layout-p (current-buffer)))
-;;     (linum-mode 1)))
-
-;; (global-linum-mode)
-
 ;; Compilation settings
+(defun compile-autoclose (buffer string)
+  (cond ((and (string-match "finished" string)
+              (not (string-match "warning" string)))
+         (message "Build successful")
+         (delete-window (get-buffer-window buffer t)))
+        (t
+         (message "Compilation exited abnormally: %s" string))))
+
 (setq compilation-scroll-output t)
-(setq compilation-window-height 10)
+(setq compilation-window-height 15)
+(setq compilation-finish-functions 'compile-autoclose)
 (add-hook 'compilation-mode-hook (lambda () (next-error-follow-minor-mode)))
 
 ;; Occur
@@ -561,18 +555,23 @@
 ;; ElDoc
 (eldoc-mode)
 
+;; Intellectual indentation style auto-detecting
+(require 'dtrt-indent)
+(dtrt-indent-mode t)
+
 ;; CC settings
 (setq c-tab-always-indent nil)
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.inl\\'" . c++-mode))
 (add-hook 'c-mode-common-hook
           (lambda ()
-            ; (hs-minor-mode)
             (c-set-style "stroustrup")
             (c-set-offset 'inline-open 0)
-            (c-toggle-auto-hungry-state t)
-            (c-toggle-auto-newline nil)
-            (define-key c-mode-map "\C-\M-a" 'c-beginning-of-defun)
-            (define-key c-mode-map "\C-vxe" 'c-end-of-defun)))
+            (c-toggle-syntactic-indentation 1)
+            (c-toggle-auto-hungry-state 1)
+            (c-toggle-electric-state 1)
+            (font-lock-add-keywords nil '(("\\<\\(FIXME\\|TODO\\|BUG\\|XXX\\):" 1 font-lock-warning-face t)))
+            (local-set-key (kbd "C-c o") 'ff-find-other-file)))
 
 ;; C sharp
 (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
@@ -582,25 +581,26 @@
 (require 'slime)
 (slime-setup)
 
+;; Emacs-lisp
+(add-hook 'emacs-lisp-mode-hook
+          (lambda ()
+            (linum-mode)))
+
 ;; XML
 (load "rng-auto.el")
 (setq auto-mode-alist
       (cons '("\\.\\(xml\\|xsl\\|rng\\|xhtml\\|csproj\\)\\'" . nxml-mode)
             auto-mode-alist))
 
-;; Pascal settings
-(setq delphi-indent-level 4)
-(setq pascal-case-indent 4)
-(add-to-list 'auto-mode-alist '("\\.pas\\'" . delphi-mode))
-(add-to-list 'auto-mode-alist '("\\.dpr\\'" . delphi-mode))
-
 ;; Python settings
+(setq ropemacs-loaded nil)
 (add-hook 'python-mode-hook
           (lambda ()
+            (require 'pymacs)
+            (when (not ropemacs-loaded)
+              (pymacs-load "ropemacs" "rope-")
+              (setq ropemacs-loaded t))
             (define-key python-mode-map [backspace] 'python-backspace)))
-
-(require 'pymacs)
-(pymacs-load "ropemacs" "rope-")
 
 ;; Lua settings
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
@@ -635,29 +635,12 @@
 ;; LilyPond
 ;;(load "lilypond-init")
 
-;; CUA
-;; (cua-mode nil)
-
-;; iswitchb
-;; (require 'iswitchb)
-;; (iswitchb-mode)
-;; (setq iswitchb-prompt-newbuffer nil)
-;; (setq iswitchb-regexp t)
-;; (setq iswitchb-use-frame-buffer-list t)
-;; (setq iswitchb-use-virtual-buffers t)
-;; (add-hook 'iswitchb-minibuffer-setup-hook
-;;    '(lambda () (set (make-local-variable 'max-mini-window-height) 3)))
-;; (add-to-list 'iswitchb-buffer-ignore "*Backtrace")
-;; (add-to-list 'iswitchb-buffer-ignore "*Buffer")
-;; (add-to-list 'iswitchb-buffer-ignore "*Completions")
-;; (add-to-list 'iswitchb-buffer-ignore "^[tT][aA][gG][sS]$")
-
 ;; Handy buffer switching
-;; (require 'swbuff-y)
-;; (swbuff-y-mode)
-;; (setq swbuff-display-intermediate-buffers t)
-;; (setq swbuff-delay-switch nil)
-;; (setq swbuff-clear-delay 9)
+(require 'swbuff-y)
+(swbuff-y-mode)
+(setq swbuff-display-intermediate-buffers t)
+(setq swbuff-delay-switch nil)
+(setq swbuff-clear-delay 9)
 
 (require 'misc-cmds)
 (require 'wc)
@@ -694,51 +677,6 @@
 ;; helpers above.
 ;; (semantic-load-enable-semantic-debugging-helpers)
 
-(require 'thingatpt)
-
-(defun jump ()
-  (interactive)
-  (let* ((sexp
-          (symbol-at-point))
-         (fun (fboundp sexp))
-         (var (boundp sexp)))
-    (cond ((and fun var)
-           (progn
-             (message "There is also a variable \"%s\"" sexp)
-             (find-function sexp)))
-          (fun
-           (find-function sexp))
-          ((and var sexp)
-           (find-variable sexp))
-          ((not sexp)
-           (message "Nothing at point"))
-          (t
-           (message "There is no function or variable called \"%s\"" sexp)))))
-
-(defun my-semantic-complete-jump ()
-  "Jump to a semantic symbol."
-  (interactive)
-  (let* ((semanticdb-search-system-databases nil)
-         (collector (semantic-collector-project-brutish nil
-                                                        :buffer (current-buffer)
-                                                        :path (current-buffer)))
-         (semantic-completion-collector-engine collector)
-         (semantic-complete-active-default nil)
-         (semantic-complete-current-matched-tag nil)
-         (tag (semantic-complete-default-to-tag nil)))
-    (if (semantic-tag-p tag)
-        (progn
-          (push-mark)
-          (semantic-go-to-tag tag)
-          (switch-to-buffer (current-buffer))
-          (semantic-momentary-highlight-tag tag)
-          (working-message "%S: %s "
-                           (semantic-tag-class tag)
-                           (semantic-tag-name  tag)))
-      (jump))))
-
-(global-set-key [(control return)] 'my-semantic-complete-jump)
-
 (defun my-semanticdb-minor-mode-p ()
   "Query if the current buffer has Semanticdb mode enabled."
   (condition-case blah
@@ -774,41 +712,25 @@
       (funcall imenu-default-goto-function (car thing) (cdr thing))
       (recenter))))
 
-(defun my-semantic-jump-to-function ()
-  "Jump to a function found by Semantic within the current buffer
-    with ido-style completion."
-  (interactive)
-  (let ((tags
-         (remove-if
-          (lambda (x)
-            (or (getf (semantic-tag-attributes x) :prototype-flag)
-                (not (member (cadr x) '(function variable type)))))
-          (semanticdb-file-stream (buffer-file-name (current-buffer)))))
-        (names (make-hash-table :test 'equal)))
-    (dolist (tag tags)
-      (let ((sn (semantic-tag-name tag)))
-        (when (gethash sn names)
-          (setq sn
-                (loop for i = 1 then (1+ i)
-                      for name = (format "%s<%d>" sn i)
-                      while (gethash name names)
-                      finally return name)))
-        (puthash sn tag names)))
-    (goto-char (semantic-tag-start
-                (gethash
-                 (my-icompleting-read "Go to: " (hash-table-keys names))
-                 names)))
-    (recenter)))
-
 (defun hash-table-keys (hash)
   (let ((ret nil))
     (maphash (lambda (k v) (push k ret)) hash)
     ret))
 
+;; dabbrev settings
+(setq dabbrev-case-fold-search nil)
+
+;; Yasnippet
+(setq yas/next-field-key [(return)])
+(require 'yasnippet) ;; not yasnippet-bundle
+(yas/initialize)
+(yas/load-directory "~/emacs/snippets")
+
 ;; Hippie expand settings
 (require 'hippie-exp)
 (setq hippie-expand-try-functions-list
-      '(try-expand-dabbrev
+      '(yas/hippie-try-expand
+        try-expand-dabbrev
         try-expand-dabbrev-all-buffers
         try-expand-dabbrev-from-kill
         try-expand-all-abbrevs
@@ -821,23 +743,40 @@
         try-complete-lisp-symbol
         senator-try-expand-semantic))
 
-(defun indent-or-expand ()
-  "Either indent according to mode, or expand the word preceding
-point."
+;; Smart Tab
+(defun smart-tab (prefix)
+  "Needs `transient-mark-mode' to be on. This smart tab is
+minibuffer compliant: it acts as usual in the minibuffer.
+
+In all other buffers: if PREFIX is \\[universal-argument], calls
+`smart-indent'. Else if point is at the end of a symbol,
+expands it. Else calls `smart-indent'."
+  (interactive "P")
+  (if (minibufferp)
+      (if (ido-active)
+          (ido-complete)
+        (PC-complete))
+    (if (smart-tab-must-expand prefix)
+        (hippie-expand nil)
+      (smart-indent))))
+
+(defun smart-indent ()
+  "Indents region if mark is active, or current line otherwise."
   (interactive)
-  (if (and
-       (or (bobp) (= ?w (char-syntax (char-before))))
-       (or (eobp) (not (= ?w (char-syntax (char-after))))))
-      (hippie-expand nil)
-    (indent-according-to-mode)))
+  (if mark-active
+      (indent-region (region-beginning)
+                     (region-end))
+    (indent-for-tab-command)))
 
-(define-key read-expression-map [tab] 'lisp-complete-symbol)
+(defun smart-tab-must-expand (&optional prefix)
+  "If PREFIX is \\[universal-argument], answers no.
+Otherwise, analyses point position and answers."
+  (unless (or (consp prefix)
+              mark-active)
+    (looking-at "\\_>")))
 
-;; Pabbrev
-;; (global-set-key [tab] 'indent-or-expand)
-;; (require 'pabbrev)
-;; (setq pabbrev-minimal-expansion-p t)
-;; (add-hook 'text-mode-hook 'pabbrev-mode)
+(global-set-key [(tab)] 'smart-tab)
+;(define-key read-expression-map [tab] 'lisp-complete-symbol)
 
 ;; Ido
 (require 'ido)
@@ -845,6 +784,7 @@ point."
 (ido-everywhere t)
 (setq ido-enable-flex-matching t)
 (setq ido-use-filename-at-point t)
+(setq ido-max-prospects 6)
 (add-to-list 'ido-ignore-buffers ".*\\.log")
 (add-to-list 'ido-ignore-buffers ".*_flymake.*")
 (add-to-list 'ido-ignore-buffers "_region_.tex")
@@ -860,6 +800,8 @@ point."
        cmd-list)))))
 
 (global-set-key "\M-x" 'ido-execute)
+
+(require 'w32-browser)
 
 (defun ido-w32-browse ()
   (interactive)
@@ -895,6 +837,8 @@ point."
 
 (require 'filecache)
 ;; (load "iswitchb-fc")
+
+(file-cache-add-directory-recursively (concat emacs-path "lisp"))
 
 (defun file-cache-add-this-file ()
   (and buffer-file-name
@@ -935,8 +879,6 @@ directory, select directory. Lastly the file is opened."
            (setq ido-temp-list choices))))
     (ido-read-buffer prompt)))
 
-(global-set-key "\C-c\C-f" 'file-cache-ido-find-file)
-
 (eval-after-load
     "filecache"
   '(progn
@@ -949,6 +891,10 @@ directory, select directory. Lastly the file is opened."
 (autoload 'gitsum "gitsum" "Incremental git commit." t)
 
 (require 'magit)
+
+(add-hook 'magit-mode-hook
+          (lambda ()
+            (local-set-key [(tab)] 'magit-toggle-section)))
 
 ;; psvn
 (setq svn-status-prefix-key '[(super n)])
@@ -1036,11 +982,6 @@ directory, select directory. Lastly the file is opened."
 (setq uniquify-after-kill-buffer-p t) ; rename after killing uniquified
 (setq uniquify-ignore-buffers-re "^\\*") ; don't muck with special buffers
 
-;; Yasnippet
-;; (require 'yasnippet) ;; not yasnippet-bundle
-;; (yas/initialize)
-;; (yas/load-directory "~/emacs/snippets")
-
 (autoload 'blank-mode           "blank-mode" "Toggle blank visualization."        t)
 (autoload 'blank-toggle-options "blank-mode" "Toggle local `blank-mode' options." t)
 
@@ -1117,14 +1058,6 @@ directory, select directory. Lastly the file is opened."
 
 (add-hook 'after-save-hook 'autocompile)
 
-(defun clipboard-kill-ring-save-region-or-word ()
-  (interactive)
-  (if mark-active
-      (clipboard-kill-ring-save (mark) (point))
-    (progn
-      (mark-word 1)
-      (clipboard-kill-ring-save (mark) (point)))))
-
 (defun run-keywiz ()
   "Run keywiz"
   (interactive)
@@ -1149,6 +1082,9 @@ directory, select directory. Lastly the file is opened."
 
 (defun kill-compilation-window ()
   (interactive)
+  (condition-case nil
+      (kill-compilation)
+    (error nil))
   (if (get-buffer "*compilation*")
       (progn
         (delete-windows-on (get-buffer "*compilation*"))
@@ -1194,8 +1130,6 @@ directory, select directory. Lastly the file is opened."
   (next-line 1)
   (indent-according-to-mode))
 
-(global-set-key (kbd "C-o") 'open-next-line)
-
 ;; behave like vi's O command
 (defun open-previous-line (arg)
   "Open a new line before the current one."
@@ -1205,13 +1139,6 @@ directory, select directory. Lastly the file is opened."
   (when newline-and-indent
     (indent-according-to-mode)))
 
-;; (defun search-word-under-cursor ()
-;;   "Performs a nonincremental-search-forward. The word at or near point
-;;    is the word to search for."
-;;   (interactive)
-;;   (let ((word (current-word)))
-;;     (nonincremental-search-forward word)))
-
 (defun isearch-forward-current-word-keep-offset ()
   "Mimic vi search foward at point feature."
   (interactive)
@@ -1219,6 +1146,7 @@ directory, select directory. Lastly the file is opened."
         (old-case-fold-search case-fold-search) )
     (setq curword (thing-at-point 'symbol))
     (setq re-curword (concat "\\<" (thing-at-point 'symbol) "\\>") )
+    (highlight-regexp re-curword 'isearch)
     (beginning-of-thing 'symbol)
     (setq offset (- offset (point))) ; offset from start of symbol/word
     (setq offset (- (length curword) offset)) ; offset from end
@@ -1242,6 +1170,7 @@ directory, select directory. Lastly the file is opened."
         (old-case-fold-search case-fold-search) )
     (setq curword (thing-at-point 'symbol))
     (setq re-curword (concat "\\<" curword "\\>") )
+    (highlight-regexp re-curword 'isearch)
     (beginning-of-thing 'symbol)
     (setq offset (- offset (point))) ; offset from start of symbol/word
     (forward-char)
@@ -1260,50 +1189,13 @@ directory, select directory. Lastly the file is opened."
 (defun occur-word-under-cursor ()
   (interactive)
   (let ((word (current-word)))
+    (highlight-regexp word 'isearch)
     (occur word)))
 
 (defun make-tags-table ()
   (interactive)
   (shell-command "etags *")
   (visit-tags-table "TAGS"))
-
-(defun c-mode-visit-complement-file-get-name (filename)
-  (cond
-   ((string-match "[.]c$" filename)
-    (let ((name filename))
-      (string-match "[.]c$" name)
-      (replace-match ".h" nil t name)))
-   ((string-match "[.]cpp$" filename)
-    (let ((name filename))
-      (string-match "[.]cpp$" name)
-      (replace-match ".h" nil t name)))
-   ((string-match "[.]h$" filename)
-    (let ((name filename))
-      (string-match "[.]h$" name)
-      (replace-match ".cpp" nil t name)))))
-
-(defun c-mode-visit-complement-file ()
-  "If in file.c, visit file.h.
-If in file.h, visit file.c"
-  (interactive)
-  (if buffer-file-truename
-      (let ((name (c-mode-visit-complement-file-get-name buffer-file-truename)))
-        (if name (find-file name)))))
-
-(defun totd ()
-  (interactive)
-  (with-output-to-temp-buffer "*Tip of the day*"
-    (let* ((commands (loop for s being the symbols
-                           when (commandp s) collect s))
-           (command (nth (random (length commands)) commands)))
-      (princ
-       (concat "Your tip for the day is:\\n"
-               "========================\\n\\n"
-               (describe-function command)
-               "\\n\\nInvoke with:\\n\\n"
-               (with-temp-buffer
-                 (where-is command t)
-                 (buffer-string)))))))
 
 ;; for simulating Vi's % capability
 (defun match-paren (arg)
@@ -1325,8 +1217,6 @@ If in file.h, visit file.c"
   (if arg
       (join-line)
     (join-line t)))
-
-(global-set-key (kbd "M-o") 'open-previous-line)
 
 (defun recode-buffer-dangerous (target-coding-system)
   "* Recode buffer as if it were encoded with `target-coding-system'.
@@ -1354,12 +1244,10 @@ read-only flag, recode, then turn it back."
       (comment-or-uncomment-region (line-beginning-position) (line-end-position))
     (comment-dwim arg)))
 
-(global-set-key (kbd "C-c ;") 'my-comment-or-uncomment-region)
-(global-set-key (kbd "C-c C-;") 'my-comment-or-uncomment-region)
+(global-set-key (kbd "C-;") 'my-comment-or-uncomment-region)
 
 (setq comment-style 'indent)
 
-;; scroll one line at a time
 (defun scroll-one-line-up (&optional arg)
   "Scroll the selected window up (forward in the text) one line (or N lines)."
   (interactive "p")
@@ -1369,15 +1257,6 @@ read-only flag, recode, then turn it back."
   "Scroll the selected window down (backward in the text) one line (or N)."
   (interactive "p")
   (scroll-down (or arg 1)))
-
-(global-set-key [S-down] 'scroll-one-line-up)
-(global-set-key [S-up]  'scroll-one-line-down)
-
-;; (defun open-new-shell ()
-;;   (interactive)
-;;   (if (get-buffer "*shell*")
-;;       (kill-buffer "*shell*"))
-;;   (shell))
 
 (defun my-mark-line ()
   (interactive)
@@ -1402,51 +1281,24 @@ read-only flag, recode, then turn it back."
    ((file-exists-p "makefile") (find-file "makefile"))
    ((file-exists-p "Makefile") (find-file "Makefile"))))
 
-(defun iwb ()
-  "indent whole buffer"
-  (interactive)
-  (delete-trailing-whitespace)
-  (indent-region (point-min) (point-max) nil)
-  (untabify (point-min) (point-max)))
-
-;; (defun next-word-boundary (&optional arg)
-;;   "Move point forward arg word boundaries (backward if arg is negative)"
-;;   (interactive "p")
-;;   (if (< 0 arg)
-;;       (progn
-;;         (dotimes (n arg)
-;;           (goto-char (1+ (point)))
-;;           (re-search-forward "\\b" nil t))
-;;         (when (looking-at "_")
-;;           (forward-char 1)))
-;;     (dotimes (n (abs arg))
-;;       (goto-char (1- (point)))
-;;       (re-search-backward "\\b" nil t))))
-
-;; (defun prev-word-boundary (&optional arg)
-;;   (interactive "p")
-;;   (next-word-boundary (- (or arg 1))))
-
-;; (defun kill-next-word-boundary (arg)
-;;   (interactive "p")
-;;   (kill-region (point) (progn (next-word-boundary arg) (point))))
-
-;; (defun backward-kill-next-word-boundary (arg)
-;;   (interactive "p")
-;;   (kill-next-word-boundary (- arg)))
-
-;; (global-set-key "\M-f" 'next-word-boundary)
-;; (global-set-key "\M-b" 'prev-word-boundary)
-;; (global-set-key "\M-d" 'kill-next-word-boundary)
-;; (global-set-key "\C-w" 'backward-kill-next-word-boundary)
+(defun zoom (n)
+  "with positive N, increase the font size, otherwise decrease it"
+  (set-face-attribute 'default (selected-frame) :height
+                      (+ (face-attribute 'default :height) (* (if (> n 0) 1 -1) 10))))
 
 (defun next-syntax-boundary (&optional arg)
   (interactive "p")
   (if (< arg 0)
       (dotimes (n (abs arg))
-        (skip-syntax-backward (string (char-syntax (char-before)))))
+        (let ((curpt (point)))
+          (skip-syntax-backward (string (char-syntax (char-before))))
+          (when (eq (point) curpt)
+            (backward-char))))
     (dotimes (n arg)
-      (skip-syntax-forward (string (char-syntax (char-after)))))))
+      (let ((curpt (point)))
+        (skip-syntax-forward (string (char-syntax (char-after))))
+        (when (eq (point) curpt)
+          (forward-char))))))
 
 (defun prev-syntax-boundary (&optional arg)
   (interactive "p")
@@ -1459,22 +1311,6 @@ read-only flag, recode, then turn it back."
 (defun kill-syntax-backward (&optional arg)
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
-
-;; (global-set-key "\C-w" 'kill-syntax-backward)
-(global-set-key "\C-w" 'backward-kill-word)
-;(global-set-key "\C-d" 'kill-syntax-forward)
-;(global-set-key "\M-d" 'delete-char)
-;(global-set-key "\C-f" 'next-syntax-boundary)
-;(global-set-key "\C-b" 'prev-syntax-boundary)
-;; (global-set-key "\M-d" 'kill-syntax-forward)
-;; (global-set-key "\M-f" 'next-syntax-boundary)
-;; (global-set-key "\M-b" 'prev-syntax-boundary)
-;; (global-set-key [(control backspace)] 'kill-syntax-backward)
-;(global-set-key "\M-\S-f" 'forward-word)
-;(global-set-key "\M-\S-b" 'backward-word)
-
-(setq backward-delete-char-untabify-method 'untabify)
-(global-set-key [backspace] 'backward-delete-char-untabify)
 
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
@@ -1572,9 +1408,100 @@ Returns nil if no differences found, 't otherwise."
     (goto-char (cadar point-stack))
     (setq point-stack (cdr point-stack))))
 
-(defun wc ()
+(setq my-key-pairs
+      '((?! ?1) (?@ ?2) (?# ?3) (?$ ?4) (?% ?5)
+        (?^ ?6) (?& ?7) (?* ?8) (?( ?9) (?) ?0)
+        (?{ ?[) (?} ?]) ; (?| ?\\) (?- ?_) (?\" ?')
+        ))
+
+(defun my-key-swap1 (key-pairs)
+  (if (eq key-pairs nil)
+      (message "Keyboard zapped!! Shift-F10 to restore!")
+    (progn
+      (keyboard-translate (caar key-pairs)  (cadar key-pairs))
+      (keyboard-translate (cadar key-pairs) (caar key-pairs))
+      (my-key-swap1 (cdr key-pairs)))))
+
+(defun my-key-swap ()
   (interactive)
-  (message "Word count: %s" (how-many "\\w+" (point-min) (point-max))))
+  (my-key-swap1 my-key-pairs))
+
+(defun my-key-restore1 (key-pairs)
+  (if (eq key-pairs nil)
+      (message "Keyboard restored!! F10 to Zap!")
+    (progn
+      (keyboard-translate (caar key-pairs)  (caar key-pairs))
+      (keyboard-translate (cadar key-pairs) (cadar key-pairs))
+      (my-key-restore1 (cdr key-pairs)))))
+
+(defun my-key-restore ()
+  (interactive)
+  (my-key-restore1 my-key-pairs))
+
+(defun areator ()
+  (interactive)
+  (file-cache-add-directory-recursively "c:/work/src/Include")
+  (file-cache-add-directory-recursively "c:/work/src/Areator/Source")
+
+  (setq areator-projects
+        (apply 'append
+               '("SensorDV" "VisExport" "HeightSensor" "Areator" "Areator.UserData")
+               (mapcar (lambda (arg) (list (concat arg "G") (concat arg "DV")))
+                       '("CoastLine" "Contours" "ProcObjects" "RmContours" "TopoData"
+                         "Triangulator" "Terrain" "AIData" "Chart"))))
+
+  (sort areator-projects 'string-lessp)
+
+  (defun areator-set-config ()
+    (interactive)
+    (setq areator-config
+          (ido-completing-read "Build configuration: " '("Debug" "Release"))))
+
+  (defun areator-build ()
+    (interactive)
+    (let ((compile-cmd (concat "devenv.com c:/work/src/Areator/Areator.sln /build " areator-config)))
+      (compile compile-cmd)))
+
+  (defun areator-build-project (proj)
+    (interactive)
+    (let ((compile-cmd (concat "devenv.com c:/work/src/Areator/Areator.sln /build " areator-config " /project " proj)))
+      (compile compile-cmd)))
+
+  (setq areator-find-string
+        (concat "find c:/work/src/Include c:/work/src/Areator "
+                "-type f ( -iname \"*.cpp\" -o -iname \"*.h\" -o -iname \"*.cs\" -o -iname \"*.inl\" \) "))
+
+  (defun areator-tags ()
+    (interactive)
+    (shell-command (concat areator-find-string " | etags -f c:/work/src/TAGS -"))
+    (visit-tags-table "c:/work/src/TAGS"))
+
+  (defun areator-hook ()
+    (interactive)
+    (local-set-key [f7] (lambda () (interactive) (areator-build-project areator-project)))
+    (local-set-key [f8] (lambda () (interactive) (magit-status "c:/work/src")))
+    (local-set-key [(control shift d)]
+                   (lambda ()
+                     (interactive)
+                     (setq areator-config "Debug")
+                     (message "Debug configuration set")))
+    (local-set-key [(control shift r)]
+                   (lambda ()
+                     (interactive)
+                     (setq areator-config "Release")
+                     (message "Release configuration set")))
+    (local-set-key [(control shift p)]
+                   (lambda ()
+                     (interactive)
+                     (setq areator-project
+                           (ido-completing-read "Current project: " areator-projects))))
+    (local-set-key [(control shift f)]
+                   (lambda (arg)
+                     (interactive "sFind string: ")
+                     (grep-find
+                      (concat areator-find-string " -print0 | xargs -0 grep -in \"" arg "\"")))))
+
+  (add-hook 'c-mode-common-hook 'areator-hook t))
 
 ;;(global-set-key [(alt k)] 'my-mark-line)
 
@@ -1582,9 +1509,10 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [f1] 'other-window)
 (global-set-key [(shift f1)] 'other-window-backward)
 (global-set-key [f3] 'isearch-forward-current-word-keep-offset)
-(global-set-key [(control f3)] 'isearch-backward-current-word-keep-offset)
+;(global-set-key [f3] (lambda () (interactive) (isearch-mode t (current-word))))
+(global-set-key [(shift f3)] 'isearch-backward-current-word-keep-offset)
 (global-set-key [(meta f3)] 'occur-word-under-cursor)
-(global-set-key [f4] 'find-file)
+(global-set-key [f4] 'file-cache-ido-find-file)
 (global-set-key [(meta f4)] 'ido-choose-from-recentf)
 (global-set-key [(control f4)] 'recentf-open-files)
 (global-set-key [f5] (lambda ()
@@ -1592,11 +1520,10 @@ Returns nil if no differences found, 't otherwise."
                        (shell-command (file-name-sans-extension buffer-file-name) "*Shell Command Output*")))
 (global-set-key [f6] 'next-error)
 (global-set-key [(shift f6)] 'previous-error)
+(global-set-key [(control f6)] 'previous-error)
 (global-set-key [f7] 'invoke-make)
-(global-set-key [(ctrl f7)] 'kill-compilation-window)
+(global-set-key [(control f7)] 'kill-compilation-window)
 (global-set-key [(meta f7)] 'edit-makefile)
-(global-set-key [f8] 'flymake-goto-next-error)
-(global-set-key [(ctrl f8)] 'flymake-display-err-menu-for-current-line)
 (global-set-key [f9] 'bookmark-jump)
 (global-set-key [(control f9)] 'bookmark-set)
 (global-set-key [f10] 'point-stack-push)
@@ -1620,12 +1547,41 @@ Returns nil if no differences found, 't otherwise."
 ;; (define-key isearch-mode-map "\C-h" 'isearch-delete-char)
 ;; (global-set-key [(super h)] 'help-command)
 
-(global-set-key "\C-xve" (lambda () (interactive) (svn-examine (file-name-directory (buffer-file-name)))))
+(global-set-key "\C-w" 'kill-syntax-backward)
+(global-set-key [(control backspace)] 'kill-syntax-backward)
+(global-set-key "\C-d" 'kill-syntax-forward)
+(global-set-key "\M-f" 'next-syntax-boundary)
+(global-set-key "\M-b" 'prev-syntax-boundary)
+(global-set-key "\M-d" 'kill-syntax-forward)
 
-;; (global-set-key "\C-w" 'backward-kill-word)
+(require 'rect-mark)
+(add-hook 'picture-mode-hook 'rm-example-picture-mode-bindings)
+
+(global-set-key (kbd "C-x r <down-mouse-1>") 'rm-mouse-drag-region)
+(global-set-key (kbd "C-x r C-x") 'rm-exchange-point-and-mark)
+(global-set-key (kbd "C-x r C-SPC") 'rm-set-mark)
+(global-set-key (kbd "C-x C-k")
+                '(lambda(b e) (interactive "r")
+                   (if rm-mark-active
+                       (rm-kill-region b e) (kill-region b e))))
+(global-set-key (kbd "M-w")
+                '(lambda(b e) (interactive "r")
+                   (if rm-mark-active
+                       (rm-kill-ring-save b e) (kill-ring-save b e))))
+(global-set-key (kbd "C-x C-x")
+                '(lambda(&optional p) (interactive "p")
+                   (if rm-mark-active
+                       (rm-exchange-point-and-mark p) (exchange-point-and-mark p))))
+
+;(setq backward-delete-char-untabify-method 'untabify)
+;(global-set-key [backspace] 'backward-delete-char-untabify)
+
+(global-set-key "\M-g" 'goto-line)
+(global-set-key "\M-o" 'open-previous-line)
+(global-set-key "\C-o" 'open-next-line)
+
 (global-set-key "\C-x\C-k" 'kill-region)
 (global-set-key "\C-c\C-k" 'kill-region)
-(global-set-key "\C-c\C-c" 'clipboard-kill-ring-save-region-or-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
 (global-set-key [(home)] 'beginning-or-indentation)
 (global-set-key "\C-e" 'end-of-line+)
@@ -1634,27 +1590,43 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\C-x\C-b" 'ibuffer)
 (global-set-key "\C-xb" 'ibuffer)
 (global-set-key "\C-\M-j" 'my-join-line)
-(when window-system (global-set-key "\C-z" 'undo))
 (global-set-key "\C-z" 'zap-until-char)
 
+;; (my-key-swap)
+(global-set-key (kbd "C-x !") 'delete-other-windows)
+
 (require 'buffer-stack)
-(global-set-key [(ctrl tab)] 'buffer-stack-bury)
+;; (global-set-key [(ctrl tab)] 'buffer-stack-bury)
 (global-set-key [(shift tab)] 'ido-switch-buffer)
 
-(global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
 (global-set-key "\M-+" '(lambda() (interactive) (shrink-window -1)))
+(global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
 
-(global-set-key "\C-x\C-m" 'execute-extended-command)
-(global-set-key "\C-c\C-m" 'execute-extended-command)
+(global-set-key (kbd "C-+")     '(lambda nil (interactive) (zoom 1)))
+(global-set-key [C-kp-add]      '(lambda nil (interactive) (zoom 1)))
+(global-set-key (kbd "C--")     '(lambda nil (interactive) (zoom -1)))
+(global-set-key [C-kp-subtract] '(lambda nil (interactive) (zoom -1)))
 
-(global-set-key [(meta k)] 'kill-buffer-with-window)
-;;(global-set-key [(super k)] 'de-context-kill)
+(global-set-key "\M-[" 'backward-paragraph)
+(global-set-key "\M-]" 'forward-paragraph)
+
+(global-set-key "\M-k" 'kill-buffer-with-window)
 (global-set-key [(meta ?`)] 'dot-emacs)
 (global-set-key "\C-x\C-d" 'dired-buffer-directory)
-;;(global-set-key [(super o)] 'delete-other-windows)
-;;(global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
-;;(global-set-key [(super v)] 'clipboard-yank)
-;;(global-set-key [(super y)] 'browse-kill-ring)
+
+;; Faster point movement
+(global-set-key "\M-\C-p" '(lambda () (interactive) (previous-line 5)))
+(global-set-key "\M-\C-n" '(lambda () (interactive) (next-line 5)))
+
+(global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
+
+;; (global-set-key [C-down] 'scroll-one-line-up)
+;; (global-set-key [C-up]  'scroll-one-line-down)
+(global-set-key [(control up)] 'move-line-up)
+(global-set-key [(control down)] 'move-line-down)
+
+(global-set-key [(ctrl shift left)] 'winring-prev-configuration)
+(global-set-key [(ctrl shift right)] 'winring-next-configuration)
 
 (global-set-key [(shift prior)] 'previous-multiframe-window)
 (global-set-key [(shift next)] 'next-multiframe-window)
@@ -1662,11 +1634,10 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control prior)] 'previous-multiframe-window)
 (global-set-key [(control next)] 'next-multiframe-window)
 
+(global-set-key [(control return)] 'semantic-complete-jump)
+
 (defalias 'igs 'ido-goto-symbol)
-(defalias 'ss 'svn-status)
-(defalias 'gs 'git-status)
 (defalias 'ff 'find-function)
-(defalias 'jf 'my-semantic-jump-to-function)
 
 (server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)
