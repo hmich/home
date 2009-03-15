@@ -57,9 +57,9 @@
       (setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING))
 
       ;; Необходима поддержка кодировок cp866 и cp1251
-      (codepage-setup 1251)
+      ;;(codepage-setup 1251)
       (define-coding-system-alias 'windows-1251 'cp1251)
-      (codepage-setup 866)
+      ;(codepage-setup 866)
 
       ;; Установки автоопределения кодировок
       ;; prefer-coding-system помещает кодировку в НАЧАЛО списка предпочитаемых кодировок
@@ -528,7 +528,7 @@
 ;; Line numbers
 (require 'linum)
 
-(type-break-mode)
+;; (type-break-mode)
 
 ;; Open recently visited files
 (require 'recentf)
@@ -571,7 +571,8 @@
             (c-toggle-auto-hungry-state 1)
             (c-toggle-electric-state 1)
             (font-lock-add-keywords nil '(("\\<\\(FIXME\\|TODO\\|BUG\\|XXX\\):" 1 font-lock-warning-face t)))
-            (local-set-key (kbd "C-c o") 'ff-find-other-file)))
+            (local-set-key (kbd "C-c o") 'ff-find-other-file)
+            (syntax-movements-bindings)))
 
 ;; C sharp
 (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
@@ -584,7 +585,7 @@
 ;; Emacs-lisp
 (add-hook 'emacs-lisp-mode-hook
           (lambda ()
-            (linum-mode)))
+            (syntax-movements-bindings)))
 
 ;; XML
 (load "rng-auto.el")
@@ -1312,6 +1313,14 @@ read-only flag, recode, then turn it back."
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
 
+(defun syntax-movements-bindings ()
+  (local-set-key "\C-w" 'kill-syntax-backward)
+  (local-set-key [(control backspace)] 'kill-syntax-backward)
+  ;; (local-set-key "\C-d" 'kill-syntax-forward)
+  (local-set-key "\M-f" 'next-syntax-boundary)
+  (local-set-key "\M-b" 'prev-syntax-boundary)
+  (local-set-key "\M-d" 'kill-syntax-forward))
+
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
 This requires the external program \"diff\" to be in your `exec-path'.
@@ -1547,13 +1556,6 @@ Returns nil if no differences found, 't otherwise."
 ;; (define-key isearch-mode-map "\C-h" 'isearch-delete-char)
 ;; (global-set-key [(super h)] 'help-command)
 
-(global-set-key "\C-w" 'kill-syntax-backward)
-(global-set-key [(control backspace)] 'kill-syntax-backward)
-(global-set-key "\C-d" 'kill-syntax-forward)
-(global-set-key "\M-f" 'next-syntax-boundary)
-(global-set-key "\M-b" 'prev-syntax-boundary)
-(global-set-key "\M-d" 'kill-syntax-forward)
-
 (require 'rect-mark)
 (add-hook 'picture-mode-hook 'rm-example-picture-mode-bindings)
 
@@ -1580,8 +1582,7 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\M-o" 'open-previous-line)
 (global-set-key "\C-o" 'open-next-line)
 
-(global-set-key "\C-x\C-k" 'kill-region)
-(global-set-key "\C-c\C-k" 'kill-region)
+(global-set-key "\C-w" 'backward-kill-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
 (global-set-key [(home)] 'beginning-or-indentation)
 (global-set-key "\C-e" 'end-of-line+)

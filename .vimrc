@@ -134,7 +134,7 @@ au BufEnter *.pl compiler perl
 " au GUIEnter * simalt ~ 
 " au BufEnter * lcd %:p:h
 "au BufAdd * exe 'tablast | tabe "' . expand( "<afile") .'"'
-au VimEnter * tab all 
+" au VimEnter * tab all 
 
 " Standart extensions
 source $VIMRUNTIME/ftplugin/man.vim
