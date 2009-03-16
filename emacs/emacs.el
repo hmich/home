@@ -57,9 +57,9 @@
       (setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING))
 
       ;; Необходима поддержка кодировок cp866 и cp1251
-      (codepage-setup 1251)
-      (define-coding-system-alias 'windows-1251 'cp1251)
-      (codepage-setup 866)
+      ;(codepage-setup 1251)
+      ;(define-coding-system-alias 'windows-1251 'cp1251)
+      ;(codepage-setup 866)
 
       ;; Установки автоопределения кодировок
       ;; prefer-coding-system помещает кодировку в НАЧАЛО списка предпочитаемых кодировок
@@ -197,6 +197,10 @@
 (setq mark-ring-max 100)
 (setq kill-ring-max 200)
 
+;; View registers
+(require 'list-register)
+(global-set-key (kbd "C-x r v") 'list-registers)
+
 ;; Scrolling
 ;; (setq scroll-step 1)
 ;; (setq scroll-conservatively 50)
@@ -218,6 +222,7 @@
 (setq desktop-load-locked-desktop t)
 
 ;; Show matching parens
+(setq show-paren-delay 0)
 (show-paren-mode t)
 (setq show-paren-style 'expression)
 (set-face-foreground 'show-paren-match-face nil)
@@ -528,7 +533,7 @@
 ;; Line numbers
 (require 'linum)
 
-(type-break-mode)
+;(type-break-mode)
 
 ;; Open recently visited files
 (require 'recentf)
@@ -651,31 +656,42 @@
 ;; (setq ffap-require-prefix t)
 
 ;; Load CEDET
-(load-file "~/emacs/cedet-1.0pre4/common/cedet.el")
+(load-file "~/emacs/cedet-1.0pre6/common/cedet.el")
 (setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
-
-;; Enabling various SEMANTIC minor modes.  See semantic/INSTALL for more ideas.
-;; Select one of the following:
-
-;; * This enables the database and idle reparse engines
-;;(semantic-load-enable-minimum-features)
-
-;; * This enables some tools useful for coding, such as summary mode
-;;   imenu support, and the semantic navigator
-;; (semantic-load-enable-code-helpers)
-
-;; * This enables even more coding tools such as the nascent intellisense mode
-;;   decoration mode, and stickyfunc mode (plus regular code helpers)
-;; (semantic-load-enable-guady-code-helpers)
-
-;; * This turns on which-func support (Plus all other code helpers)
 (semantic-load-enable-excessive-code-helpers)
 
-;; This turns on modes that aid in grammar writing and semantic tool
-;; development.  It does not enable any other features such as code
-;; helpers above.
-;; (semantic-load-enable-semantic-debugging-helpers)
+(setq senator-minor-mode-name "SN")
+(setq semantic-imenu-auto-rebuild-directory-indexes nil)
+(global-srecode-minor-mode 1)
+(global-semantic-mru-bookmark-mode 1)
+(require 'semantic-decorate-include)
+(require 'semantic-ia)
+(require 'eassist)
+
+;; customisation of modes
+(defun my-cedet-hook ()
+  (local-set-key [(control return)] 'semantic-ia-complete-symbol-menu)
+  (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
+  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
+  (local-set-key "\C-c=" 'semantic-decoration-include-visit)
+
+  (local-set-key "\C-cj" 'semantic-ia-fast-jump)
+  (local-set-key "\C-cq" 'semantic-ia-show-doc)
+  (local-set-key "\C-cs" 'semantic-ia-show-summary)
+  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
+
+(add-hook 'c-mode-common-hook 'my-cedet-hook)
+(add-hook 'lisp-mode-hook 'my-cedet-hook)
+(add-hook 'emacs-lisp-mode-hook 'my-cedet-hook)
+
+(custom-set-variables
+ '(semantic-idle-scheduler-idle-time 3)
+ '(semantic-self-insert-show-completion-function (lambda nil (semantic-ia-complete-symbol-menu (point))))
+ '(global-semantic-tag-folding-mode t nil (semantic-util-modes)))
+;(global-semantic-folding-mode 1)
+
+(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
 
 (defun my-semanticdb-minor-mode-p ()
   "Query if the current buffer has Semanticdb mode enabled."
@@ -783,8 +799,12 @@ Otherwise, analyses point position and answers."
 (ido-mode t)
 (ido-everywhere t)
 (setq ido-enable-flex-matching t)
-(setq ido-use-filename-at-point t)
 (setq ido-max-prospects 6)
+(setq ido-case-fold t)
+(setq ido-use-filename-at-point nil)
+(setq ido-use-url-at-point nil)
+(setq ido-confirm-unique-completion t)
+
 (add-to-list 'ido-ignore-buffers ".*\\.log")
 (add-to-list 'ido-ignore-buffers ".*_flymake.*")
 (add-to-list 'ido-ignore-buffers "_region_.tex")
@@ -965,9 +985,6 @@ directory, select directory. Lastly the file is opened."
 ;; (org-remember-insinuate)
 ;; (setq org-default-notes-file "~/todo.org")
 ;; (define-key global-map "\C-cr" 'org-remember)
-
-;; Keywiz quiz
-(autoload 'keywiz "keywiz")
 
 ;; Browse the kill ring
 (autoload 'browse-kill-ring "browse-kill-ring")
@@ -1638,6 +1655,13 @@ Returns nil if no differences found, 't otherwise."
 
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ff 'find-function)
+
+(defun my-done ()
+  (interactive)
+  (server-edit)
+  (make-frame-invisible nil t))
+
+(global-set-key (kbd "C-x C-c") 'my-done)
 
 (server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)
