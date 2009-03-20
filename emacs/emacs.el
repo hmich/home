@@ -531,7 +531,7 @@
 (dot-mode t)
 
 ;; Line numbers
-(require 'linum)
+;(require 'linum)
 
 ;; Open recently visited files
 (require 'recentf)
@@ -658,7 +658,7 @@
 (load-file "~/emacs/cedet-1.0pre6/common/cedet.el")
 (setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
-(semantic-load-enable-excessive-code-helpers)
+(semantic-load-enable-code-helpers)
 
 (setq senator-minor-mode-name "SN")
 (setq semantic-imenu-auto-rebuild-directory-indexes nil)
@@ -671,10 +671,13 @@
 ;; customisation of modes
 (defun my-cedet-hook ()
   (local-set-key [(control return)] 'semantic-ia-complete-symbol-menu)
+  (local-set-key (kbd "M-m") 'eassist-list-methods)
   (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
   (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
   (local-set-key "\C-c=" 'semantic-decoration-include-visit)
 
+  (local-set-key "\M-g"  'semantic-ia-fast-jump)
+  (global-set-key "\M-g"  'semantic-ia-fast-jump)
   (local-set-key "\C-cj" 'semantic-ia-fast-jump)
   (local-set-key "\C-cq" 'semantic-ia-show-doc)
   (local-set-key "\C-cs" 'semantic-ia-show-summary)
@@ -685,59 +688,19 @@
 (add-hook 'emacs-lisp-mode-hook 'my-cedet-hook)
 
 (custom-set-variables
- '(semantic-idle-scheduler-idle-time 3)
+ '(semantic-idle-scheduler-idle-time 1)
  '(semantic-self-insert-show-completion-function (lambda nil (semantic-ia-complete-symbol-menu (point))))
  '(global-semantic-tag-folding-mode t nil (semantic-util-modes)))
 ;(global-semantic-folding-mode 1)
 
 (semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
 
-(defun my-semanticdb-minor-mode-p ()
-  "Query if the current buffer has Semanticdb mode enabled."
-  (condition-case blah
-      (and (semanticdb-minor-mode-p)
-           (eq imenu-create-index-function
-               'semantic-create-imenu-index))
-    (error nil)))
-
-(defun my-icompleting-read (prompt choices)
-  (flet ((ido-make-buffer-list (default)
-                               (setq ido-temp-list choices)))
-    (ido-read-buffer prompt)))
-
-(defun my-jump-to-function ()
-  "Jump to a function found by either Semantic or Imenu within the
-    current buffer."
-  (interactive)
-  (cond
-   ((my-semanticdb-minor-mode-p) (my-semantic-jump-to-function))
-   ((boundp 'imenu-create-index-function) (my-imenu-jump-to-function))))
-
-(defun my-imenu-jump-to-function ()
-  "Jump to a function found by Semantic within the current buffer
-    with ido-style completion."
-  (interactive)
-  (save-excursion
-    (setq imenu--index-alist (funcall imenu-create-index-function)))
-  (let ((thing (assoc
-                (my-icompleting-read "Go to: "
-                                     (mapcar #'car imenu--index-alist))
-                imenu--index-alist)))
-    (when thing
-      (funcall imenu-default-goto-function (car thing) (cdr thing))
-      (recenter))))
-
-(defun hash-table-keys (hash)
-  (let ((ret nil))
-    (maphash (lambda (k v) (push k ret)) hash)
-    ret))
-
 ;; dabbrev settings
 (setq dabbrev-case-fold-search nil)
 
 ;; Yasnippet
 (setq yas/next-field-key [(return)])
-(require 'yasnippet) ;; not yasnippet-bundle
+(require 'yasnippet)
 (yas/initialize)
 (yas/load-directory "~/emacs/snippets")
 
@@ -758,46 +721,36 @@
         try-complete-lisp-symbol
         senator-try-expand-semantic))
 
-;; Smart Tab
-(defun smart-tab (prefix)
-  "Needs `transient-mark-mode' to be on. This smart tab is
-minibuffer compliant: it acts as usual in the minibuffer.
+(defun my/yasnippet-p (ov)
+  (overlay-get ov 'yas/snippet))
 
-In all other buffers: if PREFIX is \\[universal-argument], calls
-`smart-indent'. Else if point is at the end of a symbol,
-expands it. Else calls `smart-indent'."
-  (interactive "P")
-  (if (minibufferp)
-      (if (ido-active)
-          (ido-complete)
-        (PC-complete))
-    (if (smart-tab-must-expand prefix)
-        (hippie-expand nil)
-      (smart-indent))))
+(defun my/do-inside-yasnippet-p ()
+  (when (or (find-if 'my/yasnippet-p (overlays-at (point)))
+            (find-if 'my/yasnippet-p (overlays-at (- (point) 1))))
+    (yas/next-field-group)
+    t))
 
-(defun smart-indent ()
-  "Indents region if mark is active, or current line otherwise."
-  (interactive)
-  (if mark-active
-      (indent-region (region-beginning)
-                     (region-end))
-    (indent-for-tab-command)))
+(defadvice indent-according-to-mode (around indent-and-complete activate)
+  (unless (my/do-inside-yasnippet-p)
+    ;; indent-region
+    (if mark-active
+        (indent-region (region-beginning)
+                       (region-end))
+      (progn
+        ;; completing
+        (when (looking-at "\\_>")
+          (hippie-expand nil))
+        ;; always indent line
+        ad-do-it))))
 
-(defun smart-tab-must-expand (&optional prefix)
-  "If PREFIX is \\[universal-argument], answers no.
-Otherwise, analyses point position and answers."
-  (unless (or (consp prefix)
-              mark-active)
-    (looking-at "\\_>")))
-
-(global-set-key [(tab)] 'smart-tab)
-;(define-key read-expression-map [tab] 'lisp-complete-symbol)
+(global-set-key [(tab)] 'indent-according-to-mode)
 
 ;; Ido
 (require 'ido)
 (ido-mode t)
 (ido-everywhere t)
 (setq ido-enable-flex-matching t)
+(setq ido-enable-flex-matching nil)
 (setq ido-max-prospects 6)
 (setq ido-case-fold t)
 (setq ido-use-filename-at-point nil)
@@ -1118,20 +1071,6 @@ directory, select directory. Lastly the file is opened."
                          (search-forward (char-to-string char) nil nil arg)
                          (backward-char)
                          (point))))
-
-;; Tags settings
-;; (setq trnkernel "c:\\trnkernel\\src\\")
-;; (setq tags-table-list
-;;       (list (concat trnkernel "areator") (concat trnkernel "include")))
-
-;; (defun create-tags ()
-;;   (interactive)
-;;   (let ((etags-file "\"c:\\Program Files\\Emacs-22\\emacs\\bin\\etags.exe\"")
-;;         (etags-args " - --declarations -l c++ -o "))
-;;     (shell-command (concat "c:\\cygwin\\bin\\find " (concat trnkernel "areator") " -iregex \".*\\.\\(h\\|cpp\\)\" |"
-;;                            etags-file etags-args (concat trnkernel "areator\\TAGS")))
-;;     (shell-command (concat "c:\\cygwin\\bin\\find " (concat trnkernel "include") " -iregex \".*\\.\\(h\\|cpp\\)\" |"
-;;                            etags-file etags-args (concat trnkernel "include\\TAGS")))))
 
 ;; autoindent open-*-lines
 (defvar newline-and-indent t
@@ -1466,6 +1405,8 @@ Returns nil if no differences found, 't otherwise."
   (interactive)
   (file-cache-add-directory-recursively "c:/work/src/Include")
   (file-cache-add-directory-recursively "c:/work/src/Areator/Source")
+  (semantic-add-system-include "c:/work/src/include" 'c++-mode)
+  (semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
 
   (setq areator-projects
         (apply 'append
@@ -1593,7 +1534,8 @@ Returns nil if no differences found, 't otherwise."
 ;(setq backward-delete-char-untabify-method 'untabify)
 ;(global-set-key [backspace] 'backward-delete-char-untabify)
 
-(global-set-key "\M-g" 'goto-line)
+;(global-set-key "\M-g" 'goto-line)
+
 (global-set-key "\M-o" 'open-previous-line)
 (global-set-key "\C-o" 'open-next-line)
 
@@ -1651,6 +1593,9 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control next)] 'next-multiframe-window)
 
 (global-set-key [(control return)] 'semantic-complete-jump)
+
+(require 'nav)
+(global-set-key "\C-\M-l" 'nav)
 
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ff 'find-function)
