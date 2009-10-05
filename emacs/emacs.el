@@ -4,8 +4,7 @@
 (setq emacs-path "c:/dev/emacs-22.3/")
 
 (setq load-path
-      (append  '("~/emacs/org-6.04c/lisp" "~/emacs/w3m" "~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32"
-                 "~/emacs/nxml-mode-20041004" "~/emacs/auctex" "~/emacs/remember-2.0")
+      (append  '("~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32" "~/emacs/auctex")
                load-path))
 
 (require 'cl)
@@ -18,58 +17,30 @@
 (if win32p
     (progn
       (setq inferior-lisp-program "c:/Development/lisp/clisp-2.43/clisp.exe -K full")
-      (setq haskell-program-name "C:/Development/haskell/ghc-6.8.3/bin/ghci.exe")
+      (setq haskell-program-name "C:/dev/haskell/ghc-6.10.1/bin/ghci.exe")
       (setq common-lisp-hyperspec-root "file:c:/Development/Lisp/HyperSpec/")
 
       ;(setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(setq font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
       ;(setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
+      ;(setq font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
 
-      (setq font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
       (setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
-      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
-      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
-      ;; (set-frame-font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
-
-      ;(set-frame-font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(set-frame-font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
 
-      ;; Localization
-      ;; (prefer-coding-system 'cp1251)
-      ;;     (set-clipboard-coding-system 'cp1251)
-      ;;     (set-default-coding-systems 'cp1251)
-      ;;     (set-keyboard-coding-system 'cp1251)
-      ;;     (set-terminal-coding-system 'cp1251)
-      ;;     (set-selection-coding-system 'cp1251)
-      ;;     (set-w32-system-coding-system 'cp1251)
-
-      ;; Использовать окружение UTF-8
       (set-language-environment 'UTF-8)
-
-      ;; UTF-8 для вывода на экран
       (set-terminal-coding-system 'utf-8)
-
-      ;; UTF-8 для ввода с клавиатуры
       (set-keyboard-coding-system 'utf-8)
-
-      ;; UTF-8 для работы с буфером обмена X (не работает в emacs 21!)
       (setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING))
 
-      ;; Необходима поддержка кодировок cp866 и cp1251
-      ;;(codepage-setup 1251)
       (define-coding-system-alias 'windows-1251 'cp1251)
-      ;(codepage-setup 866)
 
-      ;; Установки автоопределения кодировок
-      ;; prefer-coding-system помещает кодировку в НАЧАЛО списка предпочитаемых кодировок
-      ;; Поэтому в данном случае первой будет определяться utf-8-unix
       (prefer-coding-system 'cp866)
       (prefer-coding-system 'koi8-r-unix)
       (prefer-coding-system 'windows-1251-dos)
       (prefer-coding-system 'utf-8-unix)
 
-      ;; Клавиатурная раскладка "как в Windows" (не работает в emacs 21!)
       (setq default-input-method 'russian-computer)
 
       (setq w32-pass-lwindow-to-system nil
@@ -211,8 +182,8 @@
 (require 'generic-x)
 
 ;; Reindent after yank
-(defadvice yank (after indent-region activate)
-  (indent-region (region-beginning) (region-end) nil))
+;; (defadvice yank (after indent-region activate)
+;;   (indent-region (region-beginning) (region-end) nil))
 
 ;; Other settings
 (pc-selection-mode)
@@ -284,10 +255,6 @@
 ;; Strip trailing empty lines from a file
 (add-hook 'write-file-hooks 'delete-trailing-whitespace)
 (setq-default show-trailing-whitespace nil)
-
-(require 'w3m-load)
-(setq browse-url-browser-function 'w3m-browse-url)
-(global-set-key "\C-xm" 'browse-url-at-point)
 
 ;; Startup and exit
 (setq inhibit-startup-message t)
@@ -530,9 +497,6 @@
 (add-hook 'find-file-hooks 'dot-mode-on)
 (dot-mode t)
 
-;; Line numbers
-;(require 'linum)
-
 ;; Open recently visited files
 (require 'recentf)
 (recentf-mode t)
@@ -562,6 +526,14 @@
 (require 'dtrt-indent)
 (dtrt-indent-mode t)
 
+(defun syntax-movements-bindings ()
+  (local-set-key "\C-w" 'kill-syntax-backward)
+  (local-set-key [(control backspace)] 'kill-syntax-backward)
+  ;; (local-set-key "\C-d" 'kill-syntax-forward)
+  (local-set-key "\M-f" 'next-syntax-boundary)
+  (local-set-key "\M-b" 'prev-syntax-boundary)
+  (local-set-key "\M-d" 'kill-syntax-forward))
+
 ;; CC settings
 (setq c-tab-always-indent nil)
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
@@ -585,13 +557,11 @@
 (require 'slime)
 (slime-setup)
 
-;; Emacs-lisp
 (add-hook 'emacs-lisp-mode-hook
           (lambda ()
             (syntax-movements-bindings)))
 
 ;; XML
-(load "rng-auto.el")
 (setq auto-mode-alist
       (cons '("\\.\\(xml\\|xsl\\|rng\\|xhtml\\|csproj\\)\\'" . nxml-mode)
             auto-mode-alist))
@@ -670,7 +640,7 @@
 
 ;; customisation of modes
 (defun my-cedet-hook ()
-  (local-set-key [(control return)] 'semantic-ia-complete-symbol-menu)
+  (local-set-key [(control meta return)] 'semantic-ia-complete-symbol-menu)
   (local-set-key (kbd "M-m") 'eassist-list-methods)
   (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
   (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
@@ -808,7 +778,6 @@
   (find-file (ido-completing-read "Open file: " recentf-list nil t)))
 
 (require 'filecache)
-;; (load "iswitchb-fc")
 
 (file-cache-add-directory-recursively (concat emacs-path "lisp"))
 
@@ -863,7 +832,6 @@ directory, select directory. Lastly the file is opened."
 (autoload 'gitsum "gitsum" "Incremental git commit." t)
 
 (require 'magit)
-
 (add-hook 'magit-mode-hook
           (lambda ()
             (local-set-key [(tab)] 'magit-toggle-section)))
@@ -884,22 +852,12 @@ directory, select directory. Lastly the file is opened."
 ;; (ecb-activate)
 ;; (define-key ecb-mode-map "\C-c.d" 'ecb-dired-directory)
 
-;;(require 'icicles)
-;;(icicle-mode)
-
 (defun command-line-diff (switch)
   (let ((file1 (pop command-line-args-left))
         (file2 (pop command-line-args-left)))
     (ediff file1 file2)))
 
 (add-to-list 'command-switch-alist '("diff" . command-line-diff))
-
-;; Dired settings
-;; (defun dired-up-alternate-directory ()
-;;   (interactive)
-;;   (let* ((dir (dired-current-directory))
-;;          (up (file-name-directory (directory-file-name dir))))
-;;     (find-alternate-file up)))
 
 (put 'dired-find-alternate-file 'disabled nil)
 (setq dired-recursive-deletes 'top)
@@ -909,7 +867,7 @@ directory, select directory. Lastly the file is opened."
             (require 'dired-x)
             (require 'ls-lisp)
             (require 'w32-browser)
-            ;; (define-key dired-mode-map [(backspace)] 'dired-up-alternate-directory)
+            (define-key dired-mode-map [(backspace)] 'dired-up-directory)
             ;; (define-key dired-mode-map [(return)] 'dired-find-alternate-file)
             (define-key dired-mode-map [(backspace)] 'dired-up-directory)
             (define-key dired-mode-map "\C-xv" (lambda () (interactive) (vc-directory dired-directory dired-listing-switches)))
@@ -923,20 +881,6 @@ directory, select directory. Lastly the file is opened."
   (let ((name (buffer-file-name)))
     (when name
       (dired (file-name-directory name)))))
-
-;; The following lines are always needed.  Choose your own keys.
-;; (require 'org-install)
-;; (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-;; (define-key global-map "\C-cl" 'org-store-link)
-;; (define-key global-map "\C-ca" 'org-agenda)
-;; (setq org-agenda-files '("~/todo.org"))
-;; (setq org-log-done t)
-;; (setq org-return-follows-link t)
-
-;; (require 'remember-autoloads)
-;; (org-remember-insinuate)
-;; (setq org-default-notes-file "~/todo.org")
-;; (define-key global-map "\C-cr" 'org-remember)
 
 ;; Browse the kill ring
 (autoload 'browse-kill-ring "browse-kill-ring")
@@ -1005,18 +949,6 @@ directory, select directory. Lastly the file is opened."
       (setq i (+ i 1))
       (insert "\n")))
   (goto-char (point-min)))
-
-(defun add-backslashes (begin end)
-  "Adds two backslashes after the end of each line in a region"
-  (interactive "r")
-  (save-excursion
-    (goto-char begin)
-    (end-of-line)
-    (while (<= (point) end)
-      (insert " \\\\")
-      (setq end (+ end 3))
-      (next-line 1)
-      (end-of-line))))
 
 (defun autocompile ()
   "Compile itself if ~/.emacs"
@@ -1236,11 +1168,6 @@ read-only flag, recode, then turn it back."
    ((file-exists-p "makefile") (find-file "makefile"))
    ((file-exists-p "Makefile") (find-file "Makefile"))))
 
-(defun zoom (n)
-  "with positive N, increase the font size, otherwise decrease it"
-  (set-face-attribute 'default (selected-frame) :height
-                      (+ (face-attribute 'default :height) (* (if (> n 0) 1 -1) 10))))
-
 (defun next-syntax-boundary (&optional arg)
   (interactive "p")
   (if (< arg 0)
@@ -1266,14 +1193,6 @@ read-only flag, recode, then turn it back."
 (defun kill-syntax-backward (&optional arg)
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
-
-(defun syntax-movements-bindings ()
-  (local-set-key "\C-w" 'kill-syntax-backward)
-  (local-set-key [(control backspace)] 'kill-syntax-backward)
-  ;; (local-set-key "\C-d" 'kill-syntax-forward)
-  (local-set-key "\M-f" 'next-syntax-boundary)
-  (local-set-key "\M-b" 'prev-syntax-boundary)
-  (local-set-key "\M-d" 'kill-syntax-forward))
 
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
@@ -1401,12 +1320,15 @@ Returns nil if no differences found, 't otherwise."
   (interactive)
   (my-key-restore1 my-key-pairs))
 
+(semantic-add-system-include "c:/work/src/include" 'c++-mode)
+(semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
+(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
+(semantic-add-system-include "c:/Program Files/Microsoft SDKs/Windows/v6.0A/Include" 'c++-mode)
+
 (defun areator ()
   (interactive)
   (file-cache-add-directory-recursively "c:/work/src/Include")
   (file-cache-add-directory-recursively "c:/work/src/Areator/Source")
-  (semantic-add-system-include "c:/work/src/include" 'c++-mode)
-  (semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
 
   (setq areator-projects
         (apply 'append
@@ -1495,10 +1417,6 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control f10)] 'point-stack-pop)
 (global-set-key [f11] 'open-todo-list)
 
-;; (global-set-key [f12] 'open-new-shell)
-;; (require 'dir-shell)
-;; (global-set-key [f12] 'dir-shell-show-to-current-dir)
-;; (global-set-key [(ctrl f12)] 'shell)
 (autoload 'shell-toggle "shell-toggle")
 (autoload 'shell-toggle-cd "shell-toggle")
 (global-set-key [f12] 'shell-toggle-cd)
@@ -1531,13 +1449,8 @@ Returns nil if no differences found, 't otherwise."
                    (if rm-mark-active
                        (rm-exchange-point-and-mark p) (exchange-point-and-mark p))))
 
-;(setq backward-delete-char-untabify-method 'untabify)
-;(global-set-key [backspace] 'backward-delete-char-untabify)
-
-;(global-set-key "\M-g" 'goto-line)
-
-(global-set-key "\M-o" 'open-previous-line)
-(global-set-key "\C-o" 'open-next-line)
+(global-set-key [(control return)] 'open-previous-line)
+(global-set-key [(control shift return)] 'open-next-line)
 
 (global-set-key "\C-w" 'backward-kill-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
@@ -1553,17 +1466,12 @@ Returns nil if no differences found, 't otherwise."
 ;; (my-key-swap)
 (global-set-key (kbd "C-x !") 'delete-other-windows)
 
-(require 'buffer-stack)
+;; (require 'buffer-stack)
 ;; (global-set-key [(ctrl tab)] 'buffer-stack-bury)
 (global-set-key [(shift tab)] 'ido-switch-buffer)
 
 (global-set-key "\M-+" '(lambda() (interactive) (shrink-window -1)))
 (global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
-
-(global-set-key (kbd "C-+")     '(lambda nil (interactive) (zoom 1)))
-(global-set-key [C-kp-add]      '(lambda nil (interactive) (zoom 1)))
-(global-set-key (kbd "C--")     '(lambda nil (interactive) (zoom -1)))
-(global-set-key [C-kp-subtract] '(lambda nil (interactive) (zoom -1)))
 
 (global-set-key "\M-[" 'backward-paragraph)
 (global-set-key "\M-]" 'forward-paragraph)
@@ -1578,8 +1486,8 @@ Returns nil if no differences found, 't otherwise."
 
 (global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
 
-;; (global-set-key [C-down] 'scroll-one-line-up)
 ;; (global-set-key [C-up]  'scroll-one-line-down)
+;; (global-set-key [C-down] 'scroll-one-line-up)
 (global-set-key [(control up)] 'move-line-up)
 (global-set-key [(control down)] 'move-line-down)
 
