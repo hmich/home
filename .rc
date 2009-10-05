@@ -3,12 +3,63 @@ if [ -f ~/.aliases ]; then
 fi
 
 export EDITOR=vim
+export LESS='-iMNx4FRSX'
+
+#umask 0122
 
 if [ "$(uname)" != "Linux" ]; then
     export R=/cygdrive/c/work/src
     export DATA=$R/Areator/Source/DataProcessing
-    export LESSCHARDEF=8bcccbc.18b95.33b.
+    export LESSCHARDEF=8bcccbc.18b223.
+
     alias ff='sel -a $R/list'
+
+    open_project() {
+        SLN="$2"
+        if [ -z "$SLN" ]; then
+            SLN="$1"
+        fi
+        cygstart "$R/$1/${SLN}.sln"
+    }
+
+    alias sln_areator='open_project areator'
+    alias sln_dataprocessing='open_project areator dataprocessing'
+    alias sln_frigate='open_project frigate'
+    alias sln_logicwizard='open_project logicwizard'
+    alias sln_trngame='open_project trngame'
+    alias sln_trnkernel='open_project trnkernel'
+
+    build_project() {
+        ( cd $R/Utils/cmd_build_tools/ && cmd /c "build_$1.cmd" )
+    }
+
+    alias build_areator='time build_project areator'
+    alias build_scenes='time build_project scenes'
+    alias build_dataprocessing='time build_project dataprocessing'
+    alias build_frigate='time build_project frigate'
+    alias build_logicwizard='time build_project logicwizard'
+    alias build_trngame='time build_project trngame'
+    alias build_trnkernel='time build_project trnkernel'
+    alias build_all='time build_project all'
+
+    alias update='(cd $R && git stash && git svn rebase && git stash apply)'
+    alias commit='(cd $R && git stash && git svn dcommit && git stash apply)'
+
+    alias total='cygstart "/cygdrive/c/Program Files/totalcmd/totalcmd.exe"'
+
+    alias areator="cygstart $R/../Bin/Areator/Areator/Release/Areator.UserData.exe"
+    alias areatord="cygstart $R/../Bin/Areator/Areator/Debug/Areator.UserData.exe"
+
+    function winsh() {
+        if [ -n "$1" ]; then
+            P=${1}
+        else
+            P=.
+        fi
+        cmd /c start cmd /k "cd `cygpath -aw ${P}`"
+    }
+
+    alias start=cygstart
 fi
 
 # make less more friendly for non-text input files, see lesspipe(1)
