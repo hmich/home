@@ -1,7 +1,6 @@
 [color]
 	ui = auto
 	interactive = auto
-    #diff = false
 [user]
 	email = Igor.Akhmetov@gmail.com
 	name = Igor Akhmetov
@@ -21,3 +20,5 @@
 	autosetupmerge = true
 [core]
 	ignorecase = true
+[log]
+    date = local
