@@ -92,11 +92,14 @@ map <silent> <F11> :cnext<cr>
 
 let mapleader = ","
 nmap <silent> <leader>e :Se .<cr>
-nmap <silent> <leader>n :silent :nohlsearch<CR>
+nmap <silent> <leader>n :silent :nohlsearch<cr>
 nmap <silent> <leader>m :e Makefile<cr>
 nmap <silent> <leader>s :source $HOME/.vimrc<cr>
 nmap <silent> <leader>v :e $HOME/.vimrc<cr>
-nmap <silent> <leader>l :set nolist!<CR>
+nmap <silent> <leader>l :set nolist!<cr>
+nmap <silent> <leader>b :FuzzyFinderBuffer<cr>
+nmap <silent> <leader>f :FuzzyFinderFile<cr>
+nmap <silent> <leader>d :FuzzyFinderDir<cr>
 
 map <silent> <ESC><ESC> :q<cr>
 
