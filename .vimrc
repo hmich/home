@@ -65,7 +65,7 @@ set isk=@,48-57,_
 language C
 
 " Program editing
-set makeprg=nmake
+" set makeprg=nmake
 set tags=.\tags,.\..\tags,.\**\tags
 set cinoptions+=,:0,l1,g0
 set formatoptions+=roc
@@ -106,8 +106,8 @@ map <silent> <ESC><ESC> :q<cr>
 " map <silent> <C-Tab> <C-^>
 
 func! CppSettings()
-    map <F7> :setlocal makeprg=cl\ /EHsc\ %<cr>:w<cr>:make<cr>
-    map <C-F7> :setlocal makeprg=cl\ /EHsc\ -O2\ %<cr>:w<cr>:make<cr>
+    "map <F7> :setlocal makeprg=cl\ /EHsc\ %<cr>:w<cr>:make<cr>
+    "map <C-F7> :setlocal makeprg=cl\ /EHsc\ -O2\ %<cr>:w<cr>:make<cr>
     iab <buffer> ll long long
     iab <buffer> dbl double
     iab <buffer> vi vector< int >

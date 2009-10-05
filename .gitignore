@@ -1,11 +1,13 @@
 .backup
+.bash_history
 .bm-repository
 .emacs-places
 .emacs.d
+.lesshst
 .projects.ede
 .recentf
 .ido.last
 .viminfo
 .emacs.bmk
 .history
-.ssh/id_rsa
+.ssh

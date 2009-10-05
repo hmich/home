@@ -414,7 +414,7 @@
            (not (eq major-mode 'text-mode)))
       (hs-minor-mode)))
 
-(add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
+;(add-hook 'find-file-hooks 'maybe-turn-on-hs-mode)
 
 (defun move-line (&optional n)
   "Move current line N (1) lines up/down leaving point in place."
@@ -567,14 +567,14 @@
             auto-mode-alist))
 
 ;; Python settings
-(setq ropemacs-loaded nil)
-(add-hook 'python-mode-hook
-          (lambda ()
-            (require 'pymacs)
-            (when (not ropemacs-loaded)
-              (pymacs-load "ropemacs" "rope-")
-              (setq ropemacs-loaded t))
-            (define-key python-mode-map [backspace] 'python-backspace)))
+;; (setq ropemacs-loaded nil)
+;; (add-hook 'python-mode-hook
+;;           (lambda ()
+;;             (require 'pymacs)
+;;             (when (not ropemacs-loaded)
+;;               (pymacs-load "ropemacs" "rope-")
+;;               (setq ropemacs-loaded t))
+;;             (define-key python-mode-map [backspace] 'python-backspace)))
 
 ;; Lua settings
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
@@ -901,8 +901,7 @@ directory, select directory. Lastly the file is opened."
 (require 'htmlize)
 
 (require 'marker-visit)
-
-;; Enable useful disabled commands
+;; Enable useful disabled commands
 (put 'narrow-to-region 'disabled nil)
 (put 'erase-buffer 'disabled nil)
 
