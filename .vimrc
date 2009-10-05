@@ -44,6 +44,9 @@ set clipboard+=unnamed
 set laststatus=2
 set display+=lastline
 
+set lines=80
+set columns=140
+
 " GUI settings
 set mousehide
 set guioptions-=m
@@ -123,7 +126,6 @@ func! TexSettings()
 endfunc
 
 " Filetype specific options
-au FileType text setlocal textwidth 70
 au FileType tex call TexSettings()
 au FileType lua setlocal makeprg=lua\ %
 au FileType cpp call CppSettings()
