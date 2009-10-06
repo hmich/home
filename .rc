@@ -4,13 +4,13 @@ fi
 
 export EDITOR=vim
 export LESS='-iMNx4FRSX'
+export LESSCHARSET=utf-8
 
 #umask 0122
 
 if [ "$(uname)" != "Linux" ]; then
     export R=/cygdrive/c/work/src
     export DATA=$R/Areator/Source/DataProcessing
-    export LESSCHARDEF=8bcccbc.18b223.
 
     alias ff='sel -a $R/list'
 
