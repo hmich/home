@@ -1,9 +1,11 @@
+#!/bin/sh
+
+shopt | grep login | grep -q on && ISLOGINSHELL=1
+
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
 
-if [ -f ~/.rc ]; then
-    . ~/.rc
-fi
+[ -f ~/.rc ] && . ~/.rc
 
 # don't put duplicate lines in the history. See bash(1) for more options
 export HISTCONTROL=ignoredups
@@ -26,10 +28,3 @@ PS1='\[\033[01;34m\]\w\[\033[00m\]\$ '
 #     ;;
 # esac
 # 
-sd() {
-    DIR="$1"
-    [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
-    [ -d "$DIR" ] && pushd "$DIR" && ls
-}
-
-fortune
