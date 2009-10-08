@@ -1,6 +1,6 @@
 #!/bin/sh
 
-shopt | grep login | grep -q on && ISLOGINSHELL=1
+shopt | grep login_shell | grep -q on && ISLOGINSHELL=1
 
 # If not running interactively, don't do anything
 [ -z "$PS1" ] && return
@@ -15,7 +15,9 @@ export HISTCONTROL=ignoreboth
 export PROMPT_COMMAND='history -a'
 export CDPATH='.:~/.:/media:/etc:/usr:/usr/local'
 
-shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
+shopt -s autocd checkjobs checkwinsize cdable_vars cdspell \
+         cmdhist dirspell dotglob globstar histappend \
+         no_empty_cmd_completion 2>/dev/null
 
 PS1='\[\033[01;34m\]\w\[\033[00m\]\$ '
 
