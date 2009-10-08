@@ -4,8 +4,7 @@
 (setq emacs-path "c:/dev/emacs-22.3/")
 
 (setq load-path
-      (append  '("~/emacs/org-6.04c/lisp" "~/emacs/w3m" "~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32"
-                 "~/emacs/nxml-mode-20041004" "~/emacs/auctex" "~/emacs/remember-2.0")
+      (append  '("~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32" "~/emacs/auctex")
                load-path))
 
 (require 'cl)
@@ -18,58 +17,30 @@
 (if win32p
     (progn
       (setq inferior-lisp-program "c:/Development/lisp/clisp-2.43/clisp.exe -K full")
-      (setq haskell-program-name "C:/Development/haskell/ghc-6.8.3/bin/ghci.exe")
+      (setq haskell-program-name "C:/dev/haskell/ghc-6.10.1/bin/ghci.exe")
       (setq common-lisp-hyperspec-root "file:c:/Development/Lisp/HyperSpec/")
 
       ;(setq font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(setq font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
       ;(setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
+      ;(setq font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
 
-      (setq font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
       (setq font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
 
-      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
-      ;; (set-frame-font "-outline-DejaVu Sans Mono-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
-      ;; (set-frame-font "-outline-Lucida Sans Typewriter-normal-r-normal-normal-13-97-96-96-c-*-iso8859-5")
-
-      ;(set-frame-font "-outline-Lucida Console-normal-r-normal-normal-15-112-96-96-c-90-iso8859-5")
       ;(set-frame-font "-outline-Consolas-normal-r-normal-normal-15-112-96-96-c-*-iso8859-5")
 
-      ;; Localization
-      ;; (prefer-coding-system 'cp1251)
-      ;;     (set-clipboard-coding-system 'cp1251)
-      ;;     (set-default-coding-systems 'cp1251)
-      ;;     (set-keyboard-coding-system 'cp1251)
-      ;;     (set-terminal-coding-system 'cp1251)
-      ;;     (set-selection-coding-system 'cp1251)
-      ;;     (set-w32-system-coding-system 'cp1251)
-
-      ;; Использовать окружение UTF-8
       (set-language-environment 'UTF-8)
-
-      ;; UTF-8 для вывода на экран
       (set-terminal-coding-system 'utf-8)
-
-      ;; UTF-8 для ввода с клавиатуры
       (set-keyboard-coding-system 'utf-8)
-
-      ;; UTF-8 для работы с буфером обмена X (не работает в emacs 21!)
       (setq x-select-request-type '(UTF8_STRING COMPOUND_TEXT TEXT STRING))
 
-      ;; Необходима поддержка кодировок cp866 и cp1251
-      ;;(codepage-setup 1251)
       (define-coding-system-alias 'windows-1251 'cp1251)
-      ;(codepage-setup 866)
 
-      ;; Установки автоопределения кодировок
-      ;; prefer-coding-system помещает кодировку в НАЧАЛО списка предпочитаемых кодировок
-      ;; Поэтому в данном случае первой будет определяться utf-8-unix
       (prefer-coding-system 'cp866)
       (prefer-coding-system 'koi8-r-unix)
       (prefer-coding-system 'windows-1251-dos)
       (prefer-coding-system 'utf-8-unix)
 
-      ;; Клавиатурная раскладка "как в Windows" (не работает в emacs 21!)
       (setq default-input-method 'russian-computer)
 
       (setq w32-pass-lwindow-to-system nil
@@ -197,6 +168,10 @@
 (setq mark-ring-max 100)
 (setq kill-ring-max 200)
 
+;; View registers
+(require 'list-register)
+(global-set-key (kbd "C-x r v") 'list-registers)
+
 ;; Scrolling
 ;; (setq scroll-step 1)
 ;; (setq scroll-conservatively 50)
@@ -218,6 +193,7 @@
 (setq desktop-load-locked-desktop t)
 
 ;; Show matching parens
+(setq show-paren-delay 0)
 (show-paren-mode t)
 (setq show-paren-style 'expression)
 (set-face-foreground 'show-paren-match-face nil)
@@ -279,10 +255,6 @@
 ;; Strip trailing empty lines from a file
 (add-hook 'write-file-hooks 'delete-trailing-whitespace)
 (setq-default show-trailing-whitespace nil)
-
-(require 'w3m-load)
-(setq browse-url-browser-function 'w3m-browse-url)
-(global-set-key "\C-xm" 'browse-url-at-point)
 
 ;; Startup and exit
 (setq inhibit-startup-message t)
@@ -525,11 +497,6 @@
 (add-hook 'find-file-hooks 'dot-mode-on)
 (dot-mode t)
 
-;; Line numbers
-(require 'linum)
-
-;; (type-break-mode)
-
 ;; Open recently visited files
 (require 'recentf)
 (recentf-mode t)
@@ -559,6 +526,14 @@
 (require 'dtrt-indent)
 (dtrt-indent-mode t)
 
+(defun syntax-movements-bindings ()
+  (local-set-key "\C-w" 'kill-syntax-backward)
+  (local-set-key [(control backspace)] 'kill-syntax-backward)
+  ;; (local-set-key "\C-d" 'kill-syntax-forward)
+  (local-set-key "\M-f" 'next-syntax-boundary)
+  (local-set-key "\M-b" 'prev-syntax-boundary)
+  (local-set-key "\M-d" 'kill-syntax-forward))
+
 ;; CC settings
 (setq c-tab-always-indent nil)
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
@@ -582,13 +557,11 @@
 (require 'slime)
 (slime-setup)
 
-;; Emacs-lisp
 (add-hook 'emacs-lisp-mode-hook
           (lambda ()
             (syntax-movements-bindings)))
 
 ;; XML
-(load "rng-auto.el")
 (setq auto-mode-alist
       (cons '("\\.\\(xml\\|xsl\\|rng\\|xhtml\\|csproj\\)\\'" . nxml-mode)
             auto-mode-alist))
@@ -652,78 +625,52 @@
 ;; (setq ffap-require-prefix t)
 
 ;; Load CEDET
-(load-file "~/emacs/cedet-1.0pre4/common/cedet.el")
+(load-file "~/emacs/cedet-1.0pre6/common/cedet.el")
 (setq semanticdb-default-save-directory "~/backup")
 (require 'semantic-complete)
+(semantic-load-enable-code-helpers)
 
-;; Enabling various SEMANTIC minor modes.  See semantic/INSTALL for more ideas.
-;; Select one of the following:
+(setq senator-minor-mode-name "SN")
+(setq semantic-imenu-auto-rebuild-directory-indexes nil)
+(global-srecode-minor-mode 1)
+(global-semantic-mru-bookmark-mode 1)
+(require 'semantic-decorate-include)
+(require 'semantic-ia)
+(require 'eassist)
 
-;; * This enables the database and idle reparse engines
-;;(semantic-load-enable-minimum-features)
+;; customisation of modes
+(defun my-cedet-hook ()
+  (local-set-key [(control meta return)] 'semantic-ia-complete-symbol-menu)
+  (local-set-key (kbd "M-m") 'eassist-list-methods)
+  (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
+  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
+  (local-set-key "\C-c=" 'semantic-decoration-include-visit)
 
-;; * This enables some tools useful for coding, such as summary mode
-;;   imenu support, and the semantic navigator
-;; (semantic-load-enable-code-helpers)
+  (local-set-key "\M-g"  'semantic-ia-fast-jump)
+  (global-set-key "\M-g"  'semantic-ia-fast-jump)
+  (local-set-key "\C-cj" 'semantic-ia-fast-jump)
+  (local-set-key "\C-cq" 'semantic-ia-show-doc)
+  (local-set-key "\C-cs" 'semantic-ia-show-summary)
+  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
 
-;; * This enables even more coding tools such as the nascent intellisense mode
-;;   decoration mode, and stickyfunc mode (plus regular code helpers)
-;; (semantic-load-enable-guady-code-helpers)
+(add-hook 'c-mode-common-hook 'my-cedet-hook)
+(add-hook 'lisp-mode-hook 'my-cedet-hook)
+(add-hook 'emacs-lisp-mode-hook 'my-cedet-hook)
 
-;; * This turns on which-func support (Plus all other code helpers)
-(semantic-load-enable-excessive-code-helpers)
+(custom-set-variables
+ '(semantic-idle-scheduler-idle-time 1)
+ '(semantic-self-insert-show-completion-function (lambda nil (semantic-ia-complete-symbol-menu (point))))
+ '(global-semantic-tag-folding-mode t nil (semantic-util-modes)))
+;(global-semantic-folding-mode 1)
 
-;; This turns on modes that aid in grammar writing and semantic tool
-;; development.  It does not enable any other features such as code
-;; helpers above.
-;; (semantic-load-enable-semantic-debugging-helpers)
-
-(defun my-semanticdb-minor-mode-p ()
-  "Query if the current buffer has Semanticdb mode enabled."
-  (condition-case blah
-      (and (semanticdb-minor-mode-p)
-           (eq imenu-create-index-function
-               'semantic-create-imenu-index))
-    (error nil)))
-
-(defun my-icompleting-read (prompt choices)
-  (flet ((ido-make-buffer-list (default)
-                               (setq ido-temp-list choices)))
-    (ido-read-buffer prompt)))
-
-(defun my-jump-to-function ()
-  "Jump to a function found by either Semantic or Imenu within the
-    current buffer."
-  (interactive)
-  (cond
-   ((my-semanticdb-minor-mode-p) (my-semantic-jump-to-function))
-   ((boundp 'imenu-create-index-function) (my-imenu-jump-to-function))))
-
-(defun my-imenu-jump-to-function ()
-  "Jump to a function found by Semantic within the current buffer
-    with ido-style completion."
-  (interactive)
-  (save-excursion
-    (setq imenu--index-alist (funcall imenu-create-index-function)))
-  (let ((thing (assoc
-                (my-icompleting-read "Go to: "
-                                     (mapcar #'car imenu--index-alist))
-                imenu--index-alist)))
-    (when thing
-      (funcall imenu-default-goto-function (car thing) (cdr thing))
-      (recenter))))
-
-(defun hash-table-keys (hash)
-  (let ((ret nil))
-    (maphash (lambda (k v) (push k ret)) hash)
-    ret))
+(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
 
 ;; dabbrev settings
 (setq dabbrev-case-fold-search nil)
 
 ;; Yasnippet
 (setq yas/next-field-key [(return)])
-(require 'yasnippet) ;; not yasnippet-bundle
+(require 'yasnippet)
 (yas/initialize)
 (yas/load-directory "~/emacs/snippets")
 
@@ -744,48 +691,42 @@
         try-complete-lisp-symbol
         senator-try-expand-semantic))
 
-;; Smart Tab
-(defun smart-tab (prefix)
-  "Needs `transient-mark-mode' to be on. This smart tab is
-minibuffer compliant: it acts as usual in the minibuffer.
+(defun my/yasnippet-p (ov)
+  (overlay-get ov 'yas/snippet))
 
-In all other buffers: if PREFIX is \\[universal-argument], calls
-`smart-indent'. Else if point is at the end of a symbol,
-expands it. Else calls `smart-indent'."
-  (interactive "P")
-  (if (minibufferp)
-      (if (ido-active)
-          (ido-complete)
-        (PC-complete))
-    (if (smart-tab-must-expand prefix)
-        (hippie-expand nil)
-      (smart-indent))))
+(defun my/do-inside-yasnippet-p ()
+  (when (or (find-if 'my/yasnippet-p (overlays-at (point)))
+            (find-if 'my/yasnippet-p (overlays-at (- (point) 1))))
+    (yas/next-field-group)
+    t))
 
-(defun smart-indent ()
-  "Indents region if mark is active, or current line otherwise."
-  (interactive)
-  (if mark-active
-      (indent-region (region-beginning)
-                     (region-end))
-    (indent-for-tab-command)))
+(defadvice indent-according-to-mode (around indent-and-complete activate)
+  (unless (my/do-inside-yasnippet-p)
+    ;; indent-region
+    (if mark-active
+        (indent-region (region-beginning)
+                       (region-end))
+      (progn
+        ;; completing
+        (when (looking-at "\\_>")
+          (hippie-expand nil))
+        ;; always indent line
+        ad-do-it))))
 
-(defun smart-tab-must-expand (&optional prefix)
-  "If PREFIX is \\[universal-argument], answers no.
-Otherwise, analyses point position and answers."
-  (unless (or (consp prefix)
-              mark-active)
-    (looking-at "\\_>")))
-
-(global-set-key [(tab)] 'smart-tab)
-;(define-key read-expression-map [tab] 'lisp-complete-symbol)
+(global-set-key [(tab)] 'indent-according-to-mode)
 
 ;; Ido
 (require 'ido)
 (ido-mode t)
 (ido-everywhere t)
 (setq ido-enable-flex-matching t)
-(setq ido-use-filename-at-point t)
+(setq ido-enable-flex-matching nil)
 (setq ido-max-prospects 6)
+(setq ido-case-fold t)
+(setq ido-use-filename-at-point nil)
+(setq ido-use-url-at-point nil)
+(setq ido-confirm-unique-completion t)
+
 (add-to-list 'ido-ignore-buffers ".*\\.log")
 (add-to-list 'ido-ignore-buffers ".*_flymake.*")
 (add-to-list 'ido-ignore-buffers "_region_.tex")
@@ -837,7 +778,6 @@ Otherwise, analyses point position and answers."
   (find-file (ido-completing-read "Open file: " recentf-list nil t)))
 
 (require 'filecache)
-;; (load "iswitchb-fc")
 
 (file-cache-add-directory-recursively (concat emacs-path "lisp"))
 
@@ -892,7 +832,6 @@ directory, select directory. Lastly the file is opened."
 (autoload 'gitsum "gitsum" "Incremental git commit." t)
 
 (require 'magit)
-
 (add-hook 'magit-mode-hook
           (lambda ()
             (local-set-key [(tab)] 'magit-toggle-section)))
@@ -913,22 +852,12 @@ directory, select directory. Lastly the file is opened."
 ;; (ecb-activate)
 ;; (define-key ecb-mode-map "\C-c.d" 'ecb-dired-directory)
 
-;;(require 'icicles)
-;;(icicle-mode)
-
 (defun command-line-diff (switch)
   (let ((file1 (pop command-line-args-left))
         (file2 (pop command-line-args-left)))
     (ediff file1 file2)))
 
 (add-to-list 'command-switch-alist '("diff" . command-line-diff))
-
-;; Dired settings
-;; (defun dired-up-alternate-directory ()
-;;   (interactive)
-;;   (let* ((dir (dired-current-directory))
-;;          (up (file-name-directory (directory-file-name dir))))
-;;     (find-alternate-file up)))
 
 (put 'dired-find-alternate-file 'disabled nil)
 (setq dired-recursive-deletes 'top)
@@ -938,7 +867,7 @@ directory, select directory. Lastly the file is opened."
             (require 'dired-x)
             (require 'ls-lisp)
             (require 'w32-browser)
-            ;; (define-key dired-mode-map [(backspace)] 'dired-up-alternate-directory)
+            (define-key dired-mode-map [(backspace)] 'dired-up-directory)
             ;; (define-key dired-mode-map [(return)] 'dired-find-alternate-file)
             (define-key dired-mode-map [(backspace)] 'dired-up-directory)
             (define-key dired-mode-map "\C-xv" (lambda () (interactive) (vc-directory dired-directory dired-listing-switches)))
@@ -952,23 +881,6 @@ directory, select directory. Lastly the file is opened."
   (let ((name (buffer-file-name)))
     (when name
       (dired (file-name-directory name)))))
-
-;; The following lines are always needed.  Choose your own keys.
-;; (require 'org-install)
-;; (add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-;; (define-key global-map "\C-cl" 'org-store-link)
-;; (define-key global-map "\C-ca" 'org-agenda)
-;; (setq org-agenda-files '("~/todo.org"))
-;; (setq org-log-done t)
-;; (setq org-return-follows-link t)
-
-;; (require 'remember-autoloads)
-;; (org-remember-insinuate)
-;; (setq org-default-notes-file "~/todo.org")
-;; (define-key global-map "\C-cr" 'org-remember)
-
-;; Keywiz quiz
-(autoload 'keywiz "keywiz")
 
 ;; Browse the kill ring
 (autoload 'browse-kill-ring "browse-kill-ring")
@@ -1037,18 +949,6 @@ directory, select directory. Lastly the file is opened."
       (insert "\n")))
   (goto-char (point-min)))
 
-(defun add-backslashes (begin end)
-  "Adds two backslashes after the end of each line in a region"
-  (interactive "r")
-  (save-excursion
-    (goto-char begin)
-    (end-of-line)
-    (while (<= (point) end)
-      (insert " \\\\")
-      (setq end (+ end 3))
-      (next-line 1)
-      (end-of-line))))
-
 (defun autocompile ()
   "Compile itself if ~/.emacs"
   (interactive)
@@ -1102,20 +1002,6 @@ directory, select directory. Lastly the file is opened."
                          (search-forward (char-to-string char) nil nil arg)
                          (backward-char)
                          (point))))
-
-;; Tags settings
-;; (setq trnkernel "c:\\trnkernel\\src\\")
-;; (setq tags-table-list
-;;       (list (concat trnkernel "areator") (concat trnkernel "include")))
-
-;; (defun create-tags ()
-;;   (interactive)
-;;   (let ((etags-file "\"c:\\Program Files\\Emacs-22\\emacs\\bin\\etags.exe\"")
-;;         (etags-args " - --declarations -l c++ -o "))
-;;     (shell-command (concat "c:\\cygwin\\bin\\find " (concat trnkernel "areator") " -iregex \".*\\.\\(h\\|cpp\\)\" |"
-;;                            etags-file etags-args (concat trnkernel "areator\\TAGS")))
-;;     (shell-command (concat "c:\\cygwin\\bin\\find " (concat trnkernel "include") " -iregex \".*\\.\\(h\\|cpp\\)\" |"
-;;                            etags-file etags-args (concat trnkernel "include\\TAGS")))))
 
 ;; autoindent open-*-lines
 (defvar newline-and-indent t
@@ -1281,11 +1167,6 @@ read-only flag, recode, then turn it back."
    ((file-exists-p "makefile") (find-file "makefile"))
    ((file-exists-p "Makefile") (find-file "Makefile"))))
 
-(defun zoom (n)
-  "with positive N, increase the font size, otherwise decrease it"
-  (set-face-attribute 'default (selected-frame) :height
-                      (+ (face-attribute 'default :height) (* (if (> n 0) 1 -1) 10))))
-
 (defun next-syntax-boundary (&optional arg)
   (interactive "p")
   (if (< arg 0)
@@ -1311,14 +1192,6 @@ read-only flag, recode, then turn it back."
 (defun kill-syntax-backward (&optional arg)
   (interactive "p")
   (kill-region (point) (progn (prev-syntax-boundary arg) (point))))
-
-(defun syntax-movements-bindings ()
-  (local-set-key "\C-w" 'kill-syntax-backward)
-  (local-set-key [(control backspace)] 'kill-syntax-backward)
-  ;; (local-set-key "\C-d" 'kill-syntax-forward)
-  (local-set-key "\M-f" 'next-syntax-boundary)
-  (local-set-key "\M-b" 'prev-syntax-boundary)
-  (local-set-key "\M-d" 'kill-syntax-forward))
 
 (defun diff-buffer-with-associated-file ()
   "View the differences between BUFFER and its associated file.
@@ -1446,6 +1319,11 @@ Returns nil if no differences found, 't otherwise."
   (interactive)
   (my-key-restore1 my-key-pairs))
 
+(semantic-add-system-include "c:/work/src/include" 'c++-mode)
+(semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
+(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
+(semantic-add-system-include "c:/Program Files/Microsoft SDKs/Windows/v6.0A/Include" 'c++-mode)
+
 (defun areator ()
   (interactive)
   (file-cache-add-directory-recursively "c:/work/src/Include")
@@ -1538,10 +1416,6 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control f10)] 'point-stack-pop)
 (global-set-key [f11] 'open-todo-list)
 
-;; (global-set-key [f12] 'open-new-shell)
-;; (require 'dir-shell)
-;; (global-set-key [f12] 'dir-shell-show-to-current-dir)
-;; (global-set-key [(ctrl f12)] 'shell)
 (autoload 'shell-toggle "shell-toggle")
 (autoload 'shell-toggle-cd "shell-toggle")
 (global-set-key [f12] 'shell-toggle-cd)
@@ -1574,12 +1448,8 @@ Returns nil if no differences found, 't otherwise."
                    (if rm-mark-active
                        (rm-exchange-point-and-mark p) (exchange-point-and-mark p))))
 
-;(setq backward-delete-char-untabify-method 'untabify)
-;(global-set-key [backspace] 'backward-delete-char-untabify)
-
-(global-set-key "\M-g" 'goto-line)
-(global-set-key "\M-o" 'open-previous-line)
-(global-set-key "\C-o" 'open-next-line)
+(global-set-key [(control return)] 'open-previous-line)
+(global-set-key [(control shift return)] 'open-next-line)
 
 (global-set-key "\C-w" 'backward-kill-word)
 (global-set-key "\C-a" 'beginning-or-indentation)
@@ -1595,17 +1465,12 @@ Returns nil if no differences found, 't otherwise."
 ;; (my-key-swap)
 (global-set-key (kbd "C-x !") 'delete-other-windows)
 
-(require 'buffer-stack)
+;; (require 'buffer-stack)
 ;; (global-set-key [(ctrl tab)] 'buffer-stack-bury)
 (global-set-key [(shift tab)] 'ido-switch-buffer)
 
 (global-set-key "\M-+" '(lambda() (interactive) (shrink-window -1)))
 (global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
-
-(global-set-key (kbd "C-+")     '(lambda nil (interactive) (zoom 1)))
-(global-set-key [C-kp-add]      '(lambda nil (interactive) (zoom 1)))
-(global-set-key (kbd "C--")     '(lambda nil (interactive) (zoom -1)))
-(global-set-key [C-kp-subtract] '(lambda nil (interactive) (zoom -1)))
 
 (global-set-key "\M-[" 'backward-paragraph)
 (global-set-key "\M-]" 'forward-paragraph)
@@ -1620,8 +1485,8 @@ Returns nil if no differences found, 't otherwise."
 
 (global-set-key [(super s)] '(lambda () (interactive) (switch-to-buffer "*scratch*")))
 
-;; (global-set-key [C-down] 'scroll-one-line-up)
 ;; (global-set-key [C-up]  'scroll-one-line-down)
+;; (global-set-key [C-down] 'scroll-one-line-up)
 (global-set-key [(control up)] 'move-line-up)
 (global-set-key [(control down)] 'move-line-down)
 
@@ -1636,8 +1501,18 @@ Returns nil if no differences found, 't otherwise."
 
 (global-set-key [(control return)] 'semantic-complete-jump)
 
+(require 'nav)
+(global-set-key "\C-\M-l" 'nav)
+
 (defalias 'igs 'ido-goto-symbol)
 (defalias 'ff 'find-function)
+
+(defun my-done ()
+  (interactive)
+  (server-edit)
+  (make-frame-invisible nil t))
+
+(global-set-key (kbd "C-x C-c") 'my-done)
 
 (server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)

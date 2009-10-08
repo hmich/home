@@ -44,6 +44,9 @@ set clipboard+=unnamed
 set laststatus=2
 set display+=lastline
 
+set lines=80
+set columns=140
+
 " GUI settings
 set mousehide
 set guioptions-=m
@@ -89,11 +92,14 @@ map <silent> <F11> :cnext<cr>
 
 let mapleader = ","
 nmap <silent> <leader>e :Se .<cr>
-nmap <silent> <leader>n :silent :nohlsearch<CR>
+nmap <silent> <leader>n :silent :nohlsearch<cr>
 nmap <silent> <leader>m :e Makefile<cr>
 nmap <silent> <leader>s :source $HOME/.vimrc<cr>
 nmap <silent> <leader>v :e $HOME/.vimrc<cr>
-nmap <silent> <leader>l :set nolist!<CR>
+nmap <silent> <leader>l :set nolist!<cr>
+nmap <silent> <leader>b :FuzzyFinderBuffer<cr>
+nmap <silent> <leader>f :FuzzyFinderFile<cr>
+nmap <silent> <leader>d :FuzzyFinderDir<cr>
 
 map <silent> <ESC><ESC> :q<cr>
 
@@ -123,7 +129,6 @@ func! TexSettings()
 endfunc
 
 " Filetype specific options
-au FileType text setlocal textwidth 70
 au FileType tex call TexSettings()
 au FileType lua setlocal makeprg=lua\ %
 au FileType cpp call CppSettings()

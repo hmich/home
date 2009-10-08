@@ -1,24 +1,31 @@
-if [ -f ~/.aliases ]; then
-   . ~/.aliases
-fi
+#!/bin/sh
+# vim:set ft=sh:
+
+[ -f ~/.aliases ] && . ~/.aliases
 
 export EDITOR=vim
+export LESS='-iMNx4FRSX'
+export LESSCHARSET=utf-8
 
-if [ "$(uname)" != "Linux" ]; then
-    export R=/cygdrive/c/work/src
-    export DATA=$R/Areator/Source/DataProcessing
-    export LESSCHARDEF=8bcccbc.18b95.33b.
-    alias ff='sel -a $R/list'
-fi
+LOCALRC=".rc.$(hostname)"
+[ -f "$LOCALRC" ] && . "$LOCALRC"
 
 # make less more friendly for non-text input files, see lesspipe(1)
 [ -x /usr/bin/lesspipe.sh ] && eval "$(lesspipe.sh)"
 
 tty > /dev/null && stty -ixon -ixoff
 
+[ ! $ISLOGINSHELL ] && which fortune >/dev/null && fortune
+
+sd() {
+    DIR="$1"
+    [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
+    [ -d "$DIR" ] && pushd "$DIR" && ls
+}
+
 SSH_ENV="$HOME/.ssh/environment"
 
-function start_agent {
+start_agent() {
     echo "Initializing new SSH agent..."
     /usr/bin/ssh-agent | sed 's/^echo/#echo/' > "${SSH_ENV}"
     echo succeeded
@@ -31,8 +38,8 @@ function start_agent {
 if [ -f "${SSH_ENV}" ]; then
     . "${SSH_ENV}" > /dev/null
     ps -ef | grep ${SSH_AGENT_PID} | grep ssh-agent$ > /dev/null || {
-        start_agent;
+        start_agent
     }
 else
-    start_agent;
+    start_agent
 fi

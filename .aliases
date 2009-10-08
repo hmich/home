@@ -26,7 +26,6 @@ alias free='free -mt'
 alias h=history
 alias d=popd
 
-alias less='less -iMNx4'
 alias rless="LESSOPEN='|tac %s' less"
 alias L=less
 
@@ -52,7 +51,8 @@ alias svnco='git svn rebase'
 
 alias sta=cygstart
 
-alias sgit='git diff --name-only | sel'
+alias dgit='git diff --name-only | sel'
+alias sgit='git st | sed -n "/^#\t/s/^#\t\(modified:   \|deleted:    \)*//p" | sel'
 alias sfind='find | sel'
 alias sdirs='eval "cd $(dirs -p | sel)"'
 
