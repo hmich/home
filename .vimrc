@@ -63,7 +63,7 @@ language C
 
 " Program editing
 " set makeprg=nmake
-set tags=.\tags,.\..\tags,.\**\tags
+set tags=~/tags,./tags,./../tags,./**/tags
 set cinoptions+=,:0,l1,g0
 set formatoptions+=roc
 
