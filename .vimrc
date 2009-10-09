@@ -66,7 +66,7 @@ language C
 
 " Program editing
 " set makeprg=nmake
-set tags=.\tags,.\..\tags,.\**\tags
+set tags=~/tags,./tags,./../tags,./**/tags
 set cinoptions+=,:0,l1,g0
 set formatoptions+=roc
 
@@ -84,7 +84,7 @@ imap <silent> <F2> <C-O>:w<cr>
 map <silent> <F2> :w<cr>
 imap <silent> <C-S> <C-O>:w<cr>
 map <silent> <C-S> :w<cr>
-map <silent> <F5> :!%:r<cr>
+map <silent> <F5> :!./%:r<cr>
 map <silent> <F7> :w<cr>:make<cr>
 map <silent> <F9> :clist<cr>
 map <silent> <F10> :cprev<cr>

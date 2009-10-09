@@ -15,7 +15,7 @@ fi
 
 xmonad & 
 PID=$!
-urxvt -name "term" -e screen &
+#urxvt -name "term" -e screen &
 #emacs &
 #opera &
 #urxvt -name ncmpc -e ncmpc &
