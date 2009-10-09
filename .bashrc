@@ -19,6 +19,13 @@ shopt -s checkwinsize cdable_vars cdspell cmdhist dotglob histappend
 
 PS1='\[\033[01;34m\]\w\[\033[00m\]\$ '
 
+[ -f ~/.bash.git-completion ] && . ~/.bash.git-completion
+
+if [ "\$(type -t __git_ps1)" ]; then
+    PS1="\$(__git_ps1 '(%s) ')$PS1"
+fi
+
+
 # If this is an xterm set the title to user@host:dir
 # case "$TERM" in
 # xterm*|rxvt*)
