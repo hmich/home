@@ -9,7 +9,7 @@ defflow         off
 defutf8         on
 escape          ^Ss
 #maptimeout      0
-defencoding     cp1251
+defencoding     utf-8
 
 # Color table:
 #  Black             .    leave color unchanged
