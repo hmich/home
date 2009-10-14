@@ -27,6 +27,7 @@ if [ "\$(type -t __git_ps1)" ]; then
     PS1="\$(__git_ps1 '(%s) ')$PS1"
 fi
 
+PS1='`_ret=$?; if test $_ret -ne 0; then echo "$_ret:"; set ?=$_ret; unset _ret; fi`'"$PS1"
 
 # If this is an xterm set the title to user@host:dir
 # case "$TERM" in
