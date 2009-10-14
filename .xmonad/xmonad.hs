@@ -74,7 +74,7 @@ myFocusedBorderColor = "#ff0000"
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 
     -- launch a terminal
-    [ ((modMask .|. controlMask, xK_Return), spawn $ XMonad.terminal conf)
+    [ ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)
 
     -- launch dmenu
     , ((modMask,               xK_p     ), spawn "exe=`dmenu_path | dmenu -nb black -nf white -fn $FONT` && eval \"exec $exe\"")
@@ -139,6 +139,7 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     , ((modMask              , xK_d    ), viewEmptyWorkspace)
     , ((modMask .|. shiftMask, xK_d    ), tagToEmptyWorkspace)
     , ((modMask, xK_o), runOrRaise "opera" (className =? "Opera"))
+    , ((modMask, xK_f), runOrRaise "firefox" (className =? "Shiretoko"))
     , ((modMask, xK_e), runOrRaise "emacs" (className =? "Emacs"))
     , ((modMask, xK_Return), runOrRaise "urxvt -name term -e screen" (resource =? "term"))
     , ((modMask, xK_c), runOrRaise "urxvt -name ncmpc -e ncmpc" (resource =? "ncmpc"))
@@ -241,6 +242,7 @@ myManageHook = composeAll
     , resource  =? "kdesktop"       --> doIgnore
     , className =? "Emacs"          --> doF (W.shift "emacs")
     , className =? "Opera"          --> doF (W.shift "web")
+    , className =? "Shiretoko"      --> doF (W.shift "web")
     , resource  =? "term"           --> doF (W.shift "work")
     , resource  =? "ncmpc"          --> doF (W.shift "system")
     , resource  =? "htop"           --> doF (W.shift "system")
