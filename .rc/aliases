@@ -16,6 +16,7 @@ alias d=popd
 
 alias reboot='sudo reboot'
 alias halt='sudo halt'
+alias svim='sudo vim'
 
 alias rless="LESSOPEN='|tac %s' less"
 alias L=less
