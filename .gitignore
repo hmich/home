@@ -3,6 +3,7 @@
 .bm-repository
 .emacs-places
 .emacs.d
+.histfile
 .lesshst
 .projects.ede
 .recentf
@@ -11,3 +12,4 @@
 .emacs.bmk
 .history
 .ssh
+.subversion/auth
