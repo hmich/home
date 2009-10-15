@@ -107,7 +107,7 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     , ((modMask,               xK_m     ), windows W.focusMaster  )
 
     -- Swap the focused window and the master window
-    , ((modMask .|. shiftMask, xK_Return), windows W.swapMaster)
+    , ((modMask .|. controlMask, xK_Return), windows W.swapMaster)
 
     -- Swap the focused window with the next window
     , ((modMask .|. shiftMask, xK_j     ), windows W.swapDown  )
@@ -162,7 +162,7 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     ++
 
     -- mod4-[1..9] @@ Switch to window N
-    [((modMask .|. controlMask , k), focusNth i)
+    [((modMask, k), focusNth i)
          | (i, k) <- zip [0 .. 9] [xK_1 ..]]
     ++
 
