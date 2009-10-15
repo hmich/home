@@ -1,8 +1,6 @@
 ;; Enter the debugger each time an error is found
 (setq debug-on-error t)
 
-(setq emacs-path "c:/dev/emacs-22.3/")
-
 (setq load-path
       (append  '("~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32" "~/emacs/auctex")
                load-path))
@@ -778,8 +776,6 @@
   (find-file (ido-completing-read "Open file: " recentf-list nil t)))
 
 (require 'filecache)
-
-(file-cache-add-directory-recursively (concat emacs-path "lisp"))
 
 (defun file-cache-add-this-file ()
   (and buffer-file-name
