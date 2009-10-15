@@ -1,0 +1,20 @@
+#!/bin/sh
+
+source ~/.rc/functions
+
+[ $SHELL != "bash" ] && return
+
+# don't put duplicate lines in the history. See bash(1) for more options
+export HISTCONTROL=ignoredups
+# ... and ignore same sucessive entries.
+export HISTCONTROL=ignoreboth
+
+export PROMPT_COMMAND='history -a'
+export CDPATH='.:~/.:/media:/etc:/usr:/usr/local'
+
+[ -f /etc/bash_completion ] && . /etc/bash_completion
+
+shopt -s autocd checkjobs checkwinsize cdable_vars cdspell \
+         cmdhist dirspell dotglob globstar histappend \
+         no_empty_cmd_completion 2>/dev/null
+

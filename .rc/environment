@@ -1,0 +1,5 @@
+#!/bin/sh
+
+export EDITOR=vim
+[ -d ~/bin ] && export PATH=~/bin:$PATH
+[ -d ~/share/man ] && export MANPATH=~/share/man:$MANPATH

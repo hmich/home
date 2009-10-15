@@ -1,5 +1,7 @@
 #!/bin/sh
 
+[ "$(hostname)" != "hmich" ] && return
+
 export R=/cygdrive/c/work/src
 export DATA=$R/Areator/Source/DataProcessing
 

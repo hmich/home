@@ -1,15 +1,3 @@
-# enable color support of ls and also add handy aliases
-if [ "$TERM" != "dumb" ]; then
-    eval "`dircolors -b`"
-fi
-
-LSFLAGS="-shAF --color=auto --group-directories-first"
-
-# some more ls aliases
-alias ll="ls $LSFLAGS -l"
-alias ls="ls $LSFLAGS"
-alias l=ls
-
 alias ..='pushd .. && ls'
 alias ...='pushd ... && ls'
 alias cd=pushd

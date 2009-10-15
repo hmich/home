@@ -1,0 +1,7 @@
+#!/bin/sh
+
+export LESS='-iMNx4FRSX'
+export LESSCHARSET=utf-8
+
+# make less more friendly for non-text input files, see lesspipe(1)
+[ -x /usr/bin/lesspipe.sh ] && eval "$(lesspipe.sh)"
