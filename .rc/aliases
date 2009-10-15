@@ -14,6 +14,9 @@ alias free='free -mt'
 alias h=history
 alias d=popd
 
+alias reboot='sudo reboot'
+alias halt='sudo halt'
+
 alias rless="LESSOPEN='|tac %s' less"
 alias L=less
 
