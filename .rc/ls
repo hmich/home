@@ -5,7 +5,7 @@ if [ "$TERM" != "dumb" ]; then
     eval "`dircolors -b`"
 fi
 
-LSFLAGS="-shAF --color=auto --group-directories-first"
+LSFLAGS="-shAF --color=auto --group-directories-first --show-control-chars"
 
 alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
