@@ -52,3 +52,5 @@ select_hist() {
     history | tac | awk '{$1="";print}' | sel
 }
 alias shistory='eval "$(select_hist)"'
+
+alias hinstall='runghc Setup clean && runghc Setup configure --user --prefix=$HOME && runghc Setup build && runghc Setup install --user'
