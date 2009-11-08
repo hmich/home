@@ -1,26 +1,27 @@
 [color]
-	ui = auto
-	interactive = auto
+    ui = auto
+    interactive = auto
+    diff = auto
 [user]
-	email = Igor.Akhmetov@gmail.com
-	name = Igor Akhmetov
+    email = Igor.Akhmetov@gmail.com
+    name = Igor Akhmetov
 [alias]
-	co = checkout
-	ci = commit
-	st = status
-	staged = diff --cached
-	unstaged = diff
-	both = diff HEAD
-	oneline = log --pretty=oneline
-	amend = commit --amend
-	svnco = svn rebase
-	svnci = svn dcommit
-	graph = log --graph
+    co = checkout
+    ci = commit
+    st = status
+    staged = diff --cached
+    unstaged = diff
+    both = diff HEAD
+    oneline = log --pretty=oneline
+    amend = commit --amend
+    svnco = svn rebase
+    svnci = svn dcommit
+    graph = log --graph
 [branch]
-	autosetupmerge = true
+    autosetupmerge = true
 [core]
-	ignorecase = true
+    ignorecase = true
 [log]
     date = local
 [push]
-	default = tracking
+    default = tracking
