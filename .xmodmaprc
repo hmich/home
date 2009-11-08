@@ -1,2 +1,3 @@
-remove Lock = Caps_Lock
-keysym Caps_Lock = Control_L
+remove lock = Caps_Lock
+add control = Caps_Lock
+pointer = 3 2 1 
