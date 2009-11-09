@@ -98,3 +98,5 @@ bindkey ^[8 select 7
 bindkey ^[9 select 8
 
 bindkey ^[c screen
+
+termcapinfo xterm|xterms|xs|rxvt ti@:te@
