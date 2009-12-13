@@ -6,6 +6,7 @@
     email = Igor.Akhmetov@gmail.com
     name = Igor Akhmetov
 [alias]
+    d = diff
     co = checkout
     ci = commit
     st = status
