@@ -13,3 +13,6 @@
 .history
 .ssh
 .subversion/auth
+bin/google
+.rc/google
+emacs/google.el
