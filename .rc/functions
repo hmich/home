@@ -1,5 +1,8 @@
 #!/bin/sh
 
+[ "$FUNCTIONS_LOADED" ] && return
+FUNCTIONS_LOADED=1
+
 sd() {
     DIR="$1"
     [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
