@@ -142,6 +142,33 @@
 ;; Cursor settings
 (when (fboundp 'blink-cursor-mode) (blink-cursor-mode -1))
 
+;; Change cursor color according to mode; inspired by
+;; http://www.emacswiki.org/emacs/ChangingCursorDynamically
+(setq djcb-read-only-color       "gray")
+;; valid values are t, nil, box, hollow, bar, (bar . WIDTH), hbar,
+;; (hbar. HEIGHT); see the docs for set-cursor-type
+
+(setq djcb-read-only-cursor-type 'hbar)
+(setq djcb-overwrite-color       "red")
+(setq djcb-overwrite-cursor-type 'box)
+(setq djcb-normal-color          "yellow")
+(setq djcb-normal-cursor-type    'bar)
+
+(defun djcb-set-cursor-according-to-mode ()
+  "change cursor color and type according to some minor modes."
+  (cond
+    (buffer-read-only
+      (set-cursor-color djcb-read-only-color)
+      (setq cursor-type djcb-read-only-cursor-type))
+    (overwrite-mode
+      (set-cursor-color djcb-overwrite-color)
+      (setq cursor-type djcb-overwrite-cursor-type))
+    (t
+      (set-cursor-color djcb-normal-color)
+      (setq cursor-type djcb-normal-cursor-type))))
+
+(add-hook 'post-command-hook 'djcb-set-cursor-according-to-mode)
+
 ;; Completions settings
 (partial-completion-mode t)
 (eval-after-load "icomplete" '(progn (require 'icomplete+)))
@@ -187,8 +214,11 @@
 (pc-selection-mode)
 (transient-mark-mode 1)
 (global-font-lock-mode t)
-(setq bookmark-save-flag 1)
 (setq desktop-load-locked-desktop t)
+
+;; Bookmarks
+(setq bookmark-save-flag 1)
+(setq bookmark-default-file "~/.emacs.d/bookmarks")
 
 ;; Show matching parens
 (setq show-paren-delay 0)
@@ -265,7 +295,7 @@
 ;; Text settings
 (setq default-tab-width 4)
 (setq-default indent-tabs-mode nil)
-(setq-default fill-column 70)
+;; (setq-default fill-column 70)
 (setq-default indicate-empty-lines t)
 (add-hook 'text-mode-hook 'turn-on-auto-fill)
 
@@ -374,10 +404,6 @@
 (setq calendar-week-start-day 1)
 (setq mark-holidays-in-calendar t)
 
-;; Customization settings
-(setq custom-file "~/emacs/custom.el")
-(load custom-file 'noerror)
-
 ;; EDiff
 (setq ediff-custom-diff-options "-u")
 (setq ediff-window-setup-function 'ediff-setup-windows-plain)
@@ -436,18 +462,23 @@
   (interactive "p")
   (move-line (if (null n) 1 n)))
 
-(defadvice kill-ring-save (before slickcopy activate compile)
-  "When called interactively with no active region, copy a single line instead."
-  (interactive
-   (list (line-beginning-position)
-         (line-beginning-position 2))))
+;; Copy the current line when nothing is selected
+;; (defadvice kill-ring-save (before slick-copy activate compile)
+;;   "When called interactively with no active region, copy a single line instead."
+;;   (interactive
+;;    (if mark-active
+;;        (progn
+;;          (message "hi")
+;;          (list (region-beginning) (region-end)))
+;;      (message "Copied line")
+;;      (list (line-beginning-position) (line-beginning-position 2)))))
 
-(defadvice kill-region (before slickcut activate compile)
-  "When called interactively with no active region, kill a single line instead."
-  (interactive
-   (if mark-active (list (region-beginning) (region-end))
-     (list (line-beginning-position)
-           (line-beginning-position 2)))))
+;; (defadvice kill-region (before slick-cut activate compile)
+;;   "When called interactively with no active region, kill a single line instead."
+;;   (interactive
+;;     (if mark-active (list (region-beginning) (region-end))
+;;       (list (line-beginning-position)
+;;         (line-beginning-position 2)))))
 
 ;; Jump to start of the search when searching forward
 (defun my-goto-match-beginning ()
@@ -501,17 +532,17 @@
 (setq recentf-max-saved-items 500)
 
 ;; Compilation settings
-(defun compile-autoclose (buffer string)
-  (cond ((and (string-match "finished" string)
-              (not (string-match "warning" string)))
-         (message "Build successful")
-         (delete-window (get-buffer-window buffer t)))
-        (t
-         (message "Compilation exited abnormally: %s" string))))
+;; (defun compile-autoclose (buffer string)
+;;   (cond ((and (string-match "finished" string)
+;;               (not (string-match "warning" string)))
+;;          (message "Build successful")
+;;          (delete-window (get-buffer-window buffer t)))
+;;         (t
+;;          (message "Compilation exited abnormally: %s" string))))
 
 (setq compilation-scroll-output t)
 (setq compilation-window-height 15)
-(setq compilation-finish-functions 'compile-autoclose)
+;;(setq compilation-finish-functions 'compile-autoclose)
 (add-hook 'compilation-mode-hook (lambda () (next-error-follow-minor-mode)))
 
 ;; Occur
@@ -618,50 +649,50 @@
 (require 'wc)
 
 ;; Find file at point
-;; (require 'ffap)
-;; (ffap-bindings)
+;;(require 'ffap)
+;;(ffap-bindings)
 ;; (setq ffap-require-prefix t)
 
 ;; Load CEDET
-(load-file "~/emacs/cedet-1.0pre6/common/cedet.el")
-(setq semanticdb-default-save-directory "~/backup")
-(require 'semantic-complete)
-(semantic-load-enable-code-helpers)
-
-(setq senator-minor-mode-name "SN")
-(setq semantic-imenu-auto-rebuild-directory-indexes nil)
-(global-srecode-minor-mode 1)
-(global-semantic-mru-bookmark-mode 1)
-(require 'semantic-decorate-include)
-(require 'semantic-ia)
-(require 'eassist)
-
-;; customisation of modes
-(defun my-cedet-hook ()
-  (local-set-key [(control meta return)] 'semantic-ia-complete-symbol-menu)
-  (local-set-key (kbd "M-m") 'eassist-list-methods)
-  (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
-  (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
-  (local-set-key "\C-c=" 'semantic-decoration-include-visit)
-
-  (local-set-key "\M-g"  'semantic-ia-fast-jump)
-  (global-set-key "\M-g"  'semantic-ia-fast-jump)
-  (local-set-key "\C-cj" 'semantic-ia-fast-jump)
-  (local-set-key "\C-cq" 'semantic-ia-show-doc)
-  (local-set-key "\C-cs" 'semantic-ia-show-summary)
-  (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
-
-(add-hook 'c-mode-common-hook 'my-cedet-hook)
-(add-hook 'lisp-mode-hook 'my-cedet-hook)
-(add-hook 'emacs-lisp-mode-hook 'my-cedet-hook)
-
-(custom-set-variables
- '(semantic-idle-scheduler-idle-time 1)
- '(semantic-self-insert-show-completion-function (lambda nil (semantic-ia-complete-symbol-menu (point))))
- '(global-semantic-tag-folding-mode t nil (semantic-util-modes)))
-;(global-semantic-folding-mode 1)
-
-(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
+;; (load-file "~/emacs/cedet-1.0pre6/common/cedet.el")
+;; (setq semanticdb-default-save-directory "~/backup")
+;; (require 'semantic-complete)
+;; (semantic-load-enable-code-helpers)
+;;
+;; (setq senator-minor-mode-name "SN")
+;; (setq semantic-imenu-auto-rebuild-directory-indexes nil)
+;; (global-srecode-minor-mode 1)
+;; (global-semantic-mru-bookmark-mode 1)
+;; (require 'semantic-decorate-include)
+;; (require 'semantic-ia)
+;; (require 'eassist)
+;;
+;; ;; customisation of modes
+;; (defun my-cedet-hook ()
+;;   (local-set-key [(control meta return)] 'semantic-ia-complete-symbol-menu)
+;;   (local-set-key (kbd "M-m") 'eassist-list-methods)
+;;   (local-set-key "\C-c?" 'semantic-ia-complete-symbol)
+;;   (local-set-key "\C-c>" 'semantic-complete-analyze-inline)
+;;   (local-set-key "\C-c=" 'semantic-decoration-include-visit)
+;;
+;;   (local-set-key "\M-g"  'semantic-ia-fast-jump)
+;;   (global-set-key "\M-g"  'semantic-ia-fast-jump)
+;;   (local-set-key "\C-cj" 'semantic-ia-fast-jump)
+;;   (local-set-key "\C-cq" 'semantic-ia-show-doc)
+;;   (local-set-key "\C-cs" 'semantic-ia-show-summary)
+;;   (local-set-key "\C-cp" 'semantic-analyze-proto-impl-toggle))
+;;
+;; (add-hook 'c-mode-common-hook 'my-cedet-hook)
+;; (add-hook 'lisp-mode-hook 'my-cedet-hook)
+;; (add-hook 'emacs-lisp-mode-hook 'my-cedet-hook)
+;;
+;; (custom-set-variables
+;;  '(semantic-idle-scheduler-idle-time 1)
+;;  '(semantic-self-insert-show-completion-function (lambda nil (semantic-ia-complete-symbol-menu (point))))
+;;  '(global-semantic-tag-folding-mode t nil (semantic-util-modes)))
+;; ;(global-semantic-folding-mode 1)
+;;
+;; (semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
 
 ;; dabbrev settings
 (setq dabbrev-case-fold-search nil)
@@ -686,8 +717,8 @@
         try-complete-file-name-partially
         try-complete-file-name
         try-complete-lisp-symbol-partially
-        try-complete-lisp-symbol
-        senator-try-expand-semantic))
+        try-complete-lisp-symbol))
+        ;;senator-try-expand-semantic))
 
 (defun my/yasnippet-p (ov)
   (overlay-get ov 'yas/snippet))
@@ -699,19 +730,21 @@
     t))
 
 (defadvice indent-according-to-mode (around indent-and-complete activate)
-  (unless (my/do-inside-yasnippet-p)
-    ;; indent-region
-    (if mark-active
-        (indent-region (region-beginning)
-                       (region-end))
-      (progn
-        ;; completing
-        (when (looking-at "\\_>")
-          (hippie-expand nil))
-        ;; always indent line
-        ad-do-it))))
+  (cond ((minibufferp (current-buffer)) (ido-complete))
+        ((my/do-inside-yasnippet-p))
+        (t
+         ;; indent-region
+         (if mark-active
+             (indent-region (region-beginning)
+                            (region-end))
+           (progn
+             ;; completing
+             (when (looking-at "\\_>")
+               (hippie-expand nil))
+             ;; always indent line
+             ad-do-it)))))
 
-(global-set-key [(tab)] 'indent-according-to-mode)
+;(global-set-key [(tab)] 'indent-according-to-mode)
 
 ;; Ido
 (require 'ido)
@@ -816,11 +849,11 @@ directory, select directory. Lastly the file is opened."
            (setq ido-temp-list choices))))
     (ido-read-buffer prompt)))
 
-(eval-after-load
-    "filecache"
-  '(progn
-     (message "Loading file cache...")
-     (file-cache-add-directory-using-find "~/")))
+;;(eval-after-load
+;;    "filecache"
+;;  '(progn
+;;     (message "Loading file cache...")
+;;     (file-cache-add-directory-using-find "~/")))
 
 ;; VCS
 (require 'git)
@@ -897,7 +930,7 @@ directory, select directory. Lastly the file is opened."
 (require 'htmlize)
 
 (require 'marker-visit)
-;; Enable useful disabled commands
+;; Enable useful disabled commands
 (put 'narrow-to-region 'disabled nil)
 (put 'erase-buffer 'disabled nil)
 
@@ -1315,10 +1348,10 @@ Returns nil if no differences found, 't otherwise."
   (interactive)
   (my-key-restore1 my-key-pairs))
 
-(semantic-add-system-include "c:/work/src/include" 'c++-mode)
-(semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
-(semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
-(semantic-add-system-include "c:/Program Files/Microsoft SDKs/Windows/v6.0A/Include" 'c++-mode)
+;; (semantic-add-system-include "c:/work/src/include" 'c++-mode)
+;; (semantic-add-system-include "c:/work/src/areator/source/include" 'c++-mode)
+;; (semantic-add-system-include "c:/dev/microsoft/Microsoft Visual Studio 9.0/VC/include" 'c++-mode)
+;; (semantic-add-system-include "c:/Program Files/Microsoft SDKs/Windows/v6.0A/Include" 'c++-mode)
 
 (defun areator ()
   (interactive)
@@ -1385,7 +1418,7 @@ Returns nil if no differences found, 't otherwise."
 
   (add-hook 'c-mode-common-hook 'areator-hook t))
 
-;;(global-set-key [(alt k)] 'my-mark-line)
+(global-set-key [(alt k)] 'my-mark-line)
 
 ;; Functional keys
 (global-set-key [f1] 'other-window)
@@ -1456,6 +1489,7 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key "\C-x\C-b" 'ibuffer)
 (global-set-key "\C-xb" 'ibuffer)
 (global-set-key "\C-\M-j" 'my-join-line)
+(global-set-key [(control shift j)] 'my-join-line)
 (global-set-key "\C-z" 'zap-until-char)
 
 ;; (my-key-swap)
@@ -1464,12 +1498,13 @@ Returns nil if no differences found, 't otherwise."
 ;; (require 'buffer-stack)
 ;; (global-set-key [(ctrl tab)] 'buffer-stack-bury)
 (global-set-key [(shift tab)] 'ido-switch-buffer)
+(global-set-key [backtab] 'ido-switch-buffer)
 
 (global-set-key "\M-+" '(lambda() (interactive) (shrink-window -1)))
 (global-set-key "\M--" '(lambda() (interactive) (shrink-window 1)))
 
-(global-set-key "\M-[" 'backward-paragraph)
-(global-set-key "\M-]" 'forward-paragraph)
+;;(global-set-key "\M-[" 'backward-paragraph)
+;;(global-set-key "\M-]" 'forward-paragraph)
 
 (global-set-key "\M-k" 'kill-buffer-with-window)
 (global-set-key [(meta ?`)] 'dot-emacs)
@@ -1495,7 +1530,14 @@ Returns nil if no differences found, 't otherwise."
 (global-set-key [(control prior)] 'previous-multiframe-window)
 (global-set-key [(control next)] 'next-multiframe-window)
 
-(global-set-key [(control return)] 'semantic-complete-jump)
+(normal-erase-is-backspace-mode nil)
+
+;;(global-set-key [(control return)] 'semantic-complete-jump)
+
+;; Google stuff
+;; Customization settings
+(setq custom-file "~/emacs/custom.el")
+(load custom-file 'noerror)
 
 (require 'nav)
 (global-set-key "\C-\M-l" 'nav)
@@ -1508,7 +1550,7 @@ Returns nil if no differences found, 't otherwise."
   (server-edit)
   (make-frame-invisible nil t))
 
-(global-set-key (kbd "C-x C-c") 'my-done)
+;; (global-set-key (kbd "C-x C-c") 'my-done)
 
 (server-start)
 (remove-hook 'kill-buffer-query-functions 'server-kill-buffer-query-function)
