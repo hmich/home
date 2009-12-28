@@ -1,6 +1,11 @@
 #!/bin/sh
 
-SSH_ENV="$HOME/.ssh/environment"
+SSH_DIR="$HOME/.ssh"
+SSH_ENV="$SSH_DIR/environment"
+
+if [ ! -d "$SSH_DIR" ]; then
+    mkdir "$SSH_DIR"
+fi
 
 start_agent() {
     echo "Initializing new SSH agent..."
