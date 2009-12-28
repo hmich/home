@@ -7,8 +7,8 @@ silencewait     15
 defscrollback   10000
 defflow         off
 defutf8         on
-escape          ^Ss
 #maptimeout      0
+escape          ^Tt
 defencoding     utf-8
 
 # Color table:
