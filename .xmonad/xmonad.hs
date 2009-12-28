@@ -24,7 +24,7 @@ import qualified Data.Map        as M
 -- The preferred terminal program, which is used in a binding below and by
 -- certain contrib modules.
 --
-myTerminal      = "urxvt"
+myTerminal      = "runterm"
 
 -- Width of the window border in pixels.
 --
@@ -74,7 +74,7 @@ myFocusedBorderColor = "#ff0000"
 myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
 
     -- launch a terminal
-    [ ((modMask .|. shiftMask, xK_Return), spawn $ XMonad.terminal conf)
+    [ ((modMask,               xK_Return), spawn $ XMonad.terminal conf)
 
     -- launch dmenu
     , ((modMask,               xK_p     ), spawn "exe=`dmenu_path | dmenu -nb black -nf white -fn $FONT` && eval \"exec $exe\"")
@@ -116,10 +116,13 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     , ((modMask .|. shiftMask, xK_k     ), windows W.swapUp    )
 
     -- Shrink the master area
-    , ((modMask,               xK_h     ), sendMessage Shrink)
+    , ((modMask .|. shiftMask, xK_h     ), sendMessage Shrink)
 
     -- Expand the master area
-    , ((modMask,               xK_l     ), sendMessage Expand)
+    , ((modMask .|. shiftMask, xK_l     ), sendMessage Expand)
+
+    -- Lock the screen
+    , ((modMask, xK_l                   ), spawn "xscreensaver-command -lock")
 
     -- Push window back into tiling
     , ((modMask,               xK_t     ), withFocused $ windows . W.sink)
@@ -131,18 +134,18 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     , ((modMask              , xK_period), sendMessage (IncMasterN (-1)))
 
     -- Quit xmonad
-    , ((modMask .|. shiftMask, xK_q     ), io (exitWith ExitSuccess))
+    -- , ((modMask .|. shiftMask, xK_q     ), io (exitWith ExitSuccess))
 
     -- Restart xmonad
-    , ((modMask              , xK_q     ), restart "xmonad" True)
+    , ((modMask .|. shiftMask, xK_q    ), restart "xmonad" True)
 
     , ((modMask              , xK_d    ), viewEmptyWorkspace)
     , ((modMask .|. shiftMask, xK_d    ), tagToEmptyWorkspace)
     , ((modMask, xK_o), runOrRaise "opera" (className =? "Opera"))
-    , ((modMask, xK_f), runOrRaise "firefox" (className =? "Shiretoko"))
+    , ((modMask, xK_f), runOrRaise "firefox" (className =? "Firefox"))
     , ((modMask, xK_e), runOrRaise "emacs" (className =? "Emacs"))
-    , ((modMask, xK_Return), runOrRaise "urxvt -name term -e screen" (resource =? "term"))
-    , ((modMask, xK_c), runOrRaise "urxvt -name ncmpc -e ncmpc" (resource =? "ncmpc"))
+    --, ((modMask, xK_Return), runOrRaise myTerminal (resource =? "screen"))
+    --, ((modMask, xK_c), runOrRaise (myTerminal ++ " -name ncmpc -e ncmpc") (resource =? "ncmpc"))
 
     , ((modMask, xK_F8), spawn "mocp -G")
     , ((modMask, xK_F9), spawn "mocp -v -10")
@@ -170,10 +173,9 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
     -- mod-{w,e,r}, Switch to physical/Xinerama screens 1, 2, or 3
     -- mod-shift-{w,e,r}, Move client to screen 1, 2, or 3
     --
-    --[((m .|. modMask, key), screenWorkspace sc >>= flip whenJust (windows . f))
-    --    | (key, sc) <- zip [xK_w, xK_e, xK_r] [0..]
-    --    , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]]
-    []
+    [((m .|. modMask, key), screenWorkspace sc >>= flip whenJust (windows . f))
+        | (key, sc) <- zip [xK_q, xK_w] [0..]
+        , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]]
 
 
 ------------------------------------------------------------------------
@@ -205,7 +207,7 @@ myMouseBindings (XConfig {XMonad.modMask = modMask}) = M.fromList $
 -- which denotes layout choice.
 --
 myLayout = avoidStruts $ onWorkspace "system" (Mirror tiled) $
-           Full ||| tiled ||| Mirror tiled ||| simpleTabbed
+           tiled ||| Mirror tiled ||| Full ||| simpleTabbed
   where
      -- default tiling algorithm partitions the screen into two panes
      tiled   = Tall nmaster delta ratio
