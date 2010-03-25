@@ -13,11 +13,11 @@ SAVEHIST=10000
 #export CDPATH=".:/etc"
 
 # Directories
-setopt auto_cd auto_pushd cdable_vars pushd_ignore_dups
+setopt auto_cd auto_pushd pushd_ignore_dups
 
 # Completion
 #setopt auto_list auto_menu
-setopt always_to_end auto_name_dirs
+setopt always_to_end auto_name_dirs no_auto_menu
 setopt list_packed complete_in_word no_list_ambiguous
 
 # Expansion and globbing
@@ -74,3 +74,11 @@ if [ "$TERM" = screen ]; then
     bindkey "^[[A"  up-line-or-search
     bindkey "^[[B"  down-line-or-search
 fi
+
+is_login_shell() {
+    setopt | grep -q login
+}
+
+for file in ~/.rc/*; do
+    source "$file"
+done
