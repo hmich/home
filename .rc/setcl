@@ -1,0 +1,163 @@
+#!/bin/bash
+#
+# Copyright 2008 Google Inc. All Rights Reserved.
+# Author: scottkirkwood@google.com (Scott Kirkwood)A
+#
+# remember the CL this console is using.
+# Simplify commands with this.
+# Example:
+# setcl 12345
+# g4list
+# g4 list -c 12345
+# ...
+
+G4="g4"
+SUBMITQ="/home/build/nonconf/google3/orkut/frontend/scripts/submit_queue.sh"
+
+########################################
+# This is this file's namesake
+# set the CURRENT_CL variable
+########################################
+function setcl_func {
+  echo "${G4} pending | grep $1"
+  desc=$(${G4} pending|grep -o "Change $1.*$")
+  if (( ! $? )); then
+    echo $desc
+    xtitle_func $desc
+    export CURRENT_CL=$1
+  else
+    echo "Failed ${G4} pending"
+  fi
+}
+alias setcl='setcl_func'
+
+########################################
+# Either change the CURRENT_CL or
+# Create a new CL and set the CURRENT_CL
+########################################
+function g4change_func {
+  if [[ -n $CURRENT_CL ]] ; then
+    add_dash_c "${G4} change"
+  else
+    echo "${G4} change"
+    # Swap stdout and stderr first
+    newcl=$(${G4} change 3>&1 1>&2 2>&3 | egrep -o "[0-9]{7,8}")
+    if (( ! $? )); then
+      echo "New CL ${newcl}"
+      setcl_func ${newcl}
+    else
+      echo "Failed ${G4} change"
+    fi
+  fi
+}
+alias g4change='g4change_func'
+
+########################################
+# Submit the CL then unset CURRENT_CL
+########################################
+function g4submit_func {
+  add_dash_c "${G4} submit";
+  if (( ! $? )); then
+    echo "Submitted"
+    xtitle_func "Submitted $CURRENT_CL"
+    unset CURRENT_CL
+  fi
+}
+alias g4submit='g4submit_func'
+
+########################################
+# Submit-queue the CL then unset CURRENT_CL
+########################################
+function submit_q_func {
+  add_dash_c "${SUBMITQ}" $@;
+  if (( ! $? && $# )); then
+    echo "Submitted"
+    xtitle_func "Submitted $CURRENT_CL"
+    unset CURRENT_CL
+  fi
+}
+alias submit-q='submit_q_func'
+
+########################################
+# Open all the files in a CL with gvim
+# Note: my gvim also has an alias and passes
+# the -p parameter (open in tabs)
+########################################
+function g4vim_func {
+  echo "${G4} list -c $CURRENT_CL"
+  files=$(${G4} list -c $CURRENT_CL|egrep -o "//depot/google3/[^#]+"|cut -b17-)
+  echo "Opening Files: $files"
+  gvim $files
+}
+alias g4vim='g4vim_func'
+
+########################################
+# Handle the g4 mail -b "" special case
+# If you pass nothing it'll pass -b ""
+# It's difficult to pass -b "" with bash!
+########################################
+function g4mail_func {
+  $(echo "$*"|grep -q '\-b')
+  if (( ! $? )); then
+    add_dash_c "${G4} mail" $@
+  else
+    echo "${G4} mail -c $CURRENT_CL -b \"\" $@"
+    ${G4} mail -c $CURRENT_CL -b "" $@
+  fi
+}
+alias g4mail='g4mail_func'
+
+########################################
+# Add -c $CURRENT_CL to any function
+# Arguments:
+#   list of parameters before the -c $CURRENT_CL
+#   list of parameters after the -c $CURRENT_CL if any.
+########################################
+function add_dash_c {
+  cmd="$1"
+  shift
+  if [[ -n $CURRENT_CL ]]; then
+    echo "${cmd} -c $CURRENT_CL $@"
+    ${cmd} -c $CURRENT_CL $@
+  else
+    echo "${cmd} $@"
+    ${cmd} $@
+  fi
+}
+
+alias g4add='add_dash_c "${G4} add"'
+alias g4cp='add_dash_c "${G4} cp"'
+alias g4drm='add_dash_c "${G4} rm"'
+alias g4diff='add_dash_c "${G4} diff"'
+alias g4edit='add_dash_c "${G4} edit"'
+alias g4less='add_dash_c "${G4" less"'
+alias g4lint='add_dash_c "${G4} lint"'
+alias g4list='add_dash_c "${G4} list"'
+alias g4pending='${G4} pending'
+alias g4reopen='add_dash_c "${G4} reopen"'
+alias g4tkdiff='add_dash_c "${G4} tkdiff"'
+
+########################################
+# Change the console's title
+########################################
+function xtitle_func() {
+  case "$TERM" in
+     *term | rxvt)
+       echo -n -e "\033]0;$*\007" ;;
+     *)
+       ;;
+  esac
+}
+alias xtitle='xtitle_func'
+
+########################################
+# Change the directory, change the title too
+# unless CURRENT_CL is set.
+########################################
+function safe_cd_func {
+  if [[ -z $CURRENT_CL ]]; then
+    echo -ne "\033]2;$2\007"
+  fi
+  cd $1;
+}
+alias safecd='safe_cd_func'

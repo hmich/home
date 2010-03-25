@@ -1,5 +1,6 @@
 #!/bin/sh
 
-export EDITOR=vim
+export EDITOR="emacsclient -t"
+export VISUAL=$EDITOR
 [ -d ~/bin ] && export PATH=~/bin:$PATH
 [ -d ~/share/man ] && export MANPATH=~/share/man:$MANPATH

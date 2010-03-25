@@ -1,35 +1,51 @@
 #!/bin/sh
 
-[ "$FUNCTIONS_LOADED" ] && return
-FUNCTIONS_LOADED=1
+#[ -n $FUNCTIONS_LOADED ] && return
+# FUNCTIONS_LOADED=1
 
-sd() {
-    DIR="$1"
-    [ -z "$DIR" ] && DIR="$(sel)" && if [ ! -d "$DIR" ]; then DIR="$(dirname "$DIR")"; fi
-    [ -d "$DIR" ] && pushd "$DIR" && ls
-}
+# sd() {
+#     dir="$1"
+#     [ -z "$dir" ] && dir="$(sel)" && if [ ! -d "$dir" ]; then dir="$(dirname "$dir")"; fi
+#     [ -d "$dir" ] && pushd "$dir" && ls
+# }
+ 
+ 
+# extract () {
+#     if [ -f $1 ] ; then
+#         case $1 in
+#             *.tar.bz2)   tar xvjf $1     ;;
+#             *.tar.gz)    tar xvzf $1     ;;
+#             *.bz2)       bunzip2 $1      ;;
+#             *.rar)       unrar x $1      ;;
+#             *.gz)        gunzip $1       ;;
+#             *.tar)       tar xvf $1      ;;
+#             *.tbz2)      tar xvjf $1     ;;
+#             *.tgz)       tar xvzf $1     ;;
+#             *.zip)       unzip $1        ;;
+#             *.Z)         uncompress $1   ;;
+#             *.7z)        7z x $1    ;;
+#             *)           echo "'$1' cannot be extracted via >extract<" ;;
+#         esac
+#     else
+#         echo "'$1' is not a valid file"
+#     fi
+# }
 
-is_login_shell() {
-    shopt | grep login_shell | grep -q on 
-}
-
-extract () {
-    if [ -f $1 ] ; then
-        case $1 in
-            *.tar.bz2)   tar xvjf $1     ;;
-            *.tar.gz)    tar xvzf $1     ;;
-            *.bz2)       bunzip2 $1      ;;
-            *.rar)       unrar x $1      ;;
-            *.gz)        gunzip $1       ;;
-            *.tar)       tar xvf $1      ;;
-            *.tbz2)      tar xvjf $1     ;;
-            *.tgz)       tar xvzf $1     ;;
-            *.zip)       unzip $1        ;;
-            *.Z)         uncompress $1   ;;
-            *.7z)        7z x $1    ;;
-            *)           echo "'$1' cannot be extracted via >extract<" ;;
-        esac
-    else
-        echo "'$1' is not a valid file"
-    fi
-}
+# export ALIASESRC="$HOME/.bash_aliases"; alias aliasesrc='source $ALIASESRC';
+# 
+# function cd_alias {
+#     if [[ $# -eq 0 ]]; then
+#         echo "USAGE : cd_alias <aliasname>";
+#         echo "google3/javascript/closure$ cd_alias cl";
+#         echo "will create an alias by the name cdcl";
+#         return;
+#     fi
+#     local aliasName=$1;  local targetDir="${PWD}";
+#     local cmd="alias cd${aliasName}='cd ${targetDir}'"
+#     if [[ "${PWD}" =~ .*/google3/.* ]];
+#     then
+#         targetDir=${PWD#*/google3/}
+#         cmd="alias cd${aliasName}='cd google3/${targetDir}'"
+#     fi
+#     echo $cmd;  eval $cmd;  echo $cmd >> ${ALIASESRC};
+# }

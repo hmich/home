@@ -18,14 +18,14 @@ alias reboot='sudo reboot'
 alias halt='sudo halt'
 alias svim='sudo vim'
 
+alias e='emacsclient -t'
+alias ee='emacsclient -n -c'
+
 alias rless="LESSOPEN='|tac %s' less"
 alias L=less
 
 alias pack='apt-cache search'
 alias inst='sudo apt-get install'
-
-alias rain='ssh ahmetov@rain.ifmo.ru'
-alias mountrain='sudo sshfs -o allow_other ahmetov@rain.ifmo.ru: rain'
 
 alias x='chmod +x'
 alias gv='gv -widgetless'
@@ -34,13 +34,17 @@ alias grep='grep -i --color'
 alias G=grep
 alias hl='ack --color --passthru --flush'
 
-alias p='git log --graph -p'
-alias d='git diff HEAD'
-alias st='git st'
+alias a='git add'
+alias b='git branch'
+alias c='git commit'
 alias ci='git commit'
 alias co='git checkout'
-alias svnci='git svn dcommit'
-alias svnco='git svn rebase'
+alias d='git diff HEAD'
+alias g='git'
+alias p='git log --graph -p'
+alias s='git st'
+alias sci='git svn dcommit'
+alias sco='git svn rebase'
 
 alias sta=cygstart
 
