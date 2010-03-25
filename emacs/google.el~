@@ -1,0 +1,58 @@
+(load-file "/home/build/public/eng/elisp/google.el")
+
+(require 'p4-google)                ;; g4-annotate, improves find-file-at-point
+(require 'compilation-colorization) ;; colorizes output of (i)grep
+(require 'rotate-clients)           ;; google-rotate-client
+(require 'rotate-among-files)       ;; google-rotate-among-files
+(require 'googlemenu)               ;; handy Google menu bar
+(require 'google-java)              ;; fast Java compilation code
+(require 'p4-files)                 ;; transparent support for Perforce filesystem
+(require 'google3)                  ;; magically set paths for compiling google3 code
+(require 'gsearch)                  ;; Search the whole Google code base.
+(require 'googlemenu)               ;; add Google menu
+(require 'google-logo)              ;; color Google logo
+
+(p4-enable-file-name-handler)
+
+(gsearch-convert-filenames-on)
+(global-set-key [f5] 'gtags-find-tag)
+(global-set-key [(control f5)] 'gsearch)
+
+(add-hook 'borgmon-mode-hook
+          (lambda ()
+            (c-toggle-auto-hungry-state 0)
+            (c-toggle-electric-state 0)))
+
+(defun font-lock-width-keyword (width)
+  "Return a font-lock style keyword for a string beyond width WIDTH
+that uses 'font-lock-warning-face'."
+  `((,(format "^%s\\(.+\\)" (make-string width ?.))
+     (1 font-lock-warning-face t))))
+
+(font-lock-add-keywords 'c++-mode (font-lock-width-keyword 80))
+(font-lock-add-keywords 'java-mode (font-lock-width-keyword 100))
+(font-lock-add-keywords 'python-mode (font-lock-width-keyword 80))
+
+(add-hook 'find-file-not-found-hooks 'autogen)
+
+(global-set-key "\C-cl"  'google-lint)   ; bind lint to control-c + l
+
+(defun find-google3-file-by-name (filename)
+  (let ((candidates (gtags-get-tags-from-server 'lookup-filename
+                                                (list (list 'file filename))
+                                                nil
+                                                (current-buffer))))
+    (if (null candidates)
+        (error "No file found")
+      (find-file
+       (google3-ffap-c-mode
+        (ido-completing-read "File: " candidates))))))
+
+(defun prompt-find-google3-file-by-name ()
+  (interactive)
+  (find-google3-file-by-name (read-string "Find file: ")))
+
+(grok-init)
+
+;; google3-build and google3-test
+(load-library "/home/build/nonconf/google3/experimental/users/seckar/emacs/lib/google3-build-completion.el")
