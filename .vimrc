@@ -44,8 +44,8 @@ set clipboard+=unnamed
 set laststatus=2
 set display+=lastline
 
-set lines=80
-set columns=140
+" set lines=80
+" set columns=140
 
 " GUI settings
 set mousehide

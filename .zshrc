@@ -61,7 +61,7 @@ chpwd() {
 
 	# if the terminal has enough lines, do a long listing
 	#if [ `expr "${ROWS}" - 6` -lt "${FILES}" ]; then
-	ls --color -ACF
+	ls 
 	#else
 	#	ls --color -hlAF --full-time
 	#fi

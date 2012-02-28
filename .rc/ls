@@ -1,11 +1,16 @@
 #!/bin/sh
 
-# enable color support of ls and also add handy aliases
-if [ "$TERM" != "dumb" ]; then
-    eval "`dircolors -b`"
-fi
+LSFLAGS="-shAF"
 
-LSFLAGS="-shAF --color=auto --group-directories-first --show-control-chars"
+if [ "$(uname)" = "Darwin" ]; then
+    LSFLAGS="$LSFLAGS -G"
+else
+    if [ "$TERM" != "dumb" ]; then
+        eval "`dircolors -b`"
+    fi
+
+    LSFLAGS="-shAF --color=auto --group-directories-first --show-control-chars"
+fi
 
 alias ll="ls $LSFLAGS -l"
 alias ls="ls $LSFLAGS"
