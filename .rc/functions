@@ -3,11 +3,13 @@
 #[ -n $FUNCTIONS_LOADED ] && return
 # FUNCTIONS_LOADED=1
 
-# sd() {
-#     dir="$1"
-#     [ -z "$dir" ] && dir="$(sel)" && if [ ! -d "$dir" ]; then dir="$(dirname "$dir")"; fi
-#     [ -d "$dir" ] && pushd "$dir" && ls
-# }
+sd() {
+    dir="$1"
+    [ -z "$dir" ] && dir="$(sel)" && if [ ! -d "$dir" ]; then
+        dir="$(dirname "$dir")";
+    fi
+    [ -d "$dir" ] && pushd "$dir" && ls
+}
  
  
 # extract () {

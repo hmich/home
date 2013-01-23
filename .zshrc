@@ -45,6 +45,10 @@ compinit -u
 zmodload zsh/complist
 bindkey -M menuselect '\C-\n' accept-and-hold
 
+autoload edit-command-line
+zle -N edit-command-line
+bindkey '^Xe' edit-command-line
+
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' list-colors ''
 zstyle ':completion:*' cache-path ~/.zsh/cache
@@ -52,8 +56,8 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
 zstyle ':completion:*' expand 'yes'
 #zstyle ':completion:*' menu yes select
 
-autoload -U zsh-mime-setup
-zsh-mime-setup
+# autoload -U zsh-mime-setup
+# zsh-mime-setup
 
 chpwd() {
 	#ROWS=`stty size | cut -d' ' -f1`
@@ -82,3 +86,5 @@ is_login_shell() {
 for file in ~/.rc/*; do
     source "$file"
 done
+
+source /etc/bash_completion.d/g4d

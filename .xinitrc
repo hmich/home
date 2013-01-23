@@ -1,3 +1,4 @@
+setxkbmap -layout us,ru -variant ,winkeys -option grp:rwin_toggle
 xsetroot -solid "#000000"
 xrdb -merge ~/.Xresources
 xmodmap ~/.xmodmaprc
@@ -5,6 +6,7 @@ xmodmap ~/.xmodmaprc
 export FONT="-xos4-terminus-medium-r-normal--16-160-72-72-c-80-iso8859-1"
 
 xscreensaver &
+runterm &
 xmonad & 
 PID=$!
 

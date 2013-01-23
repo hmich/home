@@ -44,8 +44,8 @@ set clipboard+=unnamed
 set laststatus=2
 set display+=lastline
 
-set lines=80
-set columns=140
+" set lines=80
+" set columns=140
 
 " GUI settings
 set mousehide
@@ -53,8 +53,9 @@ set guioptions-=m
 set guioptions-=T
 set title
 "set guifont=Lucida_Console:h11:cRUSSIAN
-set guifont=Terminus\ 12,Courier_New:h10:cRUSSIAN
-colorscheme ps_color
+"set guifont=Terminus\ 12,Courier_New:h10:cRUSSIAN
+set guifont=Inconsolata\ 12
+" colorscheme ps_color
 map <silent> <M-Space> :simalt ~<cr>
 
 " I18N settings
@@ -133,6 +134,7 @@ au FileType tex call TexSettings()
 au FileType lua setlocal makeprg=lua\ %
 au FileType cpp call CppSettings()
 au FileType make set noet
+au FileType conf set noet
 au BufEnter *.pl compiler perl
 " au BufEnter *.hs compiler ghc
 

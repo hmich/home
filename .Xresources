@@ -1,6 +1,7 @@
 *customization: -color
 
-Rxvt.font: xft:Terminus
+Rxvt.font: xft:Inconsolata-13
+Rxvt.foreground: black
 Rxvt.scrollstyle: plain
 Rxvt.saveLines: 100000
 Rxvt.cursorBlink: true
@@ -9,3 +10,4 @@ Rxvt.modifier: mod1
 
 URxvt.perl-ext:
 URxvt.perl-ext-common:
+URxvt.urgentOnBell: true
