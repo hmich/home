@@ -8,6 +8,11 @@
       (append  '("~/emacs" "~/emacs/slime" "~/emacs/haskell-mode" "~/emacs/ecb-2.32" "~/emacs/auctex" "~/emacs/company")
 	       load-path))
 
+(setenv "PATH"
+        (concat (getenv "PATH")
+                ":/opt/local/bin"
+                ":/opt/local/sbin"))
+
 (require 'cl)
 
 ;; Windows compatibility
@@ -93,6 +98,9 @@
 ;; ;; (define-key viper-vi-global-user-map "\C-u" 'universal-argument)
 ;; ;;(define-key viper-vi-global-user-map (kШжbd ")рр'viper-append)
 ;; ;;(define-key viper-vi-global-user-map [332868] 'viper-Append)
+
+;;(setq mac-command-modifier 'super)
+(setq mac-option-modifier 'meta)
 
 (setq woman-use-own-frame nil)     ; don't create new frame for manpages
 (setq woman-use-topic-at-point t)  ; don't prompt upon K key (manpage display)
@@ -643,25 +651,21 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;;   (local-set-key "\M-b" 'prev-syntax-boundary)
 ;;   (local-set-key "\M-d" 'kill-syntax-forward))
 
-;; ;; CC settings
+;; CC settings
 ;; (setq c-tab-always-indent nil)
 (add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
 (add-to-list 'auto-mode-alist '("\\.inl\\'" . c++-mode))
+
 (add-hook 'c-mode-common-hook
           (lambda ()
+            (c-set-style "stroustrup")
+            (c-set-offset 'inline-open 0)
+            (c-toggle-syntactic-indentation 1)
+            (c-toggle-auto-hungry-state 1)
+            (c-toggle-electric-state 1)
+            (c-toggle-auto-newline -1)
+            (font-lock-add-keywords nil '(("\\<\\(FIXME\\|TODO\\|BUG\\|XXX\\):" 1 font-lock-warning-face t)))
             (local-set-key (kbd "C-c o") 'ff-find-other-file)))
-
-;; (add-hook 'c-mode-common-hook
-;;           (lambda ()
-;;             (c-set-style "stroustrup")
-;;             (c-set-offset 'inline-open 0)
-;;             (c-toggle-syntactic-indentation 1)
-;;             (c-toggle-auto-hungry-state 1)
-;;             (c-toggle-electric-state 1)
-;;             (c-toggle-auto-newline -1)
-;;             (font-lock-add-keywords nil '(("\\<\\(FIXME\\|TODO\\|BUG\\|XXX\\):" 1 font-lock-warning-face t)))
-;;             (local-set-key (kbd "C-c o") 'ff-find-other-file)
-;;             (syntax-movements-bindings)))
 
 ;; ;; C sharp
 ;; (autoload 'csharp-mode "csharp-mode" "Major mode for editing C# code." t)
@@ -702,6 +706,7 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;; Lua settings
 (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
 (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
+(add-to-list 'auto-mode-alist '("\\.m\\'" . octave-mode))
 
 ;; ;; Scheme settings
 ;; (autoload 'scheme-mode "cmuscheme" "Major mode for Scheme." t)
@@ -725,6 +730,10 @@ it blindly to other people's files can cause enormously messy diffs!"
 (add-to-list 'auto-mode-alist '("\\.hs\\'" . haskell-mode))
 (add-hook 'haskell-mode-hook 'turn-on-haskell-indent)
 (add-hook 'haskell-mode-hook 'turn-on-haskell-simple-indent)
+
+;; ;; Lua settings
+(autoload 'io-mode "io-mode" "Io editing mode." t)
+(add-to-list 'auto-mode-alist '("\\.io\\'" . io-mode))
 
 ;; ;; Ocaml
 ;; (load "ocaml/ocaml.emacs")
@@ -976,6 +985,11 @@ it blindly to other people's files can cause enormously messy diffs!"
 
 (global-set-key "\M-m" 'ido-goto-symbol)
 
+(defun ido-choose-from-recentf ()
+  "Use ido to select a recently opened file from the `recentf-list'"
+  (interactive)
+  (find-file (ido-completing-read "Open file: " recentf-list nil t)))
+
 ;; (require 'filecache)
 
 ;; (defun file-cache-add-this-file ()
@@ -1056,7 +1070,8 @@ it blindly to other people's files can cause enormously messy diffs!"
 
 ;; (add-to-list 'command-switch-alist '("diff" . command-line-diff))
 
-(setq dired-listing-switches "-alFsh --group-directories-first")
+;; (setq dired-listing-switches "-alFsh --group-directories-first")
+(setq dired-listing-switches "-alFsh")
 
 (add-hook 'dired-mode-hook
           '(lambda ()

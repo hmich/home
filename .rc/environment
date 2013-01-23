@@ -2,5 +2,7 @@
 
 export EDITOR="emacsclient -t"
 export VISUAL=$EDITOR
+export GNUTERM=x11
 [ -d ~/bin ] && export PATH=~/bin:$PATH
+[ -d /opt/local ] && export PATH=$PATH:/opt/local/bin:/opt/local/sbin
 [ -d ~/share/man ] && export MANPATH=~/share/man:$MANPATH

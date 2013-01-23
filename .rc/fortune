@@ -1,5 +1,0 @@
-#!/bin/sh
-
-source ~/.rc/functions
-
-! is_login_shell && which fortune >/dev/null && fortune
