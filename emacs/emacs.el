@@ -183,6 +183,7 @@
 (setq track-eol t)
 (setq set-mark-command-repeat-pop t)
 (setq sentence-end-double-space nil)
+(setq next-line-add-newlines nil)
 (put 'upcase-region 'disabled nil)
 (put 'downcase-region 'disabled nil)
 (setq grep-command "grep -nir ")
@@ -215,7 +216,7 @@
 (transient-mark-mode 1)
 (global-font-lock-mode t)
 (setq desktop-load-locked-desktop t)
-(global-visual-line-mode t)
+;; (global-visual-line-mode t)
 (setq large-file-warning-threshold nil)
 (file-name-shadow-mode t)
 
@@ -234,6 +235,11 @@
 (setq show-paren-style 'expression)
 (set-face-foreground 'show-paren-match-face nil)
 (set-face-background 'show-paren-match-face "gray22")
+
+;; Enable autopair
+(require 'autopair)
+(autopair-global-mode)
+(setq autopair-blink nil)
 
 ;; Window configurations settings
 (windmove-default-keybindings 'super)
@@ -334,12 +340,18 @@ it blindly to other people's files can cause enormously messy diffs!"
   nil)
 
 ;; (add-hook 'write-file-hooks 'delete-trailing-whitespace)
-(setq-default show-trailing-whitespace t)
+;; (setq-default show-trailing-whitespace nil)
 
 ;; Startup and exit
 (setq inhibit-startup-message t)
 (setq inhibit-startup-echo-area-message (user-login-name))
 (fset 'yes-or-no-p 'y-or-n-p)
+(setq confirm-nonexistent-file-or-buffer nil)
+
+;; Do not ask when killing a buffer with a live process attached to it.
+(setq kill-buffer-query-functions
+  (remq 'process-kill-buffer-query-function
+         kill-buffer-query-functions))
 
 ;; Default mode
 (setq default-major-mode 'text-mode)
@@ -584,6 +596,17 @@ it blindly to other people's files can cause enormously messy diffs!"
 (recentf-mode t)
 (setq recentf-max-saved-items 500)
 
+;; get rid of `find-file-read-only' and replace it with something
+;; more useful.
+(global-set-key (kbd "C-x C-r") 'ido-recentf-open)
+
+(defun ido-recentf-open ()
+  "Use `ido-completing-read' to \\[find-file] a recent file"
+  (interactive)
+  (if (find-file (ido-completing-read "Find recent file: " recentf-list))
+      (message "Opening file...")
+    (message "Aborting")))
+
 ;; ;; Compilation settings
 ;; ;; (defun compile-autoclose (buffer string)
 ;; ;;   (cond ((and (string-match "finished" string)
@@ -676,9 +699,9 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;; ;;               (setq ropemacs-loaded t))
 ;; ;;             (define-key python-mode-map [backspace] 'python-backspace)))
 
-;; ;; Lua settings
-;; (autoload 'lua-mode "lua-mode" "Lua editing mode." t)
-;; (add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
+;; Lua settings
+(autoload 'lua-mode "lua-mode" "Lua editing mode." t)
+(add-to-list 'auto-mode-alist '("\\.lua\\'" . lua-mode))
 
 ;; ;; Scheme settings
 ;; (autoload 'scheme-mode "cmuscheme" "Major mode for Scheme." t)
@@ -849,24 +872,28 @@ it blindly to other people's files can cause enormously messy diffs!"
 (defun my-anything ()
   (interactive)
   (anything-other-buffer
-   '(anything-c-source-buffers+
+   '(;; anything-c-source-buffers
      anything-c-source-imenu
      anything-c-source-file-name-history
      anything-c-source-files-in-current-dir+
-     ;; anything-c-source-files-in-all-dired
+     anything-c-source-files-in-all-dired
      anything-c-source-file-cache
      anything-c-source-recentf
      anything-c-source-man-pages
      anything-c-source-info-pages
-     anything-c-source-emacs-commands
-     anything-c-source-emacs-functions
-     anything-c-source-emacs-variables
-     anything-c-source-locate
+     ;; anything-c-source-emacs-commands
+     ;; anything-c-source-emacs-functions
+     ;; anything-c-source-emacs-variables
+     ;; anything-c-source-locate
      )
    " *my-anything*"))
 
-(global-set-key [(backtab)] 'my-anything)
-(global-set-key (kbd "\e[Z") 'my-anything)
+(global-set-key [(backtab)] 'switch-to-buffer)
+;;(global-set-key [(shift tab)] 'my-anything)
+;;(global-set-key (kbd "\e[Z") 'my-anything)
+(global-set-key [(shift tab)] 'switch-to-buffer)
+(global-set-key [(shift tab)] 'switch-to-buffer)
+(global-set-key (kbd "\e[Z") 'switch-to-buffer)
 
 (defun rename-file-and-buffer ()
   "Renames both current buffer and file it's visiting to NEW-NAME."
@@ -897,6 +924,7 @@ it blindly to other people's files can cause enormously messy diffs!"
 (setq ido-use-url-at-point nil)
 (setq ido-confirm-unique-completion t)
 (setq ido-enable-last-directory-history nil)
+(setq ido-create-new-buffer 'always)
 
 (defun ido-execute ()
   (interactive)
@@ -909,6 +937,12 @@ it blindly to other people's files can cause enormously messy diffs!"
        cmd-list)))))
 
 (global-set-key "\M-x" 'ido-execute)
+
+;; (when (require 'lusty-explorer nil 'noerror)
+;;   ;; overrride the normal file-opening, buffer switching
+;;   (global-set-key (kbd "C-x C-f") 'ido-find-file)
+;;   (global-set-key (kbd "C-x C-f") 'lusty-file-explorer)
+;;   (global-set-key (kbd "C-x b")   'lusty-buffer-explorer))
 
 ;; (require 'w32-browser)
 
@@ -941,11 +975,6 @@ it blindly to other people's files can cause enormously messy diffs!"
       (goto-char position))))
 
 (global-set-key "\M-m" 'ido-goto-symbol)
-
-;; (defun ido-choose-from-recentf ()
-;;   "Use ido to select a recently opened file from the `recentf-list'"
-;;   (interactive)
-;;   (find-file (ido-completing-read "Open file: " recentf-list nil t)))
 
 ;; (require 'filecache)
 
@@ -1029,7 +1058,7 @@ it blindly to other people's files can cause enormously messy diffs!"
 
 (setq dired-listing-switches "-alFsh --group-directories-first")
 
-(add-hook 'dired-load-hook
+(add-hook 'dired-mode-hook
           '(lambda ()
             (define-key dired-mode-map [(backspace)] 'dired-up-directory)))
 
@@ -1054,8 +1083,20 @@ it blindly to other people's files can cause enormously messy diffs!"
       (dired (file-name-directory name))
       (dired-goto-file name))))
 
-;; ;; Browse the kill ring
-;; (autoload 'browse-kill-ring "browse-kill-ring")
+(defadvice yank-pop (around kill-ring-browse-maybe (arg))
+  "If last action was not a yank, run `anything-show-kill-ring' instead."
+  ;; yank-pop has an (interactive "*p") form which does not allow
+  ;; it to run in a read-only buffer.  We want browse-kill-ring to
+  ;; be allowed to run in a read only buffer, so we change the
+  ;; interactive form here.  In that case, we need to
+  ;; barf-if-buffer-read-only if we're going to call yank-pop with
+  ;; ad-do-it
+  (interactive "p")
+  (if (not (eq last-command 'yank))
+      (anything-show-kill-ring)
+    (barf-if-buffer-read-only)
+    ad-do-it))
+(ad-activate 'yank-pop)
 
 (defun kill-ring-ido-yank ()
   (interactive)
@@ -1072,6 +1113,11 @@ it blindly to other people's files can cause enormously messy diffs!"
 (setq uniquify-separator "/")
 (setq uniquify-after-kill-buffer-p t) ; rename after killing uniquified
 (setq uniquify-ignore-buffers-re "^\\*") ; don't muck with special buffers
+
+;; Ord-mode settings
+(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-ca" 'org-agenda)
 
 ;; (autoload 'blank-mode           "blank-mode" "Toggle blank visualization."        t)
 ;; (autoload 'blank-toggle-options "blank-mode" "Toggle local `blank-mode' options." t)
@@ -1158,6 +1204,85 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;;                          (search-forward (char-to-string char) nil nil arg)
 ;;                          (backward-char)
 ;;                          (point))))
+
+(defvar smart-use-extended-syntax nil
+  "If t the smart symbol functionality will consider extended
+syntax in finding matches, if such matches exist.")
+
+(defvar smart-last-symbol-name ""
+  "Contains the current symbol name.
+
+This is only refreshed when `last-command' does not contain
+either `smart-symbol-go-forward' or `smart-symbol-go-backward'")
+
+(make-local-variable 'smart-use-extended-syntax)
+
+(defvar smart-symbol-old-pt nil
+  "Contains the location of the old point")
+
+(defun smart-symbol-goto (name direction)
+  "Jumps to the next NAME in DIRECTION in the current buffer.
+
+DIRECTION must be either `forward' or `backward'; no other option
+is valid."
+
+  ;; if `last-command' did not contain
+  ;; `smart-symbol-go-forward/backward' then we assume it's a
+  ;; brand-new command and we re-set the search term.
+  (unless (memq last-command '(smart-symbol-go-forward
+                               smart-symbol-go-backward))
+    (setq smart-last-symbol-name name))
+  (setq smart-symbol-old-pt (point))
+  (message (format "%s scan for symbol \"%s\""
+                   (capitalize (symbol-name direction))
+                   smart-last-symbol-name))
+  (unless (catch 'done
+            (while (funcall (cond
+                             ((eq direction 'forward) ; forward
+                              'search-forward)
+                             ((eq direction 'backward) ; backward
+                              'search-backward)
+                             (t (error "Invalid direction"))) ; all others
+                            smart-last-symbol-name nil t)
+              (unless (memq (syntax-ppss-context
+                             (syntax-ppss (point))) '(string comment))
+                (throw 'done t))))
+    (goto-char smart-symbol-old-pt)))
+
+(defun smart-symbol-go-forward ()
+  "Jumps forward to the next symbol at point"
+  (interactive)
+  (smart-symbol-goto (smart-symbol-at-pt 'end) 'forward))
+
+(defun smart-symbol-go-backward ()
+  "Jumps backward to the previous symbol at point"
+  (interactive)
+  (smart-symbol-goto (smart-symbol-at-pt 'beginning) 'backward))
+
+(defun smart-symbol-at-pt (&optional dir)
+  "Returns the symbol at point and moves point to DIR (either `beginning' or `end') of the symbol.
+
+If `smart-use-extended-syntax' is t then that symbol is returned
+instead."
+  (with-syntax-table (make-syntax-table)
+    (if smart-use-extended-syntax
+        (modify-syntax-entry ?. "w"))
+    (modify-syntax-entry ?_ "w")
+    (modify-syntax-entry ?- "w")
+    ;; grab the word and return it
+    (let ((word (thing-at-point 'word))
+          (bounds (bounds-of-thing-at-point 'word)))
+      (if word
+          (progn
+            (cond
+             ((eq dir 'beginning) (goto-char (car bounds)))
+             ((eq dir 'end) (goto-char (cdr bounds)))
+             (t (error "Invalid direction")))
+            word)
+        (error "No symbol found")))))
+
+(global-set-key (kbd "M-n") 'smart-symbol-go-forward)
+(global-set-key (kbd "M-p") 'smart-symbol-go-backward)
 
 ;; autoindent open-*-lines
 (defvar newline-and-indent t
@@ -1431,7 +1556,6 @@ it blindly to other people's files can cause enormously messy diffs!"
 ;; (global-set-key [(shift f3)] 'isearch-backward-current-word-keep-offset)
 ;; (global-set-key [(meta f3)] 'occur-word-under-cursor)
 ;; ;(global-set-key [f4] 'file-cache-ido-find-file)
-;; (global-set-key [(meta f4)] 'ido-choose-from-recentf)
 ;; (global-set-key [(control f4)] 'recentf-open-files)
 ;; (global-set-key [f5] (lambda ()
 ;;                       (interactive)
